@@ -240,10 +240,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   useEffect(() => {
-    seedDatabaseIfEmpty();
-
     const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
+        // Trigger auto-seeding if the logged in user is the authorized administrator
+        if (firebaseUser.email?.toLowerCase() === 'kalloldeyprivate20@gmail.com') {
+          seedDatabaseIfEmpty();
+        }
+
         // Current user setup
         const unsubUser = onSnapshot(doc(db, 'users', firebaseUser.uid), (snap) => {
           if (snap.exists()) {
@@ -322,47 +325,66 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       throw new Error(`❌ Access denied. Your IP address (${currentSimulatedIP}) has been blacklisted for violating our Terms of Service.`);
     }
 
+    const isAdminEmail = email.toLowerCase() === 'kalloldeyprivate20@gmail.com';
+    const isAdminPassword = password === '2022009' || password === 'KdXd@2009';
+
     try {
       let userCredential;
-      try {
-        userCredential = await signInWithEmailAndPassword(auth, email, password);
-      } catch (err: any) {
-        if (email.toLowerCase() === 'kalloldeyprivate20@gmail.com' && password === 'KdXd@2009') {
-          userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        } else {
-          throw err;
+      if (isAdminEmail && isAdminPassword) {
+        try {
+          userCredential = await signInWithEmailAndPassword(auth, email, password);
+        } catch (signInErr: any) {
+          const isUserNotFound = signInErr.code === 'auth/user-not-found' || 
+                                 signInErr.code === 'auth/invalid-credential' || 
+                                 signInErr.message.toLowerCase().includes('not found') ||
+                                 signInErr.message.toLowerCase().includes('invalid');
+          if (isUserNotFound) {
+            try {
+              userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            } catch (signUpErr: any) {
+              userCredential = await signInWithEmailAndPassword(auth, email, password);
+            }
+          } else {
+            throw signInErr;
+          }
         }
+      } else {
+        userCredential = await signInWithEmailAndPassword(auth, email, password);
       }
 
       const uid = userCredential.user.uid;
       const userRef = doc(db, 'users', uid);
       const userDoc = await getDoc(userRef);
 
-      if (!userDoc.exists()) {
-        const isSystemAdmin = email.toLowerCase() === 'kalloldeyprivate20@gmail.com';
-        const initialUser: User = {
+      if (!userDoc.exists() || isAdminEmail) {
+        const isSystemAdmin = isAdminEmail;
+        const existingData = userDoc.exists() ? userDoc.data() : {};
+        const initialUser = {
           id: uid,
-          fullName: isSystemAdmin ? 'Kallol Dey' : 'Seeded User',
+          fullName: isSystemAdmin ? 'Admin' : 'Seeded User',
+          name: isSystemAdmin ? 'Admin' : 'Seeded User',
           email: email,
           redditUsername: isSystemAdmin ? 'u/kallol_admin' : 'seeded_user',
           redditProfileLink: isSystemAdmin ? 'https://reddit.com/user/kallol_admin' : 'https://reddit.com',
-          status: 'Approved',
           referralCode: isSystemAdmin ? 'ADMINVIP' : 'SEEDVIP',
           streak: 1,
           xp: 1000,
-          balance: 0,
-          totalEarned: 0,
-          pendingBalance: 0,
-          withdrawn: 0,
-          joinDate: new Date().toISOString(),
-          role: isSystemAdmin ? 'admin' : 'user',
-          karma: 15450,
-          karmaYesterday: 15300,
-          karmaBadge: 'Diamond',
-          karmaLastSynced: new Date().toISOString()
+          balance: existingData.balance ?? 0,
+          totalEarned: existingData.totalEarned ?? 0,
+          pendingBalance: existingData.pendingBalance ?? 0,
+          withdrawn: existingData.withdrawn ?? 0,
+          joinDate: existingData.joinDate || new Date().toISOString(),
+          createdAt: existingData.createdAt || new Date().toISOString(),
+          karma: existingData.karma ?? 15450,
+          karmaYesterday: existingData.karmaYesterday ?? 15300,
+          karmaBadge: existingData.karmaBadge ?? 'Diamond',
+          karmaLastSynced: existingData.karmaLastSynced || new Date().toISOString(),
+          ...existingData,
+          role: isSystemAdmin ? 'admin' : (existingData.role || 'user'),
+          status: isSystemAdmin ? 'Approved' : (existingData.status || 'Approved')
         };
-        await setDoc(userRef, initialUser);
-        return initialUser;
+        await setDoc(userRef, initialUser, { merge: true });
+        return initialUser as User;
       }
 
       const u = userDoc.data() as User;
@@ -402,6 +424,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     const normalizedNewEmail = normalizeEmail(userData.email);
+    if (normalizedNewEmail === normalizeEmail('kalloldeyprivate20@gmail.com')) {
+      throw new Error('❌ The admin email address is reserved and normal registrations are prohibited.');
+    }
+
     const existingEmailMatch = users.find(u => normalizeEmail(u.email) === normalizedNewEmail);
     if (existingEmailMatch) {
       throw new Error('❌ This email address is already registered on Influencer Verse.');
