@@ -1,0 +1,212 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global safety catch-all: default-deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && 
+        (request.auth.token.email == 'kalloldeyprivate20@gmail.com' ||
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
+    }
+
+    function isClient() {
+      return isSignedIn() && 
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'client');
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Schema Validation helpers
+    function isValidUser(data) {
+      return data.id is string 
+        && data.fullName is string && data.fullName.size() <= 128
+        && data.email is string && data.email.size() <= 128
+        && data.redditUsername is string && data.redditUsername.size() <= 128
+        && data.status is string
+        && data.referralCode is string
+        && data.streak is int
+        && data.xp is int
+        && data.balance is number
+        && data.totalEarned is number
+        && data.role is string;
+    }
+
+    function isValidClient(data) {
+      return data.id is string
+        && data.name is string && data.name.size() <= 128
+        && data.company is string && data.company.size() <= 128
+        && data.gmail is string && data.gmail.size() <= 128
+        && data.status is string
+        && data.taskUploadEnabled is bool
+        && data.registeredAt is string;
+    }
+
+    function isValidTask(data) {
+      return data.id is string
+        && data.title is string && data.title.size() <= 200
+        && data.description is string && data.description.size() <= 2000
+        && data.type is string
+        && data.reward is number
+        && data.difficulty is string
+        && data.deadline is string
+        && data.maxSubmissions is int
+        && data.completedSubmissionsCount is int
+        && data.status is string;
+    }
+
+    function isValidSubmission(data) {
+      return data.id is string
+        && data.taskId is string
+        && data.taskTitle is string
+        && data.reward is number
+        && data.userId is string
+        && data.userFullName is string
+        && data.redditUsername is string
+        && data.proofUrl is string
+        && data.status is string
+        && data.submittedAt is string;
+    }
+
+    function isValidWithdrawal(data) {
+      return data.id is string
+        && data.userId is string
+        && data.userFullName is string
+        && data.email is string
+        && data.amount is number
+        && data.withdrawalMethod is string
+        && data.paymentAddress is string
+        && data.requestedAt is string
+        && data.status is string;
+    }
+
+    function isValidTransaction(data) {
+      return data.id is string
+        && data.userId is string
+        && data.type is string
+        && data.amount is number
+        && data.description is string
+        && data.date is string
+        && data.status is string;
+    }
+
+    function isValidNotification(data) {
+      return data.id is string
+        && data.userId is string
+        && data.type is string
+        && data.title is string
+        && data.message is string
+        && data.read is bool
+        && data.timestamp is string;
+    }
+
+    function isValidSupportTicket(data) {
+      return data.id is string
+        && data.userId is string
+        && data.userFullName is string
+        && data.subject is string
+        && data.category is string
+        && data.description is string
+        && data.status is string
+        && data.createdAt is string;
+    }
+
+    function isValidChat(data) {
+      return data.id is string
+        && data.clientId is string
+        && data.clientName is string
+        && data.messages is list
+        && data.lastMessageTimestamp is string;
+    }
+
+    // Rules for individual collections
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow create: if (isOwner(userId) && isValidUser(request.resource.data)) || isAdmin();
+      // Allow updates if the role, balance, xp remain unchanged for normal users, or if they are admin.
+      allow update: if (isOwner(userId) && isValidUser(request.resource.data) 
+                        && request.resource.data.role == resource.data.role
+                        && request.resource.data.balance == resource.data.balance
+                        && request.resource.data.totalEarned == resource.data.totalEarned
+                        && request.resource.data.xp == resource.data.xp
+                        && request.resource.data.status == resource.data.status) 
+                    || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /clients/{clientId} {
+      allow read: if isSignedIn() && (request.auth.uid == clientId || isAdmin());
+      allow create: if (isOwner(clientId) && isValidClient(request.resource.data)) || isAdmin();
+      allow update: if (isOwner(clientId) && isValidClient(request.resource.data)
+                        && request.resource.data.status == resource.data.status
+                        && request.resource.data.taskUploadEnabled == resource.data.taskUploadEnabled) 
+                    || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /tasks/{taskId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin() || (isClient() && isValidTask(request.resource.data));
+      allow update: if isAdmin() || (isSignedIn() && (
+        (request.resource.data.status == 'claimed' && request.resource.data.claimed_by == request.auth.uid) ||
+        (resource.data.claimed_by == request.auth.uid)
+      ));
+      allow delete: if isAdmin();
+    }
+
+    match /submissions/{submissionId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin() || (isClient() && resource.data.clientId == request.auth.uid));
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid && isValidSubmission(request.resource.data);
+      allow update: if isAdmin() || (isClient() && resource.data.clientId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /withdrawals/{withdrawalId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid && request.resource.data.status == 'Pending' && isValidWithdrawal(request.resource.data);
+      allow update, delete: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.userId == 'all' || isAdmin());
+      allow create: if isAdmin();
+      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid && request.resource.data.read == true);
+      allow delete: if isAdmin();
+    }
+
+    match /tickets/{ticketId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid && isValidSupportTicket(request.resource.data);
+      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    match /chats/{chatId} {
+      allow read: if isSignedIn() && (resource.data.clientId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && (request.resource.data.clientId == request.auth.uid || isAdmin()) && isValidChat(request.resource.data);
+      allow update: if isSignedIn() && (resource.data.clientId == request.auth.uid || isAdmin());
+      allow delete: if isAdmin();
+    }
+  }
+}

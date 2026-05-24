@@ -57,10 +57,12 @@ export function generateDeviceFingerprint(): string {
  * Generates a mock IP address.
  */
 export function generateRandomIP(): string {
-  const octet1 = Math.floor(Math.random() * 223) + 1; // Class A, B, C
-  const octet2 = Math.floor(Math.random() * 255);
-  const octet3 = Math.floor(Math.random() * 255);
-  const octet4 = Math.floor(Math.random() * 254) + 1;
+  const uarray = new Uint8Array(4);
+  crypto.getRandomValues(uarray);
+  const octet1 = (uarray[0] % 223) + 1; // Class A, B, C
+  const octet2 = uarray[1];
+  const octet3 = uarray[2];
+  const octet4 = (uarray[3] % 254) + 1;
   return `${octet1}.${octet2}.${octet3}.${octet4}`;
 }
 

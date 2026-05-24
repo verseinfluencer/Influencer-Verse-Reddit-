@@ -1,0 +1,219 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Influencer Verse member, admin, or client profile data, containing anti-cheat, stream status, balances, and karma.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fullName": { "type": "string" },
+        "email": { "type": "string" },
+        "redditUsername": { "type": "string" },
+        "redditProfileLink": { "type": "string" },
+        "status": { "type": "string", "enum": ["Pending", "Approved", "Rejected", "Banned"] },
+        "rejectionReason": { "type": "string" },
+        "referralCode": { "type": "string" },
+        "referredBy": { "type": "string" },
+        "streak": { "type": "integer" },
+        "lastLoginDate": { "type": "string" },
+        "xp": { "type": "integer" },
+        "balance": { "type": "number" },
+        "totalEarned": { "type": "number" },
+        "pendingBalance": { "type": "number" },
+        "withdrawn": { "type": "number" },
+        "joinDate": { "type": "string" },
+        "avatarUrl": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin", "client"] },
+        "gender": { "type": "string", "enum": ["Male", "Female", "Non-binary", "Prefer not to say"] },
+        "karma": { "type": "integer" },
+        "karmaYesterday": { "type": "integer" },
+        "karmaBadge": { "type": "string" },
+        "karmaLastSynced": { "type": "string" },
+        "last_claimed_at": { "type": "string" },
+        "cooldown_expires_at": { "type": "string" },
+        "active_task_id": { "type": "string" },
+        "isSuspended": { "type": "boolean" },
+        "suspensionReason": { "type": "string" },
+        "isBanned": { "type": "boolean" },
+        "banReason": { "type": "string" }
+      },
+      "required": ["id", "fullName", "email", "redditUsername", "status", "referralCode", "streak", "xp", "balance", "totalEarned", "role"]
+    },
+    "Client": {
+      "title": "Client Info",
+      "description": "Client profile details, budgets, Whatsapp credentials, and status.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "company": { "type": "string" },
+        "country": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "gmail": { "type": "string" },
+        "gmailVerified": { "type": "boolean" },
+        "paymentMethod": { "type": "string", "enum": ["Crypto", "Bank Transfer", "Other"] },
+        "budget": { "type": "string" },
+        "paymentNotes": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected", "suspended"] },
+        "rejectionReason": { "type": "string" },
+        "taskUploadEnabled": { "type": "boolean" },
+        "registeredAt": { "type": "string" },
+        "approvedAt": { "type": "string" },
+        "payAgencyBalance": { "type": "number" }
+      },
+      "required": ["id", "name", "company", "gmail", "status", "taskUploadEnabled", "registeredAt"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "Admin or client-generated tasks that influencers can claim and perform.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "type": { "type": "string", "enum": ["post", "comment"] },
+        "reward": { "type": "number" },
+        "difficulty": { "type": "string", "enum": ["Easy", "Medium", "Hard"] },
+        "deadline": { "type": "string" },
+        "maxSubmissions": { "type": "integer" },
+        "completedSubmissionsCount": { "type": "integer" },
+        "targetSubreddit": { "type": "string" },
+        "requiredPostTitle": { "type": "string" },
+        "postGuidelines": { "type": "string" },
+        "postUrlToCommentOn": { "type": "string" },
+        "commentGuidelines": { "type": "string" },
+        "proofRequired": { "type": "string" },
+        "isSpecial": { "type": "boolean" },
+        "minKarmaRequired": { "type": "integer" },
+        "specialLabel": { "type": "string" },
+        "claimed_by": { "type": "string" },
+        "claimed_at": { "type": "string" },
+        "claim_expires_at": { "type": "string" },
+        "status": { "type": "string", "enum": ["available", "claimed", "completed", "expired"] }
+      },
+      "required": ["id", "title", "description", "type", "reward", "difficulty", "deadline", "maxSubmissions", "completedSubmissionsCount", "status"]
+    },
+    "Submission": {
+      "title": "Submission",
+      "description": "An influencer's completed task with proof screenshots/links for review.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "taskId": { "type": "string" },
+        "taskTitle": { "type": "string" },
+        "taskType": { "type": "string", "enum": ["post", "comment"] },
+        "reward": { "type": "number" },
+        "userId": { "type": "string" },
+        "userFullName": { "type": "string" },
+        "redditUsername": { "type": "string" },
+        "proofUrl": { "type": "string" },
+        "submissionLink": { "type": "string" },
+        "status": { "type": "string", "enum": ["Pending", "Approved", "Rejected"] },
+        "feedback": { "type": "string" },
+        "submittedAt": { "type": "string" },
+        "matchScore": { "type": "integer" },
+        "aiConfidence": { "type": "string" },
+        "isFlagged": { "type": "boolean" },
+        "flagReason": { "type": "string" }
+      },
+      "required": ["id", "taskId", "taskTitle", "reward", "userId", "userFullName", "redditUsername", "proofUrl", "status", "submittedAt"]
+    },
+    "Withdrawal": {
+      "title": "Withdrawal Request",
+      "description": "Withdrawal request details with BEP20 or Binance ID instructions.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userFullName": { "type": "string" },
+        "email": { "type": "string" },
+        "amount": { "type": "number" },
+        "withdrawalMethod": { "type": "string", "enum": ["USDT_BEP20", "BINANCE_ID"] },
+        "paymentAddress": { "type": "string" },
+        "requestedAt": { "type": "string" },
+        "status": { "type": "string", "enum": ["Pending", "Approved", "Rejected"] }
+      },
+      "required": ["id", "userId", "userFullName", "email", "amount", "withdrawalMethod", "paymentAddress", "requestedAt", "status"]
+    },
+    "Transaction": {
+      "title": "Wallet Transaction",
+      "description": "Ledger of additions and subtractions for user balances.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["earning", "withdrawal", "referral_bonus", "deduction"] },
+        "amount": { "type": "number" },
+        "description": { "type": "string" },
+        "date": { "type": "string" },
+        "status": { "type": "string", "enum": ["Completed", "Pending", "Rejected"] }
+      },
+      "required": ["id", "userId", "type", "amount", "description", "date", "status"]
+    },
+    "SupportTicket": {
+      "title": "Support Ticket",
+      "description": "Creator helpdesk ticket containing categories, status, and message logs.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userFullName": { "type": "string" },
+        "subject": { "type": "string" },
+        "category": { "type": "string", "enum": ["Billing", "Tasks", "Account", "Technical", "Other"] },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["Open", "In Progress", "Resolved"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "userFullName", "subject", "category", "description", "status", "createdAt"]
+    },
+    "AppNotification": {
+      "title": "App Notification",
+      "description": "System alerts, announcements, and audit messages delivered to clients or creators.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "type": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "read": { "type": "boolean" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["id", "userId", "type", "title", "message", "read", "timestamp"]
+    }
+  },
+  "firestore": {
+    "users": {
+      "schema": "User",
+      "description": "Admin, client, and influencer main profile records."
+    },
+    "clients": {
+      "schema": "Client",
+      "description": "Customer/client enterprise records."
+    },
+    "tasks": {
+      "schema": "Task",
+      "description": "List of reward opportunities."
+    },
+    "submissions": {
+      "schema": "Submission",
+      "description": "Proof records submitted by users for approval."
+    },
+    "transactions": {
+      "schema": "Transaction",
+      "description": "Individual ledger items reflecting balance increments."
+    },
+    "withdrawals": {
+      "schema": "Withdrawal",
+      "description": "Pending and completed payout requests from members."
+    },
+    "notifications": {
+      "schema": "AppNotification",
+      "description": "Dynamic custom alerts for users, clients, and admins."
+    },
+    "tickets": {
+      "schema": "SupportTicket",
+      "description": "Support tickets where messages are updated."
+    }
+  }
+}
