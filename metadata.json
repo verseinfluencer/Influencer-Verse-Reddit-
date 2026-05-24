@@ -1,0 +1,6 @@
+{
+  "name": "Influencer Verse",
+  "description": "A professional Reddit-focused influencer task & earning marketplace where users complete Reddit tasks (posts/comments), earn USDT rewards, and admins manage everything via a full control panel.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

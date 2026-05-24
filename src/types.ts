@@ -1,0 +1,282 @@
+export interface User {
+  id: string;
+  fullName: string;
+  email: string;
+  redditUsername: string; // e.g. "u/some_user" or just "some_user"
+  redditProfileLink: string;
+  status: 'Pending' | 'Approved' | 'Rejected' | 'Banned';
+  rejectionReason?: string;
+  referralCode: string;
+  referredBy?: string;
+  streak: number;
+  lastLoginDate?: string; // for streak check
+  xp: number;
+  balance: number; // Available USDT
+  totalEarned: number; // Sum of all approved earnings
+  pendingBalance: number; // Under review task submissions
+  withdrawn: number; // Sum of completed withdrawals
+  joinDate: string;
+  avatarUrl?: string;
+  role: 'user' | 'admin' | 'client';
+  gender?: 'Male' | 'Female' | 'Non-binary' | 'Prefer not to say';
+  
+  // Karma fields (Private to public users - only admins and self can see)
+  karma: number;
+  karmaYesterday: number;
+  karmaBadge?: string;
+  karmaLastSynced?: string; // ISO string for when Reddit karma was last updated
+
+  // Task Claiming & Cooldown fields (Firebase / Server state mirror)
+  last_claimed_at?: string | null; // ISO timestamp
+  cooldown_expires_at?: string | null; // ISO timestamp
+  active_task_id?: string | null;
+
+  // New Member Payout & Deduction fields
+  deductionHistory?: DeductionRecord[];
+  lastPayoutRequestDate?: string;
+  payoutRequests?: PayoutRequest[];
+
+  // Anti-Cheat tracking fields
+  ipHistory?: { ip: string; timestamp: string; location: string; }[];
+  deviceFingerprints?: string[];
+  fraudScore?: number; // 0-100
+  fraudFlags?: { type: string; timestamp: string; details: string; }[];
+  submissionHashes?: string[];
+  loginHistory?: { ip: string; country: string; timestamp: string; }[];
+  isSuspended?: boolean;
+  suspensionReason?: string;
+  isBanned?: boolean;
+  banReason?: string;
+}
+
+export type TaskType = 'post' | 'comment';
+
+export interface Task {
+  id: string;
+  title: string;
+  description: string;
+  type: TaskType;
+  reward: number; // USDT
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  deadline: string;
+  maxSubmissions: number;
+  completedSubmissionsCount: number;
+  // Specific to Post tasks:
+  targetSubreddit?: string;
+  requiredPostTitle?: string;
+  postGuidelines?: string;
+  // Specific to Comment tasks:
+  postUrlToCommentOn?: string;
+  commentGuidelines?: string;
+  // Proof info required:
+  proofRequired: string; // e.g., "screenshot" or "screenshot + comment URL"
+
+  // Special tasks parameters
+  isSpecial?: boolean;
+  minKarmaRequired?: number;
+  specialLabel?: string; // e.g. "⭐ Special Task"
+
+  // Claiming mechanism
+  claimed_by?: string | null; // userId or null
+  claimed_at?: string | null; // ISO timestamp or null
+  claim_expires_at?: string | null; // ISO timestamp or null
+  status: 'available' | 'claimed' | 'completed' | 'expired';
+}
+
+export interface Submission {
+  id: string;
+  taskId: string;
+  taskTitle: string;
+  taskType: TaskType;
+  reward: number;
+  userId: string;
+  userFullName: string;
+  redditUsername: string;
+  proofUrl: string; // base64 or placeholder url
+  submissionLink?: string; // comment url if comment task
+  status: 'Pending' | 'Approved' | 'Rejected';
+  feedback?: string;
+  submittedAt: string;
+  matchScore?: number;
+  aiConfidence?: string;
+  isFlagged?: boolean;
+  flagReason?: string;
+}
+
+export interface Withdrawal {
+  id: string;
+  userId: string;
+  userFullName: string;
+  email: string;
+  amount: number;
+  withdrawalMethod: 'USDT_BEP20' | 'BINANCE_ID';
+  paymentAddress: string;
+  requestedAt: string;
+  status: 'Pending' | 'Approved' | 'Rejected';
+}
+
+export interface Transaction {
+  id: string;
+  userId: string;
+  type: 'earning' | 'withdrawal' | 'referral_bonus' | 'deduction';
+  amount: number;
+  description: string;
+  date: string;
+  status: 'Completed' | 'Pending' | 'Rejected';
+}
+
+export interface TicketMessage {
+  sender: 'user' | 'admin';
+  text: string;
+  timestamp: string;
+}
+
+export interface SupportTicket {
+  id: string;
+  userId: string;
+  userFullName: string;
+  subject: string;
+  category: 'Billing' | 'Tasks' | 'Account' | 'Technical' | 'Other';
+  description: string;
+  status: 'Open' | 'In Progress' | 'Resolved';
+  messages: TicketMessage[];
+  createdAt: string;
+}
+
+export interface AppNotification {
+  id: string;
+  userId: string; // clientId, memberId or 'all'
+  type: 'task_approved' | 'task_rejected' | 'withdrawal_update' | 'verification' | 'new_task' | 'announcement' | 'referral_bonus' | 'client_update' | 'dispute' | 'message';
+  title: string;
+  message: string;
+  read: boolean;
+  timestamp: string;
+}
+
+export interface SystemSettings {
+  globalMultiplier: number;
+  dailyTaskLimit: number;
+  referralBonus: number; // USDT for inviter
+  disableAllClientUploads?: boolean; // Global block toggle
+}
+
+// Client specific types
+export interface Client {
+  id: string;
+  name: string;
+  company: string;
+  country: string;
+  whatsapp: string;
+  gmail: string;
+  gmailVerified: boolean;
+  paymentMethod: 'Crypto' | 'Bank Transfer' | 'Other';
+  budget: string;
+  paymentNotes?: string;
+  status: 'pending' | 'approved' | 'rejected' | 'suspended';
+  rejectionReason?: string;
+  taskUploadEnabled: boolean;
+  registeredAt: string;
+  approvedAt?: string;
+  payAgencyBalance: number;
+  payAgencyHistory: ClientPayment[];
+  password?: string;
+}
+
+export interface ClientTask {
+  id: string;
+  clientId: string;
+  clientName?: string;
+  type: TaskType;
+  title: string;
+  description: string;
+  targetSubreddit?: string;
+  postUrlToCommentOn?: string;
+  guidelines: string;
+  deadline: string;
+  notes?: string;
+  agencyPay: number; // set by client, visible to client & admin
+  memberPay?: number; // set by admin, visible to member & admin
+  status: 'pending' | 'live' | 'claimed' | 'submitted' | 'revision' | 'completed' | 'removed';
+  claimedBy?: string | null; // memberId (User) or null
+  claimedAt?: string | null;
+  completionDeadline?: string | null;
+  proofLink?: string | null;
+  submittedAt?: string | null;
+  approvedByAdmin?: boolean;
+  approvedByClient?: boolean;
+  revisionNote?: string | null;
+  disputeRaised?: boolean;
+  disputeReason?: string | null;
+  disputeOutcome?: 'force_approved' | 'upheld' | null;
+  removedAt?: string | null;
+  removedAfterPayment?: boolean;
+}
+
+export interface ClientPayment {
+  id: string;
+  clientId: string;
+  clientName?: string;
+  amount: number;
+  tasksIncluded: string[];
+  paidAt: string;
+  receiptUrl: string; // admin uploaded receipt image/PDF
+  markedPaidBy: string; // adminName / email
+  referenceNote?: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  senderId: string; // clientId or 'admin'
+  senderName: string;
+  text: string;
+  fileUrl?: string; // base64 / media url
+  timestamp: string;
+  readAt?: string | null;
+}
+
+export interface ClientChat {
+  id: string; // matches clientId
+  clientId: string;
+  clientName: string;
+  messages: ChatMessage[];
+  lastMessageTimestamp: string;
+  resolvedStatus?: 'resolved' | 'unresolved';
+}
+
+export interface DeductionRecord {
+  id: string;
+  amount: number;
+  taskName: string;
+  reason: string;
+  date: string;
+}
+
+export interface PayoutRequest {
+  id: string;
+  amount: number;
+  address: string;
+  method: 'USDT_BEP20' | 'BINANCE_ID';
+  date: string;
+  status: 'Pending' | 'Approved' | 'Rejected';
+}
+
+export interface DuplicateGroup {
+  id: string;
+  accounts: string[]; // List of userIds of duplicate profiles
+  sharedIdentifier: string; // e.g., dual IP address, fingerprint string, normalized email or duplicate reddit handler
+  type: 'ip' | 'fingerprint' | 'reddit' | 'gmail';
+}
+
+export interface FraudAlert {
+  id: string;
+  type: string; // "IP Match" | "Fingerprint Match" | "Reddit Duplicate" | "Fake Reddit Link" | "Wrong Reddit Author" | "Suspicious Speed" | "Duplicate Screenshot" | "Suspicious Login Pattern" | "Honeypot Trigger" | "Threshold Trigger"
+  userId: string;
+  userName: string;
+  userEmail: string;
+  fraudScore: number;
+  timestamp: string;
+  status: 'pending' | 'dismissed' | 'resolved';
+  details: string;
+  recommendedAction: string;
+}
+

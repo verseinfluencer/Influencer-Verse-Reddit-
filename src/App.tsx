@@ -1,0 +1,170 @@
+import React, { useState } from 'react';
+import { AppProvider, useApp } from './context/AppContext';
+import { Navbar } from './components/Navbar';
+import { Footer } from './components/Footer';
+
+// Pages import
+import { Home } from './pages/Home';
+import { Login } from './pages/Login';
+import { Signup } from './pages/Signup';
+import { UserDashboard } from './pages/UserDashboard';
+import { PendingVerification } from './pages/PendingVerification';
+import { Marketplace } from './pages/Marketplace';
+import { Leaderboard } from './pages/Leaderboard';
+import { WalletPage } from './pages/WalletPage';
+import { UserProfile } from './pages/UserProfile';
+import { SettingsPage } from './pages/Settings';
+import { SupportTickets } from './pages/SupportTickets';
+import { AdminDashboard } from './pages/AdminDashboard';
+import { ClientRegister } from './pages/ClientRegister';
+import { ClientLogin } from './pages/ClientLogin';
+import { ClientDashboard } from './pages/ClientDashboard';
+
+// Informational subviews import
+import { FAQPage, AboutPage, ContactPage, TermsPage, ReferralProgramInfo } from './pages/InformationalPages';
+
+function MainAppContent() {
+  const { currentUser } = useApp();
+  const [currentPage, setCurrentPage] = useState<string>('home');
+
+  const onNavigate = (page: string) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const isPending = currentUser?.status === 'Pending';
+  const isAdmin = currentUser?.role === 'admin';
+
+  // Render the core active page component dynamically
+  const renderPage = () => {
+    // 1. Unauthenticated views
+    if (!currentUser) {
+      switch (currentPage) {
+        case 'about':
+          return <AboutPage />;
+        case 'faq':
+          return <FAQPage />;
+        case 'contact':
+          return <ContactPage />;
+        case 'terms':
+          return <TermsPage />;
+        case 'referrals':
+          return <ReferralProgramInfo />;
+        case 'login':
+          return <Login onNavigate={onNavigate} />;
+        case 'signup':
+          return <Signup onNavigate={onNavigate} />;
+        case 'client-login':
+          return <ClientLogin onNavigate={onNavigate} />;
+        case 'client-register':
+          return <ClientRegister onNavigate={onNavigate} />;
+        case 'home':
+        default:
+          return <Home onNavigate={onNavigate} />;
+      }
+    }
+
+    // 1.5. Authenticated Client checks
+    if (currentUser?.role === 'client') {
+      switch (currentPage) {
+        case 'client-dashboard':
+          return <ClientDashboard />;
+        case 'about':
+          return <AboutPage />;
+        case 'faq':
+          return <FAQPage />;
+        case 'contact':
+          return <ContactPage />;
+        case 'terms':
+          return <TermsPage />;
+        default:
+          return <ClientDashboard />;
+      }
+    }
+
+    // 2. Authenticated paths
+    // Admin checks
+    if (isAdmin) {
+      switch (currentPage) {
+        case 'admin':
+          return <AdminDashboard />;
+        case 'tickets':
+          return <SupportTickets />;
+        case 'profile':
+          return <UserProfile />;
+        case 'settings':
+          return <SettingsPage />;
+        case 'faq':
+          return <FAQPage />;
+        case 'about':
+          return <AboutPage />;
+        case 'contact':
+          return <ContactPage />;
+        case 'terms':
+          return <TermsPage />;
+        default:
+          return <AdminDashboard />;
+      }
+    }
+
+    // 3. Pending verification user restrictions logic
+    // Blocking tasks, wallets, refer links, dashboards
+    if (isPending) {
+      if (['dashboard', 'marketplace', 'wallet', 'referrals', 'leaderboard'].includes(currentPage)) {
+        return <PendingVerification onNavigate={onNavigate} />;
+      }
+    }
+
+    // Standard / Approved User page map
+    switch (currentPage) {
+      case 'dashboard':
+        return <UserDashboard onNavigate={onNavigate} />;
+      case 'marketplace':
+        return <Marketplace />;
+      case 'wallet':
+        return <WalletPage />;
+      case 'leaderboard':
+        return <Leaderboard />;
+      case 'profile':
+        return <UserProfile />;
+      case 'settings':
+        return <SettingsPage />;
+      case 'tickets':
+        return <SupportTickets />;
+      case 'referrals':
+        return <ReferralProgramInfo />;
+      case 'about':
+        return <AboutPage />;
+      case 'faq':
+        return <FAQPage />;
+      case 'contact':
+        return <ContactPage />;
+      case 'terms':
+        return <TermsPage />;
+      case 'home':
+      default:
+        // Approved user navigating to home gets redirect to dashboard
+        return <UserDashboard onNavigate={onNavigate} />;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#050505] text-white flex flex-col justify-between selection:bg-bento-purple selection:text-white">
+      <div>
+        <Navbar onNavigate={onNavigate} currentPage={currentPage} />
+        <main className="relative z-10">
+          {renderPage()}
+        </main>
+      </div>
+      <Footer onNavigate={onNavigate} />
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AppProvider>
+      <MainAppContent />
+    </AppProvider>
+  );
+}
