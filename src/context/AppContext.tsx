@@ -760,13 +760,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const referralCodeSeed = Math.random().toString(36).substring(2, 8).toUpperCase();
     
-    // Choose a realistic initial karma between 200 and 3200
-    const initialKarma = Math.floor(Math.random() * 3000) + 200;
-    const initialYesterday = Math.max(100, initialKarma - Math.floor(Math.random() * 120));
-    let badge: 'Bronze' | 'Silver' | 'Gold' | 'Diamond' = 'Bronze';
-    if (initialKarma >= 10000) badge = 'Diamond';
-    else if (initialKarma >= 5000) badge = 'Gold';
-    else if (initialKarma >= 1000) badge = 'Silver';
+    // Fetch live Reddit karma on registration - absolutely no fakes or Math.random
+    let initialKarma = 0;
+    try {
+      const resp = await fetch(`https://www.reddit.com/user/${cleanNewReddit}/about.json`);
+      if (resp.ok) {
+        const body = await resp.json();
+        if (body && body.data && typeof body.data.total_karma === 'number') {
+          initialKarma = body.data.total_karma;
+        }
+      }
+    } catch (err) {
+      console.error('Failed to get initial Reddit karma:', err);
+    }
+    const initialYesterday = initialKarma;
+    const badge = getKarmaBadge(initialKarma);
 
     // Duplicate IP registrations checker on creation
     const otherAccsIP = users.filter(u => (u.ipHistory || []).some(h => h.ip === currentSimulatedIP));
@@ -1824,40 +1832,54 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const syncRedditKarma = async () => {
     if (!currentUser) return;
 
-    // Simulate contact details or delay with Reddit API
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    // Increase karma by a small random realistic amount (5-30) to show real changes upon re-syncing
-    const bonusKarma = Math.floor(Math.random() * 26) + 5;
+    const cleanUser = currentUser.redditUsername.replace(/^u\//i, '').trim();
     const oldKarma = currentUser.karma || 0;
-    const targetKarma = oldKarma + bonusKarma;
-    const badge = getKarmaBadge(targetKarma);
 
-    const updatedUsers = users.map(u => {
-      if (u.id === currentUser.id) {
-        return {
-          ...u,
-          karma: targetKarma,
-          karmaBadge: badge,
-          karmaLastSynced: new Date().toISOString()
-        };
+    try {
+      const response = await fetch(`https://www.reddit.com/user/${cleanUser}/about.json`);
+      if (!response.ok) {
+        throw new Error(`Reddit API returned status ${response.status}`);
       }
-      return u;
-    });
+      const data = await response.json();
+      if (!data || !data.data || typeof data.data.total_karma !== 'number') {
+        throw new Error('Invalid response structure from Reddit API');
+      }
 
-    setUsers(updatedUsers);
-    syncUserToCurrent(currentUser.id, updatedUsers);
+      const realKarma = data.data.total_karma;
+      const badge = getKarmaBadge(realKarma);
 
-    const notif: AppNotification = {
-      id: `notif-reddit-sync-${Date.now()}`,
-      userId: currentUser.id,
-      type: 'verification',
-      title: 'Reddit Karma Synced! 🔄',
-      message: `Your Reddit account was successfully synced. Karma updated: ${oldKarma.toLocaleString()} ➔ ${targetKarma.toLocaleString()} (+${bonusKarma} Karma).`,
-      read: false,
-      timestamp: new Date().toISOString()
-    };
-    setNotifications(prev => [notif, ...prev]);
+      const updatedUsers = users.map(u => {
+        if (u.id === currentUser.id) {
+          return {
+            ...u,
+            karma: realKarma,
+            karmaYesterday: u.karma, // Set previous karma to yesterday’s karma baseline securely
+            karmaBadge: badge,
+            karmaLastSynced: new Date().toISOString()
+          };
+        }
+        return u;
+      });
+
+      setUsers(updatedUsers);
+      syncUserToCurrent(currentUser.id, updatedUsers);
+
+      const notif: AppNotification = {
+        id: `notif-reddit-sync-${Date.now()}`,
+        userId: currentUser.id,
+        type: 'verification',
+        title: 'Reddit Karma Synced! 🔄',
+        message: `Your Reddit account was successfully synced. Karma updated: ${oldKarma.toLocaleString()} ➔ ${realKarma.toLocaleString()}.`,
+        read: false,
+        timestamp: new Date().toISOString()
+      };
+      setNotifications(prev => [notif, ...prev]);
+
+    } catch (err) {
+      console.error('Reddit karma sync failed:', err);
+      // Keep last known karma value unchanged, never modify stored karma on failed sync, and throw error
+      throw new Error("Sync failed — showing last known karma");
+    }
   };
 
   // ================= CLIENT CORE LOGIC IMPLEMENTATION =================

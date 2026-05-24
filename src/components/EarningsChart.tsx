@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { Calendar, Percent, TrendingUp, Sparkles, CheckCircle2, ShoppingBag } from 'lucide-react';
+import { Calendar, Percent, TrendingUp, Sparkles, CheckCircle2, Users as UsersIcon } from 'lucide-react';
+import { useApp } from '../context/AppContext';
+import { getKarmaProgressBar } from '../utils/tierHelper';
 
 interface EarningsChartProps {
   earningsData?: number[];
@@ -7,22 +9,53 @@ interface EarningsChartProps {
 }
 
 export const EarningsChart: React.FC<EarningsChartProps> = ({ 
-  earningsData = [15, 32, 28, 48, 62, 74.50],
-  labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6']
+  earningsData = [0, 0],
+  labels = ['Start', 'No activity']
 }) => {
   const [activeTab, setActiveTab] = useState<'earnings' | 'tasks'>('earnings');
+  const { currentUser, submissions, users } = useApp();
 
   // Hardcode data for high fidelity demo aesthetics
   const earningsPoints = earningsData;
-  const maxValue = Math.max(...earningsPoints, 100);
+  const maxValue = Math.max(...earningsPoints, 10);
   
   // Tasks completion indicators
+  const userSubmissions = currentUser ? submissions.filter(s => s.userId === currentUser.id) : [];
+  const approvedCount = userSubmissions.filter(s => s.status === 'Approved').length;
+  const pendingCount = userSubmissions.filter(s => s.status === 'Pending').length;
+  const totalSubmissions = userSubmissions.length;
+  const successRate = totalSubmissions > 0 ? Number(((approvedCount / totalSubmissions) * 100).toFixed(1)) : 0;
+
   const stats = {
-    totalSubmissions: 12,
-    approved: 10,
-    pending: 2,
-    successRate: 83.3,
+    totalSubmissions,
+    approved: approvedCount,
+    pending: pendingCount,
+    successRate,
   };
+
+  // 1. Avg Earnings/Week
+  let avgEarningsPerWeek = 0;
+  if (currentUser) {
+    const joinTimestamp = new Date(currentUser.joinDate || Date.now()).getTime();
+    const currentTimestamp = Date.now();
+    const diffTime = currentTimestamp - joinTimestamp;
+    const diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+    const diffWeeks = Math.max(1, diffDays / 7);
+    avgEarningsPerWeek = currentUser.totalEarned / diffWeeks;
+  }
+
+  // 2. Peak Earnings
+  const approvedSubmissions = userSubmissions.filter(s => s.status === 'Approved');
+  const peakEarning = approvedSubmissions.length > 0 
+    ? Math.max(...approvedSubmissions.map(s => s.reward)) 
+    : 0;
+
+  // 3. Milestone Progress
+  const karmaBar = currentUser ? getKarmaProgressBar(currentUser.karma) : null;
+  const milestoneText = karmaBar ? (karmaBar.needed > 0 ? `Level Up in ${karmaBar.needed} Karma` : "Max Level Unlocked!") : "0 Karma";
+
+  // 4. Referred Friends count
+  const totalReferredCount = currentUser ? users.filter(u => u.referredBy === currentUser.referralCode).length : 0;
 
   // Convert earnings to SVG path
   const width = 500;
@@ -30,7 +63,7 @@ export const EarningsChart: React.FC<EarningsChartProps> = ({
   const padding = 20;
 
   const pointsCount = earningsPoints.length;
-  const widthStep = (width - padding * 2) / (pointsCount - 1);
+  const widthStep = pointsCount > 1 ? (width - padding * 2) / (pointsCount - 1) : 0;
 
   const coordinates = earningsPoints.map((value, index) => {
     const x = padding + index * widthStep;
@@ -153,15 +186,15 @@ export const EarningsChart: React.FC<EarningsChartProps> = ({
           <div className="grid grid-cols-3 gap-3 pt-2">
             <div className="bg-zinc-950/60 border border-white/5 p-3 rounded-xl">
               <span className="text-[10px] text-zinc-500 font-bold block uppercase tracking-wider">Avg Earnings/Week</span>
-              <span className="text-sm font-extrabold text-white">$12.41 USDT</span>
+              <span className="text-sm font-extrabold text-white">${avgEarningsPerWeek.toFixed(2)} USDT</span>
             </div>
             <div className="bg-zinc-950/60 border border-white/5 p-3 rounded-xl">
-              <span className="text-[10px] text-zinc-500 font-bold block uppercase tracking-wider">Peak Earnings Weekly</span>
-              <span className="text-sm font-extrabold text-white">$45.80 USDT</span>
+              <span className="text-[10px] text-zinc-500 font-bold block uppercase tracking-wider">Peak Task Reward</span>
+              <span className="text-sm font-extrabold text-white">${peakEarning.toFixed(2)} USDT</span>
             </div>
             <div className="bg-zinc-950/60 border border-white/5 p-3 rounded-xl">
               <span className="text-[10px] text-zinc-500 font-bold block uppercase tracking-wider">Milestone Progress</span>
-              <span className="text-sm font-extrabold text-purple-400">Level Up in 115 XP</span>
+              <span className="text-sm font-extrabold text-purple-400">{milestoneText}</span>
             </div>
           </div>
         </div>
@@ -216,9 +249,9 @@ export const EarningsChart: React.FC<EarningsChartProps> = ({
 
             <div className="flex justify-between items-center bg-zinc-950/30 border border-white/5 p-2.5 rounded-xl">
               <span className="text-xs font-semibold text-zinc-400 flex items-center gap-1.5">
-                <ShoppingBag className="w-4 h-4 text-blue-400" /> Total campaign views
+                <UsersIcon className="w-4 h-4 text-blue-400" /> Referred Affiliates
               </span>
-              <span className="text-sm font-extrabold text-white font-mono">152 clicks</span>
+              <span className="text-sm font-extrabold text-white font-mono">{totalReferredCount} signups</span>
             </div>
           </div>
         </div>

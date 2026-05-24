@@ -13,18 +13,22 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
 
   const [isSyncing, setIsSyncing] = React.useState(false);
   const [syncSuccess, setSyncSuccess] = React.useState(false);
+  const [syncError, setSyncError] = React.useState<string | null>(null);
 
   if (!currentUser) return null;
 
   const handleSyncKarma = async () => {
     setIsSyncing(true);
     setSyncSuccess(false);
+    setSyncError(null);
     try {
       await syncRedditKarma();
       setSyncSuccess(true);
       setTimeout(() => setSyncSuccess(false), 3000);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      setSyncError("Sync failed — showing last known karma");
+      setTimeout(() => setSyncError(null), 5000);
     } finally {
       setIsSyncing(false);
     }
@@ -71,6 +75,31 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
   const todayStr = new Date().toISOString().split('T')[0];
   const lastClaimed = currentUser.lastLoginDate;
   const streakClaimed = lastClaimed === todayStr;
+
+  // Get all approved submissions for currentUser sorted chronologically by submission date
+  const approvedSubsByDate = submissions
+    .filter(s => s.userId === currentUser.id && s.status === 'Approved')
+    .sort((a, b) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime());
+
+  // Accumulate running total of earnings
+  const realEarningsProgress: number[] = [0]; // start from 0 representing the genesis/signup state
+  const realEarningsLabels: string[] = ['Start'];
+
+  let accumulatedVal = 0;
+  approvedSubsByDate.forEach((sub, index) => {
+    accumulatedVal += sub.reward;
+    realEarningsProgress.push(accumulatedVal);
+    const dateStr = sub.submittedAt 
+      ? new Date(sub.submittedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) 
+      : `Task ${index + 1}`;
+    realEarningsLabels.push(dateStr);
+  });
+
+  // If there are no approved tasks yet, show [0, 0] and ['Start', 'No rewards']
+  if (realEarningsProgress.length === 1) {
+    realEarningsProgress.push(0);
+    realEarningsLabels.push('No rewards');
+  }
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 text-white select-none" id="user-dashboard-container">
@@ -201,6 +230,12 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
               ({currentTier.minKarma.toLocaleString()}{currentTier.maxKarma === Infinity ? '+' : ` - ${currentTier.maxKarma.toLocaleString()}`} Karma)
             </span>
           </div>
+
+          {syncError && (
+            <div className="text-[10px] text-amber-500 font-bold bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-xl uppercase tracking-wider animate-pulse inline-flex items-center gap-1.5">
+              <span>⚠️ {syncError}</span>
+            </div>
+          )}
           
           {/* Progress bar to next tier */}
           <div className="space-y-1">
@@ -249,8 +284,8 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
         <div className="lg:col-span-2 bg-white/5 border border-white/10 rounded-[32px] p-4 backdrop-blur-md">
           {/* We pass currentUser's specific earning values into the custom SVG charts */}
           <EarningsChart 
-            earningsData={[5, 12.40, 24.50, 38.20, currentUser.totalEarned]} 
-            labels={['Signup', 'Audit 1', 'Audit 2', 'Weekly', 'Current']}
+            earningsData={realEarningsProgress} 
+            labels={realEarningsLabels}
           />
         </div>
 

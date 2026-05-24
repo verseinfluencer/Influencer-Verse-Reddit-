@@ -1855,26 +1855,26 @@ export const AdminDashboard: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               
               <div className="bg-zinc-900/30 border border-white/10 p-5 rounded-2xl">
-                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block mb-1">Pending Verifications</span>
+                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block mb-1">Total Users</span>
                 <div className="flex justify-between items-center">
-                  <span className="text-3xl font-black text-yellow-500 font-mono">{pendingVerificationsCount}</span>
+                  <span className="text-3xl font-black text-yellow-500 font-mono">{users.length}</span>
                   <Users className="w-6 h-6 text-yellow-500" />
                 </div>
               </div>
 
               <div className="bg-zinc-900/30 border border-white/10 p-5 rounded-2xl">
-                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block mb-1">Unreviewed Submissions</span>
+                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block mb-1">Active Tasks</span>
                 <div className="flex justify-between items-center">
-                  <span className="text-3xl font-black text-purple-400 font-mono">{pendingSubmissionsCount}</span>
-                  <FileText className="w-6 h-6 text-purple-400" />
+                  <span className="text-3xl font-black text-purple-400 font-mono">{tasks.length}</span>
+                  <CheckSquare className="w-6 h-6 text-purple-400" />
                 </div>
               </div>
 
               <div className="bg-zinc-900/30 border border-white/10 p-5 rounded-2xl">
-                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block mb-1">Pending Cashouts</span>
+                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block mb-1">Completed Tasks</span>
                 <div className="flex justify-between items-center">
-                  <span className="text-3xl font-black text-rose-500 font-mono">{pendingWithdrawalsCount}</span>
-                  <Wallet className="w-6 h-6 text-rose-500" />
+                  <span className="text-3xl font-black text-rose-500 font-mono">{submissions.filter(s => s.status === 'Approved').length}</span>
+                  <CheckCircle className="w-6 h-6 text-rose-500" />
                 </div>
               </div>
 
@@ -1882,7 +1882,7 @@ export const AdminDashboard: React.FC = () => {
                 <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block mb-1">Total Paid Out</span>
                 <div className="flex justify-between items-center">
                   <span className="text-3xl font-black text-emerald-400 font-mono">${totalPayoutAmt.toFixed(2)}</span>
-                  <CheckCircle className="w-6 h-6 text-emerald-400" />
+                  <Wallet className="w-6 h-6 text-emerald-400" />
                 </div>
               </div>
 
