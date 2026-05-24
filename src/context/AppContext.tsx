@@ -287,6 +287,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('iv_users', JSON.stringify(users));
   }, [users]);
 
+  // Real-time storage listener for instantaneous synchronization across admin panels and registration forms
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'iv_users' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          setUsers(parsed);
+        } catch (err) {
+          console.error('Real-time database listener sync failed:', err);
+        }
+      }
+      if (e.key === 'iv_currentUser' && e.newValue) {
+        try {
+          setCurrentUser(JSON.parse(e.newValue));
+        } catch {}
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
   useEffect(() => {
     localStorage.setItem('iv_currentUser', JSON.stringify(currentUser));
   }, [currentUser]);

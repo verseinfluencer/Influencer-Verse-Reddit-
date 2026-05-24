@@ -95,10 +95,19 @@ export const AdminDashboard: React.FC = () => {
   const [referralBonus, setReferralBonus] = useState(settings.referralBonus);
   const [settingsSuccess, setSettingsSuccess] = useState(false);
   const [selectedAdminTierFilter, setSelectedAdminTierFilter] = useState<string>('all');
+  const [selectedAdminStatusFilter, setSelectedAdminStatusFilter] = useState<'all' | 'Pending' | 'Approved' | 'Rejected' | 'Banned'>('all');
 
-  const filteredUsersForAdmin = selectedAdminTierFilter === 'all'
-    ? users
-    : users.filter(u => getKarmaTier(u.karma).name.toLowerCase() === selectedAdminTierFilter.toLowerCase());
+  const filteredUsersForAdmin = users.filter(u => {
+    // 1. Status filter
+    if (selectedAdminStatusFilter !== 'all' && u.status !== selectedAdminStatusFilter) {
+      return false;
+    }
+    // 2. Tier filter
+    if (selectedAdminTierFilter !== 'all' && getKarmaTier(u.karma).name.toLowerCase() !== selectedAdminTierFilter.toLowerCase()) {
+      return false;
+    }
+    return true;
+  });
 
   // Overview metrics
   const pendingVerificationsCount = users.filter(u => u.status === 'Pending').length;
@@ -1017,11 +1026,14 @@ export const AdminDashboard: React.FC = () => {
           <div className="space-y-6">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-white/5">
                 <div className="space-y-1">
-                  <h2 className="text-base font-black">User Accounts Registration Map</h2>
+                  <h2 className="text-base font-black">User Management</h2>
                   <div className="flex items-center gap-2 text-[10px] text-zinc-500 font-semibold uppercase">
                     <span>Total registered creators: {users.length}</span>
                     {selectedAdminTierFilter !== 'all' && (
                       <span className="text-purple-400 font-bold">• Filtered by: {selectedAdminTierFilter} Tier ({filteredUsersForAdmin.length} matching)</span>
+                    )}
+                    {selectedAdminStatusFilter !== 'all' && (
+                      <span className="text-yellow-400 font-bold">• Status: {selectedAdminStatusFilter} ({filteredUsersForAdmin.length} matching)</span>
                     )}
                   </div>
                 </div>
@@ -1043,6 +1055,51 @@ export const AdminDashboard: React.FC = () => {
                     <option value="elite">👑 Elite</option>
                     <option value="legend">🚀 Legend</option>
                   </select>
+                </div>
+              </div>
+
+              {/* Users sub-tabs for User Management */}
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-3 bg-zinc-950/40 border border-white/5 rounded-2xl select-none">
+                <div className="flex flex-wrap gap-1">
+                  {[
+                    { id: 'all', label: '👥 All Users', count: users.length },
+                    { id: 'Pending', label: '⏳ Pending', count: users.filter(u => u.status === 'Pending').length },
+                    { id: 'Approved', label: '✅ Approved', count: users.filter(u => u.status === 'Approved').length },
+                    { id: 'Rejected', label: '❌ Rejected', count: users.filter(u => u.status === 'Rejected').length },
+                    { id: 'Banned', label: '🚫 Suspended', count: users.filter(u => u.status === 'Banned').length },
+                  ].map((sTab) => (
+                    <button
+                      key={sTab.id}
+                      type="button"
+                      id={`users-tab-${sTab.id.toLowerCase()}`}
+                      onClick={() => setSelectedAdminStatusFilter(sTab.id as any)}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        selectedAdminStatusFilter === sTab.id
+                          ? 'bg-purple-600 text-white shadow-md'
+                          : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      <span>{sTab.label}</span>
+                      {sTab.count > 0 ? (
+                        <span className={`px-1.5 py-0.2 select-none font-extrabold text-[9px] rounded-full ${
+                          selectedAdminStatusFilter === sTab.id
+                            ? 'bg-purple-800 text-purple-100'
+                            : 'bg-zinc-800 text-zinc-400'
+                        }`}>
+                          {sTab.count}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-zinc-650 font-normal">0</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-1.5 text-[10px] text-purple-400/80 font-black uppercase tracking-wider">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
+                  </span>
+                  <span>Real-time listener active</span>
                 </div>
               </div>
 
