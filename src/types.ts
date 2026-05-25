@@ -4,7 +4,7 @@ export interface User {
   email: string;
   redditUsername: string; // e.g. "u/some_user" or just "some_user"
   redditProfileLink: string;
-  status: 'Pending' | 'Approved' | 'Rejected' | 'Banned';
+  status: 'Pending' | 'Approved' | 'Rejected' | 'Banned' | 'Suspended' | 'banned' | 'suspended' | 'pending';
   rejectionReason?: string | null;
   referralCode: string;
   referredBy?: string | null;
@@ -158,11 +158,12 @@ export interface SupportTicket {
 export interface AppNotification {
   id: string;
   userId: string; // clientId, memberId or 'all'
-  type: 'task_approved' | 'task_rejected' | 'withdrawal_update' | 'verification' | 'new_task' | 'announcement' | 'referral_bonus' | 'client_update' | 'dispute' | 'message';
+  type: 'task_approved' | 'task_rejected' | 'withdrawal_update' | 'verification' | 'new_task' | 'announcement' | 'referral_bonus' | 'client_update' | 'dispute' | 'message' | 'account_banned' | 'account_suspended' | 'account_reinstated';
   title: string;
   message: string;
   read: boolean;
   timestamp: string;
+  createdAt?: string;
 }
 
 export interface SystemSettings {

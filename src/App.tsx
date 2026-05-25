@@ -32,7 +32,7 @@ function MainAppContent() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const isPending = currentUser?.status === 'Pending';
+  const isPending = currentUser?.status === 'Pending' || currentUser?.status === 'pending';
   const isAdmin = currentUser?.role === 'admin';
 
   // Render the core active page component dynamically

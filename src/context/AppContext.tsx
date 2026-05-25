@@ -148,6 +148,9 @@ interface AppContextType {
   adminApproveUser: (userId: string) => void;
   adminRejectUser: (userId: string, reason: string) => void;
   adminBanUser: (userId: string, reason: string) => void;
+  adminSuspendUser: (userId: string, reason: string, duration?: string) => void;
+  adminUnbanUser: (userId: string) => void;
+  adminUnsuspendUser: (userId: string) => void;
   adminCreateTask: (taskData: Omit<Task, 'id' | 'completedSubmissionsCount' | 'status'> & { isSpecial?: boolean; minKarmaRequired?: number; specialLabel?: string }) => void;
   adminEditTask: (taskId: string, taskData: Partial<Task>) => void;
   adminDeleteTask: (taskId: string) => void;
@@ -263,9 +266,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
 
         // Current user setup
-        const unsubUser = onSnapshot(doc(db, 'users', firebaseUser.uid), (snap) => {
+        const unsubUser = onSnapshot(doc(db, 'users', firebaseUser.uid), async (snap) => {
           if (snap.exists()) {
-            setCurrentUser(snap.data() as User);
+            const uData = snap.data() as User;
+            if (uData.isBanned || uData.status === 'banned' || uData.status === 'Banned') {
+              setCurrentUser(null);
+              await signOut(auth);
+              return;
+            }
+            if (uData.isSuspended || uData.status === 'suspended' || uData.status === 'Suspended') {
+              setCurrentUser(null);
+              await signOut(auth);
+              return;
+            }
+            setCurrentUser(uData);
           }
         });
         const unsubClientProfile = onSnapshot(doc(db, 'clients', firebaseUser.uid), (snap) => {
@@ -349,6 +363,58 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
+  const checkBannedOrSuspended = async () => {
+    if (!currentUser) return;
+    try {
+      const userDoc = await getDoc(doc(db, 'users', currentUser.id));
+      if (userDoc.exists()) {
+        const userData = userDoc.data() as User;
+        if (userData.isBanned || userData.status === 'banned' || userData.status === 'Banned') {
+          setCurrentUser(null);
+          await signOut(auth);
+          throw new Error('banned');
+        }
+        if (userData.isSuspended || userData.status === 'suspended' || userData.status === 'Suspended') {
+          setCurrentUser(null);
+          await signOut(auth);
+          throw new Error('suspended');
+        }
+      }
+    } catch (err: any) {
+      if (err.message === 'banned' || err.message === 'suspended') {
+        throw err;
+      }
+      console.error('Error in checking status:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const checkStatus = async () => {
+      try {
+        const uDoc = await getDoc(doc(db, 'users', currentUser.id));
+        if (uDoc.exists()) {
+          const uData = uDoc.data() as User;
+          if (uData.isBanned || uData.status === 'banned' || uData.status === 'Banned') {
+            setCurrentUser(null);
+            await signOut(auth);
+          } else if (uData.isSuspended || uData.status === 'suspended' || uData.status === 'Suspended') {
+            setCurrentUser(null);
+            await signOut(auth);
+          }
+        }
+      } catch (err) {
+        console.error('Error in periodic status check:', err);
+      }
+    };
+
+    checkStatus();
+
+    const interval = setInterval(checkStatus, 300000); // 5 minutes background check
+    return () => clearInterval(interval);
+  }, [currentUser?.id]);
+
   const login = async (email: string, password: string): Promise<User> => {
     if (blacklistedIPs.includes(currentSimulatedIP)) {
       throw new Error(`❌ Access denied. Your IP address (${currentSimulatedIP}) has been blacklisted for violating our Terms of Service.`);
@@ -417,11 +483,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       const u = userDoc.data() as User;
-      if (u.status === 'Banned' || u.isBanned) {
-        throw new Error('Your account has been permanently banned.');
+      if (u.status === 'Banned' || u.status === 'banned' || u.isBanned) {
+        await signOut(auth);
+        throw new Error('❌ Your account has been permanently banned for violating our Terms of Service. Contact: verseinfluencer@yahoo.com');
       }
-      if (u.isSuspended) {
-        throw new Error('Your account has been temporarily suspended.');
+      if (u.status === 'Suspended' || u.status === 'suspended' || u.isSuspended) {
+        await signOut(auth);
+        throw new Error('⚠️ Your account has been temporarily suspended. Contact: verseinfluencer@yahoo.com for more information.');
       }
 
       const locationInfo = getEstimatedLocationByIP(currentSimulatedIP);
@@ -574,6 +642,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateProfile = async (fullName: string, redditUsername: string, redditProfileLink: string, gender?: 'Male' | 'Female' | 'Non-binary' | 'Prefer not to say') => {
     if (!currentUser) return;
+    await checkBannedOrSuspended();
     const needsReverification = 
       redditUsername !== currentUser.redditUsername || 
       redditProfileLink !== currentUser.redditProfileLink;
@@ -874,6 +943,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const memberSubmitClientTaskProof = async (taskId: string, proofLink: string) => {
     if (!currentUser) throw new Error('Unauthenticated');
+    await checkBannedOrSuspended();
     const submissionId = `sub-${Date.now()}`;
     const submissionData: Submission = {
       id: submissionId,
@@ -1364,6 +1434,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const submitTaskProof = async (taskId: string, proofUrl: string, submissionLink?: string): Promise<void> => {
     if (!currentUser) throw new Error('Unauthenticated');
+    await checkBannedOrSuspended();
     const taskRef = doc(db, 'tasks', taskId);
     const taskSnap = await getDoc(taskRef);
     if (!taskSnap.exists()) throw new Error('Task not found');
@@ -1441,6 +1512,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const claimTask = async (taskId: string): Promise<void> => {
     if (!currentUser) throw new Error('Unauthenticated');
+    await checkBannedOrSuspended();
     const taskRef = doc(db, 'tasks', taskId);
     const snap = await getDoc(taskRef);
     if (!snap.exists()) throw new Error('Task not found');
@@ -1474,6 +1546,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const unclaimTask = async (taskId: string, notifyExpired: boolean = false) => {
+    if (!currentUser) return;
+    await checkBannedOrSuspended();
     const taskRef = doc(db, 'tasks', taskId);
     const snap = await getDoc(taskRef);
     if (!snap.exists()) return;
@@ -1523,6 +1597,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const requestWithdrawal = async (amount: number, method: 'USDT_BEP20' | 'BINANCE_ID', address: string) => {
     if (!currentUser) return;
+    await checkBannedOrSuspended();
     if (currentUser.balance < amount) throw new Error('Insufficient balance');
 
     const newW: Withdrawal = {
@@ -1563,6 +1638,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const claimDailyStreak = async () => {
     if (!currentUser) return;
+    await checkBannedOrSuspended();
     const reward = 0.50; // default claim reward
     await updateDoc(doc(db, 'users', currentUser.id), {
       balance: currentUser.balance + reward,
@@ -1608,10 +1684,90 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const adminBanUser = async (userId: string, reason: string) => {
     await updateDoc(doc(db, 'users', userId), {
-      status: 'Banned',
+      status: 'banned',
       isBanned: true,
+      bannedAt: new Date().toISOString(),
       banReason: reason
     });
+
+    const notif: AppNotification = {
+      id: `notif-${Date.now()}`,
+      userId,
+      type: 'account_banned',
+      title: 'Account Banned',
+      message: 'Your account has been permanently banned for violating our Terms of Service. If you believe this is a mistake contact verseinfluencer@yahoo.com',
+      read: false,
+      timestamp: new Date().toISOString(),
+      createdAt: new Date().toISOString()
+    };
+    await setDoc(doc(db, 'notifications', notif.id), notif);
+  };
+
+  const adminSuspendUser = async (userId: string, reason: string, duration?: string) => {
+    await updateDoc(doc(db, 'users', userId), {
+      status: 'suspended',
+      isSuspended: true,
+      bannedAt: new Date().toISOString(),
+      banReason: reason,
+      suspensionReason: reason,
+      suspensionDuration: duration || 'permanent'
+    });
+
+    const notif: AppNotification = {
+      id: `notif-${Date.now()}`,
+      userId,
+      type: 'account_suspended',
+      title: 'Account Suspended',
+      message: 'Your account has been temporarily suspended. Contact verseinfluencer@yahoo.com for more information.',
+      read: false,
+      timestamp: new Date().toISOString(),
+      createdAt: new Date().toISOString()
+    };
+    await setDoc(doc(db, 'notifications', notif.id), notif);
+  };
+
+  const adminUnbanUser = async (userId: string) => {
+    await updateDoc(doc(db, 'users', userId), {
+      status: 'Approved',
+      isBanned: false,
+      banReason: null,
+      bannedAt: null
+    });
+
+    const notif: AppNotification = {
+      id: `notif-${Date.now()}`,
+      userId,
+      type: 'account_reinstated',
+      title: 'Account Reinstated',
+      message: '✅ Your account has been reinstated. You can now access Influencer Verse again.',
+      read: false,
+      timestamp: new Date().toISOString(),
+      createdAt: new Date().toISOString()
+    };
+    await setDoc(doc(db, 'notifications', notif.id), notif);
+  };
+
+  const adminUnsuspendUser = async (userId: string) => {
+    await updateDoc(doc(db, 'users', userId), {
+      status: 'Approved',
+      isSuspended: false,
+      suspensionReason: null,
+      suspensionDuration: null,
+      banReason: null,
+      bannedAt: null
+    });
+
+    const notif: AppNotification = {
+      id: `notif-${Date.now()}`,
+      userId,
+      type: 'account_reinstated',
+      title: 'Account Reinstated',
+      message: '✅ Your account has been reinstated. You can now access Influencer Verse again.',
+      read: false,
+      timestamp: new Date().toISOString(),
+      createdAt: new Date().toISOString()
+    };
+    await setDoc(doc(db, 'notifications', notif.id), notif);
   };
 
   const adminCreateTask = async (taskData: Omit<Task, 'id' | 'completedSubmissionsCount' | 'status'> & { isSpecial?: boolean; minKarmaRequired?: number; specialLabel?: string }) => {
@@ -1884,6 +2040,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       adminApproveUser,
       adminRejectUser,
       adminBanUser,
+      adminSuspendUser,
+      adminUnbanUser,
+      adminUnsuspendUser,
       adminCreateTask,
       adminEditTask,
       adminDeleteTask,

@@ -12,7 +12,7 @@ import {
 export const AdminDashboard: React.FC = () => {
   const { 
     users, tasks, submissions, withdrawals, transactions, settings,
-    adminApproveUser, adminRejectUser, adminBanUser,
+    adminApproveUser, adminRejectUser, adminBanUser, adminSuspendUser, adminUnbanUser, adminUnsuspendUser,
     adminCreateTask, adminEditTask, adminDeleteTask,
     adminReviewSubmission, adminReviewWithdrawal,
     adminCreateAnnouncement, adminUpdateSettings,
@@ -101,15 +101,36 @@ export const AdminDashboard: React.FC = () => {
   const [referralBonus, setReferralBonus] = useState(settings.referralBonus);
   const [settingsSuccess, setSettingsSuccess] = useState(false);
   const [selectedAdminTierFilter, setSelectedAdminTierFilter] = useState<string>('all');
-  const [selectedAdminStatusFilter, setSelectedAdminStatusFilter] = useState<'all' | 'Pending' | 'Approved' | 'Rejected' | 'Banned'>('all');
+  const [selectedAdminStatusFilter, setSelectedAdminStatusFilter] = useState<string>('all');
+  
+  // Ban/Suspend confirmation values
+  const [banTargetUser, setBanTargetUser] = useState<User | null>(null);
+  const [banReasonInput, setBanReasonInput] = useState('');
+
+  const [suspendTargetUser, setSuspendTargetUser] = useState<User | null>(null);
+  const [suspendReasonInput, setSuspendReasonInput] = useState('');
+  const [suspendDuration, setSuspendDuration] = useState('1 day');
+
   const [adminTaskFilter, setAdminTaskFilter] = useState<'All' | 'Pending' | 'Live' | 'Submitted' | 'Completed' | 'Removed'>('All');
   const [adminTaskAuditReason, setAdminTaskAuditReason] = useState<Record<string, string>>({});
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
 
   const filteredUsersForAdmin = users.filter(u => {
     // 1. Status filter
-    if (selectedAdminStatusFilter !== 'all' && u.status !== selectedAdminStatusFilter) {
-      return false;
+    if (selectedAdminStatusFilter !== 'all') {
+      const uStatusLower = (u.status || '').toLowerCase();
+      const filterLower = selectedAdminStatusFilter.toLowerCase();
+      if (filterLower === 'banned') {
+        if (uStatusLower !== 'banned' && !u.isBanned) {
+          return false;
+        }
+      } else if (filterLower === 'suspended') {
+        if (uStatusLower !== 'suspended' && !u.isSuspended) {
+          return false;
+        }
+      } else if (uStatusLower !== filterLower) {
+        return false;
+      }
     }
     // 2. Tier filter
     if (selectedAdminTierFilter !== 'all' && getKarmaTier(u.karma).name.toLowerCase() !== selectedAdminTierFilter.toLowerCase()) {
@@ -1291,16 +1312,17 @@ export const AdminDashboard: React.FC = () => {
                 <div className="flex flex-wrap gap-1">
                   {[
                     { id: 'all', label: '👥 All Users', count: users.length },
-                    { id: 'Pending', label: '⏳ Pending', count: users.filter(u => u.status === 'Pending').length },
+                    { id: 'Pending', label: '⏳ Pending', count: users.filter(u => u.status === 'Pending' || u.status === 'pending').length },
                     { id: 'Approved', label: '✅ Approved', count: users.filter(u => u.status === 'Approved').length },
                     { id: 'Rejected', label: '❌ Rejected', count: users.filter(u => u.status === 'Rejected').length },
-                    { id: 'Banned', label: '🚫 Suspended', count: users.filter(u => u.status === 'Banned').length },
+                    { id: 'banned', label: '🚫 Banned', count: users.filter(u => u.status === 'banned' || u.status === 'Banned' || u.isBanned).length },
+                    { id: 'suspended', label: '⚠️ Suspended', count: users.filter(u => u.status === 'suspended' || u.status === 'Suspended' || u.isSuspended).length },
                   ].map((sTab) => (
                     <button
                       key={sTab.id}
                       type="button"
                       id={`users-tab-${sTab.id.toLowerCase()}`}
-                      onClick={() => setSelectedAdminStatusFilter(sTab.id as any)}
+                      onClick={() => setSelectedAdminStatusFilter(sTab.id)}
                       className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                         selectedAdminStatusFilter === sTab.id
                           ? 'bg-purple-600 text-white shadow-md'
@@ -1412,10 +1434,15 @@ export const AdminDashboard: React.FC = () => {
                         <td className="py-4 px-2">
                           <span className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] ${
                             u.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-500' :
-                            u.status === 'Pending' ? 'bg-yellow-500/10 text-yellow-500 animate-pulse' :
-                            u.status === 'Rejected' ? 'bg-zinc-800 text-zinc-400 font-semibold' : 'bg-red-500/10 text-red-500'
+                            (u.status === 'Pending' || u.status === 'pending') ? 'bg-yellow-500/10 text-yellow-500 animate-pulse' :
+                            (u.status === 'Rejected' || u.status === 'rejected') ? 'bg-zinc-800 text-zinc-400 font-semibold' :
+                            (u.status === 'Suspended' || u.status === 'suspended' || u.isSuspended) ? 'bg-amber-500/10 text-amber-550 font-semibold' :
+                            'bg-red-500/10 text-red-500' // Banned / banned
                           }`}>
-                            {u.status}
+                            {u.status === 'Approved' ? 'Approved' :
+                             (u.status === 'Pending' || u.status === 'pending') ? 'Pending' :
+                             (u.status === 'Rejected' || u.status === 'rejected') ? 'Rejected' :
+                             (u.status === 'Suspended' || u.status === 'suspended' || u.isSuspended) ? 'Suspended' : 'Banned'}
                           </span>
                           {isCooldownActive && (
                             <span className="block mt-1 bg-yellow-500/10 border border-yellow-500/25 px-1.5 py-0.5 rounded text-[9px] font-black text-yellow-400 font-mono w-max animate-pulse">
@@ -1465,17 +1492,53 @@ export const AdminDashboard: React.FC = () => {
                           </div>
                         )}
                         {u.status === 'Approved' && u.role !== 'admin' && (
-                          <button 
-                            onClick={() => adminBanUser(u.id, 'Violating guidelines or posting duplicate spam proofs.')}
-                            className="px-2 py-0.5 bg-red-600/10 hover:bg-red-600 border border-red-500/20 text-red-400 hover:text-white text-[10px] font-bold rounded cursor-pointer"
-                          >
-                            Ban Account
-                          </button>
+                          <div className="flex gap-1.5 justify-end">
+                            <button 
+                              onClick={() => {
+                                setSuspendTargetUser(u);
+                                setSuspendReasonInput('');
+                                setSuspendDuration('1 day');
+                              }}
+                              className="px-2.5 py-1 bg-amber-600/15 hover:bg-amber-600 border border-amber-500/25 text-amber-400 hover:text-white text-[10px] font-black rounded cursor-pointer"
+                            >
+                              Suspend
+                            </button>
+                            <button 
+                              onClick={() => {
+                                setBanTargetUser(u);
+                                setBanReasonInput('');
+                              }}
+                              className="px-2.5 py-1 bg-red-600/15 hover:bg-red-600 border border-red-500/25 text-red-505 hover:text-white text-[10px] font-black rounded cursor-pointer"
+                            >
+                              Ban
+                            </button>
+                          </div>
                         )}
-                        {u.status === 'Banned' && (
-                          <p className="text-[10px] text-zinc-500 italic max-w-[180px] ml-auto">
-                            Suspended: {u.rejectionReason}
-                          </p>
+                        {(u.status === 'banned' || u.status === 'Banned' || u.isBanned) && u.role !== 'admin' && (
+                          <div className="space-y-1.5 text-right">
+                            <p className="text-[10px] text-zinc-500 italic max-w-[180px] ml-auto">
+                              Ban Reason: {u.banReason || 'None specified'}
+                            </p>
+                            <button 
+                              onClick={() => adminUnbanUser(u.id)}
+                              className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600 border border-emerald-500/30 text-emerald-400 hover:text-white text-[10px] font-black rounded cursor-pointer inline-block"
+                            >
+                              Unban
+                            </button>
+                          </div>
+                        )}
+                        {(u.status === 'suspended' || u.status === 'Suspended' || u.isSuspended) && u.role !== 'admin' && (
+                          <div className="space-y-1.5 text-right">
+                            <p className="text-[10px] text-zinc-500 italic max-w-[180px] ml-auto">
+                              Suspension Reason: {u.suspensionReason || u.banReason || 'None specified'} ({u.suspensionDuration || 'permanent'})
+                            </p>
+                            <button 
+                              onClick={() => adminUnsuspendUser(u.id)}
+                              className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600 border border-emerald-500/30 text-emerald-400 hover:text-white text-[10px] font-black rounded cursor-pointer inline-block"
+                            >
+                              Unsuspend
+                            </button>
+                          </div>
                         )}
                         {u.role === 'admin' && (
                           <span className="text-[10px] text-zinc-500 font-extrabold uppercase">Platform Admin Locked</span>
@@ -2556,6 +2619,137 @@ export const AdminDashboard: React.FC = () => {
 
 
       </div>
+
+      {/* Ban Confirmation Modal Overlay */}
+      {banTargetUser && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 select-none animate-fade-in">
+          <div className="bg-zinc-950 border border-red-550/30 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <div>
+              <h3 className="text-lg font-black text-white">🚫 Ban User?</h3>
+              <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                Are you absolutely sure you want to ban <span className="text-red-400 font-extrabold">{banTargetUser.redditUsername || banTargetUser.fullName}</span>? They will be signed out instantly and permanently blocked from logging in or claiming tasks.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block">
+                Reason for Ban (Required)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g., Submitting duplicate spam links, multi-accounting..."
+                value={banReasonInput}
+                onChange={(e) => setBanReasonInput(e.target.value)}
+                className="w-full bg-zinc-900 border border-white/10 text-white text-xs px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-500 font-semibold"
+              />
+            </div>
+
+            <div className="flex gap-2.5 justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setBanTargetUser(null);
+                  setBanReasonInput('');
+                }}
+                className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-xl text-xs font-black cursor-pointer transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!banReasonInput.trim()}
+                onClick={async () => {
+                  if (!banReasonInput.trim()) return;
+                  await adminBanUser(banTargetUser.id, banReasonInput.trim());
+                  setBanTargetUser(null);
+                  setBanReasonInput('');
+                }}
+                className={`px-4 py-2 rounded-xl text-xs font-black text-white cursor-pointer transition-all ${
+                  banReasonInput.trim() 
+                    ? 'bg-red-600 hover:bg-red-500 shadow-md shadow-red-900/20' 
+                    : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                }`}
+              >
+                Confirm Ban
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Suspend Confirmation Modal Overlay */}
+      {suspendTargetUser && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 select-none animate-fade-in">
+          <div className="bg-zinc-950 border border-amber-550/30 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <div>
+              <h3 className="text-lg font-black text-white">⚠️ Suspend User?</h3>
+              <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                Are you absolutely sure you want to suspend <span className="text-amber-400 font-extrabold">{suspendTargetUser.redditUsername || suspendTargetUser.fullName}</span>? They will be force-signed out immediately and blocked from accessing protected actions.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block">
+                Suspension Duration
+              </label>
+              <select
+                value={suspendDuration}
+                onChange={(e) => setSuspendDuration(e.target.value)}
+                className="w-full bg-zinc-900 border border-white/10 text-white text-xs px-3 py-2.5 rounded-xl cursor-pointer font-bold focus:outline-none"
+              >
+                <option value="1 day">1 Day</option>
+                <option value="3 days">3 Days</option>
+                <option value="7 days">7 Days</option>
+                <option value="30 days">30 Days</option>
+                <option value="permanent">Permanent</option>
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block">
+                Reason for Suspension (Required)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g., Failed to submit correct proof links twice..."
+                value={suspendReasonInput}
+                onChange={(e) => setSuspendReasonInput(e.target.value)}
+                className="w-full bg-zinc-900 border border-white/10 text-white text-xs px-3 py-2.5 rounded-xl focus:outline-none focus:border-amber-500 font-semibold"
+              />
+            </div>
+
+            <div className="flex gap-2.5 justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSuspendTargetUser(null);
+                  setSuspendReasonInput('');
+                }}
+                className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-xl text-xs font-black cursor-pointer transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!suspendReasonInput.trim()}
+                onClick={async () => {
+                  if (!suspendReasonInput.trim()) return;
+                  await adminSuspendUser(suspendTargetUser.id, suspendReasonInput.trim(), suspendDuration);
+                  setSuspendTargetUser(null);
+                  setSuspendReasonInput('');
+                }}
+                className={`px-4 py-2 rounded-xl text-xs font-black text-white cursor-pointer transition-all ${
+                  suspendReasonInput.trim() 
+                    ? 'bg-amber-600 hover:bg-amber-500 shadow-md shadow-amber-900/20' 
+                    : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                }`}
+              >
+                Confirm Suspend
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
