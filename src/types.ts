@@ -196,7 +196,7 @@ export interface ClientTask {
   notes?: string;
   agencyPay: number; // set by client, visible to client & admin
   memberPay?: number; // set by admin, visible to member & admin
-  status: 'pending' | 'live' | 'claimed' | 'submitted' | 'revision' | 'completed' | 'removed';
+  status: 'pending_review' | 'approved/live' | 'claimed' | 'submitted' | 'client_review' | 'completed' | 'revision' | 'removed';
   claimedBy?: string | null; // memberId (User) or null
   claimedAt?: string | null;
   completionDeadline?: string | null;
@@ -210,6 +210,8 @@ export interface ClientTask {
   disputeOutcome?: 'force_approved' | 'upheld' | null;
   removedAt?: string | null;
   removedAfterPayment?: boolean;
+  createdAt?: string;
+  approvedAt?: string;
 }
 
 export interface ClientPayment {

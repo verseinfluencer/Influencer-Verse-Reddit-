@@ -96,6 +96,9 @@ export const AdminDashboard: React.FC = () => {
   const [settingsSuccess, setSettingsSuccess] = useState(false);
   const [selectedAdminTierFilter, setSelectedAdminTierFilter] = useState<string>('all');
   const [selectedAdminStatusFilter, setSelectedAdminStatusFilter] = useState<'all' | 'Pending' | 'Approved' | 'Rejected' | 'Banned'>('all');
+  const [adminTaskFilter, setAdminTaskFilter] = useState<'All' | 'Pending' | 'Live' | 'Submitted' | 'Completed' | 'Removed'>('All');
+  const [adminTaskAuditReason, setAdminTaskAuditReason] = useState<Record<string, string>>({});
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
 
   const filteredUsersForAdmin = users.filter(u => {
     // 1. Status filter
@@ -450,256 +453,268 @@ export const AdminDashboard: React.FC = () => {
               <h2 className="text-base font-black text-indigo-400 flex items-center gap-2">
                 <CheckSquare className="w-5 h-5" /> Brand Campaigns Audit & Review Panel
               </h2>
-              <p className="text-xs text-zinc-500 mt-1">Audit campaigns proposed by brand clients. Specify payout multipliers before publishing them live to the creator marketplace.</p>
+              <p className="text-xs text-zinc-500 mt-1">Audit, approve, force-complete, or remove campaigns proposed by brand clients. Specify payout multipliers before publishing them live to the creator marketplace.</p>
             </div>
 
-            <div className="space-y-4">
-              {(clientTasks || []).filter(t => t.status === 'pending').length === 0 ? (
-                <div className="text-center py-12 text-zinc-500 text-xs italic bg-zinc-950/30 rounded-2xl border border-white/5">
-                  Great! No proposed client tasks are pending editorial verification.
-                </div>
-              ) : (
-                (clientTasks || []).filter(t => t.status === 'pending').map((t) => {
-                  const rate = clientTaskRates[t.id] ?? (t.agencyPay * 0.70); // default user reward is 70% of client payout
+            {/* Filter Bar */}
+            <div className="flex flex-wrap gap-2 p-1.5 bg-zinc-950/60 rounded-xl border border-white/5 items-center justify-between">
+              <div className="flex flex-wrap gap-1.5">
+                {(['All', 'Pending', 'Live', 'Submitted', 'Completed', 'Removed'] as const).map(f => {
+                  const matchedCount = (clientTasks || []).filter(t => {
+                    const s = (t.status || '').toLowerCase();
+                    if (f === 'Pending') return s === 'pending' || s === 'pending_review';
+                    if (f === 'Live') return s === 'approved/live' || s === 'claimed';
+                    if (f === 'Submitted') return s === 'submitted';
+                    if (f === 'Completed') return s === 'completed';
+                    if (f === 'Removed') return s === 'removed';
+                    return true;
+                  }).length;
+
                   return (
-                    <div key={t.id} className="p-4 bg-zinc-950/50 border border-indigo-500/20 rounded-2xl flex flex-col md:flex-row justify-between gap-6">
-                      <div className="flex-1 space-y-3 font-semibold">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-[9px] font-black tracking-widest bg-indigo-600/10 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded uppercase">PROPOSED</span>
-                          <span className="text-xs text-zinc-400 font-bold">Brand: {t.clientName || 'Unlabeled client'}</span>
-                          <span className="text-[10px] text-zinc-500 font-mono">({t.type})</span>
-                        </div>
-                        <h3 className="text-base text-white font-extrabold">{t.title}</h3>
-                        <p className="text-xs text-zinc-400 font-normal leading-relaxed">{t.description}</p>
-                        
-                        <div className="p-3 bg-zinc-950 rounded-xl border border-white/5 text-xs text-zinc-400 font-normal space-y-1 select-text">
-                          {t.targetSubreddit && <p><span className="font-bold text-zinc-300">Target Subreddit:</span> {t.targetSubreddit}</p>}
-                          {t.postUrlToCommentOn && <p><span className="font-bold text-zinc-300">Comments URL:</span> <a href={t.postUrlToCommentOn} target="_blank" rel="noreferrer" className="text-blue-400 underline">{t.postUrlToCommentOn}</a></p>}
-                          <p><span className="font-bold text-zinc-300">Brand Guidelines:</span> {t.guidelines}</p>
-                          {t.notes && <p><span className="font-bold text-zinc-300">Client Private Notes:</span> {t.notes}</p>}
-                          <p className="pt-2"><span className="font-bold text-emerald-400 font-mono">Proposed Agency Pay: ${t.agencyPay.toFixed(2)} USDT</span></p>
-                        </div>
-                      </div>
-
-                      {/* Approval pricing tool */}
-                      <div className="md:w-80 flex flex-col justify-between p-4 bg-zinc-900 border border-white/5 rounded-2xl select-none">
-                        <div className="space-y-3">
-                          <span className="text-[10px] font-black uppercase text-zinc-400 tracking-wider block">Set Creator Rewards</span>
-                          
-                          <div>
-                            <div className="flex justify-between items-center text-xs mb-1">
-                              <span className="text-zinc-500">Agency Earns:</span>
-                              <span className="font-mono text-zinc-200">${t.agencyPay.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between items-center text-xs">
-                              <span className="text-purple-400 font-bold">User Reward (USDT):</span>
-                              <span className="font-bold font-mono text-emerald-400">${Number(rate).toFixed(2)}</span>
-                            </div>
-                          </div>
-
-                          <div className="space-y-1">
-                            <input
-                              type="range"
-                              min={0.10}
-                              max={t.agencyPay}
-                              step={0.05}
-                              value={rate}
-                              onChange={(e: any) => setClientTaskRates({ ...clientTaskRates, [t.id]: Number(e.target.value) })}
-                              className="w-full accent-purple-600 cursor-pointer h-1 bg-zinc-850 rounded"
-                            />
-                            <div className="flex justify-between text-[9px] text-zinc-500 font-mono">
-                              <span>Min: $0.10</span>
-                              <span>Agency Fee Margin: {(((t.agencyPay - rate) / t.agencyPay) * 100).toFixed(0)}%</span>
-                              <span>Max: ${t.agencyPay.toFixed(2)}</span>
-                            </div>
-                          </div>
-
-                          <div className="flex gap-2 items-center">
-                            <span className="text-[10px] text-zinc-400 font-mono">Manual: $</span>
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={rate}
-                              onChange={(e: any) => setClientTaskRates({ ...clientTaskRates, [t.id]: Math.min(t.agencyPay, Number(e.target.value)) })}
-                              className="w-20 bg-zinc-950 border border-white/10 px-1.5 py-0.5 rounded text-xs font-mono text-white text-center"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="flex gap-2 pt-4 border-t border-white/5 mt-4">
-                          <button
-                            onClick={() => adminReviewClientTask(t.id, 'publish', rate)}
-                            className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 font-black text-xs rounded-xl text-white cursor-pointer transition-colors"
-                          >
-                            Publish Campaign
-                          </button>
-                          <button
-                            onClick={() => adminReviewClientTask(t.id, 'reject')}
-                            className="py-2 px-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white font-extrabold text-xs rounded-xl cursor-pointer transition-colors"
-                          >
-                            Revert
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                    <button
+                      key={f}
+                      onClick={() => setAdminTaskFilter(f)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition uppercase tracking-wider cursor-pointer font-sans shrink-0 flex items-center gap-1.5 ${
+                        adminTaskFilter === f
+                          ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
+                          : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
+                      }`}
+                    >
+                      <span>{f}</span>
+                      <span className="text-[10px] bg-black/30 px-1.5 py-0.5 rounded-full font-mono">{matchedCount}</span>
+                    </button>
                   );
-                })
-              )}
+                })}
+              </div>
+              <span className="text-[10px] font-mono text-zinc-500 mr-2 uppercase">Real-Time Sync active</span>
             </div>
 
-            {/* 2. Active Campaigns and Audits Desk */}
-            <div className="pt-8 border-t border-white/5 space-y-4">
-              <div>
-                <h3 className="text-sm font-black text-rose-400 flex items-center gap-1.5 uppercase tracking-wider">
-                  <Shield className="w-4 h-4" /> Live Campaigns Audit & Dispute Resolution Desk
-                </h3>
-                <p className="text-xs text-zinc-500 mt-0.5">Manage live claims, resolve member-raised disputes, or initiate audit removals with automated wallet balance adjustments.</p>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="border-b border-white/5 text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
-                      <th className="py-2.5 px-2">Campaign Title / Brand</th>
-                      <th className="py-2.5 px-2">Claimant</th>
-                      <th className="py-2.5 px-2">Reward Values</th>
-                      <th className="py-2.5 px-2">Dispute Status</th>
-                      <th className="py-2.5 px-2">Execution State</th>
-                      <th className="py-2.5 px-2 text-right">Audit Action Desk</th>
+            {/* Campaigns Ledger Table */}
+            <div className="overflow-x-auto bg-zinc-950/60 rounded-2xl border border-white/5 animate-fade-in">
+              <table className="w-full text-left border-collapse text-xs min-w-[1100px]">
+                <thead>
+                  <tr className="border-b border-white/5 text-[10px] font-bold text-zinc-500 uppercase tracking-widest bg-zinc-950/40">
+                    <th className="py-4 px-4">Campaign & Client</th>
+                    <th className="py-4 px-4">Type</th>
+                    <th className="py-4 px-4 text-right">Proposed Agency Pay</th>
+                    <th className="py-4 px-4 text-center">Creator Pay Set</th>
+                    <th className="py-4 px-4 text-center">Status</th>
+                    <th className="py-4 px-4">Claimant / Submissions</th>
+                    <th className="py-4 px-4 text-right">Execution Controls & Action Desk</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {(clientTasks || []).filter(t => {
+                    const s = (t.status || '').toLowerCase();
+                    if (adminTaskFilter === 'Pending') return s === 'pending' || s === 'pending_review';
+                    if (adminTaskFilter === 'Live') return s === 'approved/live' || s === 'claimed';
+                    if (adminTaskFilter === 'Submitted') return s === 'submitted';
+                    if (adminTaskFilter === 'Completed') return s === 'completed';
+                    if (adminTaskFilter === 'Removed') return s === 'removed';
+                    return true;
+                  }).length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center text-zinc-500 italic font-medium">
+                        No campaign tasks match the "{adminTaskFilter}" filter criteria.
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {(clientTasks || []).filter(t => t.status !== 'pending').length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="py-8 text-center text-zinc-500 italic font-semibold">
-                          No active or audit-ready brand campaigns live yet.
-                        </td>
-                      </tr>
-                    ) : (
-                      (clientTasks || []).filter(t => t.status !== 'pending').map((t) => {
-                        const isDisputed = t.disputeRaised;
-                        const isRemoved = t.status === 'removed';
-                        const isClientPaid = clients.find(c => c.id === t.clientId)?.payAgencyHistory?.some(pay => pay.tasksIncluded.includes(t.id)) || false;
+                  ) : (
+                    (clientTasks || []).filter(t => {
+                      const s = (t.status || '').toLowerCase();
+                      if (adminTaskFilter === 'Pending') return s === 'pending' || s === 'pending_review';
+                      if (adminTaskFilter === 'Live') return s === 'approved/live' || s === 'claimed';
+                      if (adminTaskFilter === 'Submitted') return s === 'submitted';
+                      if (adminTaskFilter === 'Completed') return s === 'completed';
+                      if (adminTaskFilter === 'Removed') return s === 'removed';
+                      return true;
+                    }).map((t) => {
+                      const s = (t.status || '').toLowerCase();
+                      const rate = clientTaskRates[t.id] ?? (t.memberPay || t.agencyPay * 0.70);
+                      const isDisputed = t.disputeRaised;
+                      const hasSub = t.proofLink;
 
-                        return (
-                          <tr key={t.id} className="hover:bg-white/[0.01]">
-                            <td className="py-3 px-2 space-y-0.5 max-w-xs select-text">
-                              <p className="font-extrabold text-white text-sm truncate" title={t.title}>{t.title}</p>
-                              <div className="flex gap-2 text-[10px] text-zinc-400 font-bold">
-                                <span>Brand: {t.clientName || 'N/A'}</span>
-                                <span className="font-mono text-zinc-500">({t.type})</span>
+                      return (
+                        <React.Fragment key={t.id}>
+                          <tr className="hover:bg-white/[0.01] transition-colors">
+                            <td className="py-4 px-4 select-text max-w-xs">
+                              <div className="font-extrabold text-white text-sm truncate" title={t.title}>{t.title}</div>
+                              <div className="flex gap-2 items-center text-[10px] text-zinc-400 mt-1">
+                                <span className="text-zinc-300 font-bold bg-zinc-900 border border-zinc-800 px-1.5 py-0.5 rounded">
+                                  Brand: {t.clientName || 'Unlabeled'}
+                                </span>
+                                <span className="text-zinc-500 font-mono">ID: {t.id}</span>
                               </div>
                             </td>
-                            <td className="py-3 px-2">
+                            <td className="py-4 px-4">
+                              <span className="px-2 py-0.5 bg-zinc-900 border border-zinc-800 text-[10px] rounded text-zinc-300 font-bold uppercase tracking-wider font-mono">
+                                {t.type}
+                              </span>
+                            </td>
+                            <td className="py-4 px-4 text-right font-mono font-bold text-white text-sm">
+                              ${t.agencyPay.toFixed(2)}
+                            </td>
+                            <td className="py-4 px-4">
+                              <div className="flex flex-col items-center gap-1.5">
+                                {s === 'pending' || s === 'pending_review' ? (
+                                  <div className="flex items-center gap-2 select-none">
+                                    <span className="text-[10px] text-zinc-400 font-mono font-bold">$</span>
+                                    <input
+                                      type="number"
+                                      step="0.05"
+                                      placeholder="Reward"
+                                      value={rate}
+                                      onChange={(e) => setClientTaskRates({ ...clientTaskRates, [t.id]: Math.min(t.agencyPay, Number(e.target.value)) })}
+                                      className="w-16 bg-zinc-950 border border-white/10 px-1 py-0.5 rounded text-xs text-white text-center font-bold font-mono focus:border-indigo-500 outline-none"
+                                    />
+                                    <span className="text-[9px] text-zinc-500 font-mono">({((1 - (rate / t.agencyPay)) * 100).toFixed(0)}% fee)</span>
+                                  </div>
+                                ) : (
+                                  <span className="font-mono font-bold text-emerald-400 text-sm">
+                                    ${(t.memberPay || 0).toFixed(2)}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-4 px-4 text-center select-none">
+                              <span className={`px-2 py-0.5 rounded font-black text-[9px] uppercase tracking-wider border ${
+                                s === 'pending' || s === 'pending_review' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                                s === 'approved/live' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                                s === 'claimed' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
+                                s === 'submitted' ? 'bg-sky-500/10 text-sky-400 border-sky-500/20' :
+                                s === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                s === 'revision' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
+                                'bg-zinc-800 text-zinc-500 border-zinc-700/50'
+                              }`}>
+                                {s === 'approved/live' ? 'Live' : s}
+                              </span>
+                            </td>
+                            <td className="py-4 px-4">
                               {t.claimedBy ? (
-                                <div className="space-y-0.5">
-                                  <span className="font-extrabold text-zinc-200 block font-mono text-[11px]">{t.claimedBy}</span>
-                                  {t.proofLink && (
-                                    <a 
-                                      href={t.proofLink} 
-                                      target="_blank" 
-                                      rel="noreferrer" 
-                                      className="text-[9px] text-blue-400 hover:underline flex items-center gap-0.5"
+                                <div className="space-y-1">
+                                  <p className="font-bold text-zinc-200 font-mono select-text">u/{t.claimedBy}</p>
+                                  {hasSub && (
+                                    <a
+                                      href={t.proofLink}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="px-2 py-0.5 bg-neutral-900 border border-neutral-800 text-[9px] font-bold text-blue-400 rounded hover:underline hover:text-blue-300 flex items-center gap-1 w-fit mt-1"
                                     >
-                                      Proof <ExternalLink className="w-2.5 h-2.5" />
+                                      <span>Proof Link</span>
+                                      <ExternalLink className="w-2.5 h-2.5" />
                                     </a>
                                   )}
                                 </div>
                               ) : (
-                                <span className="text-zinc-500 italic">None Assigned</span>
+                                <span className="text-zinc-500 italic select-none">Unclaimed</span>
                               )}
                             </td>
-                            <td className="py-3 px-2 space-y-0.5 font-mono text-[11px]">
-                              <p className="text-zinc-400 font-medium">Agency: <span className="text-zinc-200 font-bold">${t.agencyPay.toFixed(2)}</span></p>
-                              <p className="text-purple-400 font-bold">User Pay: <span className="text-purple-300">${(t.memberPay || 0).toFixed(2)}</span></p>
-                            </td>
-                            <td className="py-3 px-2 select-none">
-                              {isDisputed ? (
-                                <div className="space-y-1">
-                                  <span className="px-1.5 py-0.5 bg-red-600/20 text-red-400 font-black text-[9px] uppercase border border-red-500/20 rounded animate-pulse inline-block">
-                                    Disputed 🚩
-                                  </span>
-                                  {t.disputeReason && (
-                                    <p className="text-[10px] text-zinc-400 font-normal italic select-text max-w-[150px] truncate" title={t.disputeReason}>
-                                      "{t.disputeReason}"
-                                    </p>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="text-zinc-500 italic">No Disputes</span>
-                              )}
-                            </td>
-                            <td className="py-3 px-2 select-none">
-                              <span className={`px-2 py-0.5 rounded font-black text-[10px] uppercase tracking-wide ${
-                                t.status === 'live' ? 'bg-indigo-500/10 text-indigo-400' :
-                                t.status === 'claimed' ? 'bg-amber-500/10 text-amber-500' :
-                                t.status === 'submitted' ? 'bg-yellow-500/10 text-yellow-500' :
-                                t.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400' :
-                                t.status === 'removed' ? 'bg-zinc-800 text-zinc-400 line-through' : 'bg-zinc-850 text-zinc-400'
-                              }`}>
-                                {t.status}
-                              </span>
-                            </td>
-                            <td className="py-3 px-2 text-right space-y-1.5 select-none min-w-[200px]">
-                              {isDisputed && (
-                                <div className="flex gap-1 justify-end">
-                                  <button
-                                    onClick={() => {
-                                      if (confirm('Verify Dispute: Force Approve and credit the creator with their full pay?')) {
-                                        adminResolveDispute(t.id, 'force_approved');
-                                        alert('Dispute Resolved: Mark approved!');
-                                      }
-                                    }}
-                                    className="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-500 text-[10px] font-black rounded text-white cursor-pointer"
-                                  >
-                                    Force Approve
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      if (confirm('Verify Dispute: Upheld rejection and reverse submission states?')) {
-                                        adminResolveDispute(t.id, 'upheld');
-                                        alert('Dispute Resolved: Rejection stands!');
-                                      }
-                                    }}
-                                    className="px-2 py-0.5 bg-red-650 hover:bg-red-600 text-[10px] font-black rounded text-white cursor-pointer"
-                                  >
-                                    Upheld Rejection
-                                  </button>
-                                </div>
-                              )}
-
-                              {!isRemoved && (t.status === 'completed' || t.status === 'submitted' || t.status === 'claimed') && (
+                            <td className="py-4 px-4 text-right space-y-2 min-w-[280px]">
+                              <div className="flex gap-1.5 justify-end items-center">
+                                {/* Details Toggle */}
                                 <button
-                                  onClick={() => {
-                                    const feeStatusMsg = isClientPaid 
-                                      ? "Warning: Client has already marked invoice paid for this campaign.\nThis will apply a standard post-payment balance deduction of $" + (t.memberPay || 0) + " USDT from the user's wallet."
-                                      : "This task was removed prior to payment.\nIt will be returned back to the Live Pool. No creator balance penalties apply.";
-                                    
-                                    if (confirm("Initiate campaign audit and removal process for: \"" + t.title + "\"?\n\n" + feeStatusMsg)) {
-                                      adminRemoveCompletedTask(t.id);
-                                    }
-                                  }}
-                                  className="px-2.5 py-1 bg-red-600/10 hover:bg-red-600 border border-red-500/30 text-red-400 hover:text-white font-black text-[10px] rounded cursor-pointer transition-colors inline-block"
+                                  onClick={() => setExpandedTaskId(expandedTaskId === t.id ? null : t.id)}
+                                  className="px-2 py-1 bg-zinc-900 hover:bg-zinc-850 text-zinc-300 hover:text-white text-[10px] font-bold rounded cursor-pointer border border-white/5 transition"
                                 >
-                                  🛡️ Audit & Remove
+                                  {expandedTaskId === t.id ? 'Hide Specs' : 'View Specs'}
                                 </button>
-                              )}
 
-                              {isRemoved && (
-                                <span className="text-[10px] text-zinc-500 italic font-semibold">
-                                  {t.removedAfterPayment ? 'Deducted Post-Payment Audit' : 'Relisted / Audit Removed'}
-                                </span>
-                              )}
+                                {/* Action: Publish/Approve Pending */}
+                                {(s === 'pending' || s === 'pending_review') && (
+                                  <>
+                                    <button
+                                      onClick={async () => {
+                                        await adminReviewClientTask(t.id, 'publish', rate);
+                                        alert('Campaign approved and published successfully!');
+                                      }}
+                                      className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 font-bold text-[10px] text-white rounded cursor-pointer transition uppercase tracking-wider"
+                                    >
+                                      Approve Campaign
+                                    </button>
+                                    <button
+                                      onClick={async () => {
+                                        const reason = prompt('Specify rejection revision notes to client:', adminTaskAuditReason[t.id] || '');
+                                        if (reason !== null) {
+                                          await adminReviewClientTask(t.id, 'reject', undefined, reason);
+                                          alert('Proposal sent to client revisions.');
+                                        }
+                                      }}
+                                      className="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 font-semibold text-[10px] text-zinc-400 hover:text-white rounded cursor-pointer transition uppercase"
+                                    >
+                                      Revert
+                                    </button>
+                                  </>
+                                )}
+
+                                {/* Action: Force Complete Live Submitted Claims */}
+                                {s !== 'completed' && s !== 'removed' && s !== 'pending' && s !== 'pending_review' && (
+                                  <button
+                                    onClick={async () => {
+                                      if (confirm(`Are you sure you want to FORCE COMPLETE and credit the creator for campaign: "${t.title}"?`)) {
+                                        await adminReviewClientTask(t.id, 'force_complete');
+                                        alert('Campaign force credited and marked completed!');
+                                      }
+                                    }}
+                                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 border border-emerald-500/10 text-white font-bold text-[10px] rounded cursor-pointer transition uppercase"
+                                  >
+                                    Force Complete
+                                  </button>
+                                )}
+
+                                {/* Action: Audit & Remove for active tasks */}
+                                {s !== 'removed' && (
+                                  <button
+                                    onClick={async () => {
+                                      const note = prompt('Enter audit removal reason (notifies client and creator):', adminTaskAuditReason[t.id] || '');
+                                      if (note !== null) {
+                                        await adminReviewClientTask(t.id, 'remove', undefined, note);
+                                        alert('Campaign has been auditted and removed.');
+                                      }
+                                    }}
+                                    className="px-2.5 py-1 bg-red-650/20 hover:bg-red-650 border border-red-500/30 text-red-400 hover:text-white font-bold text-[10px] rounded cursor-pointer transition uppercase"
+                                  >
+                                    Remove
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
 
+                          {/* Expanded detail specifications */}
+                          {expandedTaskId === t.id && (
+                            <tr className="bg-zinc-950/40">
+                              <td colSpan={7} className="p-4 px-6 border-l-2 border-indigo-500 text-xs text-zinc-300 leading-relaxed font-normal">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 select-text">
+                                  <div className="space-y-2">
+                                    <h4 className="font-bold text-white uppercase tracking-wider text-[10px] text-indigo-400">Campaign Guidelines & Description</h4>
+                                    <p className="bg-zinc-950 p-3 rounded-lg border border-white/5 whitespace-pre-wrap">{t.description || 'No description provided.'}</p>
+                                    <p className="bg-zinc-950 p-3 rounded-lg border border-white/5 whitespace-pre-wrap"><strong className="text-zinc-400 font-bold block mb-1">Brand Guidelines:</strong>{t.guidelines}</p>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <h4 className="font-bold text-white uppercase tracking-wider text-[10px] text-indigo-400">Target Specifications & Private Notes</h4>
+                                    <div className="bg-zinc-950 p-3 rounded-lg border border-white/5 space-y-1.5 font-mono text-[10px]">
+                                      {t.targetSubreddit && <p><strong>Target Subreddit:</strong> r/{t.targetSubreddit.replace(/^r\//, '')}</p>}
+                                      {t.postUrlToCommentOn && <p><strong>Post URL to comment on:</strong> <a href={t.postUrlToCommentOn} target="_blank" rel="noreferrer" className="text-indigo-400 hover:underline">{t.postUrlToCommentOn}</a></p>}
+                                      <p><strong>Proposed Agency Payout:</strong> ${t.agencyPay.toFixed(2)} USDT</p>
+                                      <p><strong>Creator Reward set:</strong> ${rate ? Number(rate).toFixed(2) : 'N/A'}</p>
+                                      {t.notes && <p className="font-sans whitespace-pre-wrap"><strong className="text-zinc-400 block mb-1 font-mono">Brand Private Notes:</strong> {t.notes}</p>}
+                                      {t.revisionNote && <p className="font-sans text-amber-500"><strong className="block mb-1 font-mono">Revision Note / Feedback:</strong> {t.revisionNote}</p>}
+                                    </div>
+                                    <div className="flex gap-4 text-[10px] text-zinc-500 pt-1 font-mono">
+                                      <span>Proposed: {t.createdAt ? new Date(t.createdAt).toLocaleString() : 'N/A'}</span>
+                                      {t.approvedAt && <span>Approved: {new Date(t.approvedAt).toLocaleString()}</span>}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 

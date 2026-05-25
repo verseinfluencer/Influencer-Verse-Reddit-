@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
-  Building, User, Coins, FileText, Send, CheckCheck, 
-  MessageSquare, History, PlusCircle, LayoutGrid, CheckCircle, 
+  Building, User, Coins, FileText, 
+  History, PlusCircle, LayoutGrid, CheckCircle, 
   XCircle, Clock, AlertTriangle, ExternalLink, RefreshCw 
 } from 'lucide-react';
 
@@ -11,10 +11,8 @@ export const ClientDashboard: React.FC = () => {
     currentClient, 
     clientTasks, 
     clientPayments, 
-    clientChats,
     clientCreateTask,
     clientReviewTaskSubmission,
-    clientSendMessage,
     settings,
     clients
   } = useApp();
@@ -23,7 +21,7 @@ export const ClientDashboard: React.FC = () => {
   const clientRecord = clients.find(c => c.id === currentClient?.id) || currentClient;
 
   // Tabs
-  const [activeTab, setActiveTab] = useState<'campaigns' | 'upload' | 'support' | 'payments'>('campaigns');
+  const [activeTab, setActiveTab] = useState<'campaigns' | 'upload' | 'payments'>('campaigns');
 
   // Launch form states
   const [taskType, setTaskType] = useState<'Reddit Post Task' | 'Reddit Comment Task'>('Reddit Post Task');
@@ -42,9 +40,6 @@ export const ClientDashboard: React.FC = () => {
   // Proof Review states
   const [reviewFeedback, setReviewFeedback] = useState<Record<string, string>>({});
   const [reviewActionSuccess, setReviewActionSuccess] = useState<Record<string, string>>({});
-
-  // Chat message state
-  const [typedMessage, setTypedMessage] = useState('');
 
   const handleLaunchTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,28 +100,29 @@ export const ClientDashboard: React.FC = () => {
     }
   };
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!typedMessage.trim()) return;
-
-    try {
-      await clientSendMessage(typedMessage);
-      setTypedMessage('');
-    } catch (err: any) {
-      alert(`Chat send failure: ${err?.message}`);
-    }
-  };
-
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'live': return 'text-green-400 bg-green-950/30 border border-green-900/60';
-      case 'pending': return 'text-amber-400 bg-amber-950/30 border border-amber-900/60';
+      case 'approved/live': return 'text-green-400 bg-green-950/30 border border-green-900/60';
+      case 'pending_review': return 'text-amber-400 bg-amber-950/30 border border-amber-900/60';
       case 'claimed': return 'text-indigo-400 bg-indigo-950/30 border border-indigo-900/60';
       case 'submitted': return 'text-sky-400 bg-sky-950/30 border border-sky-900/60';
       case 'completed': return 'text-emerald-400 bg-emerald-950/30 border border-emerald-900/60';
       case 'revision': return 'text-violet-400 bg-violet-950/30 border border-violet-900/60';
       case 'removed': return 'text-red-400 bg-red-950/30 border border-red-900/60';
       default: return 'text-neutral-400 bg-neutral-950/50 border border-neutral-800';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'pending_review': return 'Pending Review';
+      case 'approved/live': return 'Live - Accepting members';
+      case 'claimed': return 'Claimed';
+      case 'submitted': return 'Submitted';
+      case 'completed': return 'Completed';
+      case 'revision': return 'Revision Requested';
+      case 'removed': return 'Removed';
+      default: return status;
     }
   };
 
@@ -143,9 +139,6 @@ export const ClientDashboard: React.FC = () => {
   // Filter tasks specific to this client
   const myTasks = clientTasks.filter(t => t.clientId === clientRecord.id);
   const myPayments = clientPayments.filter(p => p.clientId === clientRecord.id);
-  
-  // Find chat thread
-  const chatThread = clientChats.find(chat => chat.clientId === clientRecord.id);
 
   return (
     <div className="max-w-7xl mx-auto my-8 px-4 text-white">
@@ -209,16 +202,6 @@ export const ClientDashboard: React.FC = () => {
         </button>
 
         <button
-          onClick={() => setActiveTab('support')}
-          className={`pb-4 px-2 flex items-center gap-2 border-b-2 text-sm font-semibold tracking-wide whitespace-nowrap transition cursor-pointer ${
-            activeTab === 'support' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-neutral-400 hover:text-white'
-          }`}
-        >
-          <MessageSquare className="w-4.5 h-4.5" />
-          <span>Support Chat Inbox</span>
-        </button>
-
-        <button
           onClick={() => setActiveTab('payments')}
           className={`pb-4 px-2 flex items-center gap-2 border-b-2 text-sm font-semibold tracking-wide whitespace-nowrap transition cursor-pointer ${
             activeTab === 'payments' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-neutral-400 hover:text-white'
@@ -234,139 +217,133 @@ export const ClientDashboard: React.FC = () => {
 
         {/* 1. CAMPAIGNS TAB */}
         {activeTab === 'campaigns' && (
-          <div className="space-y-8">
+          <div className="space-y-6">
             <div>
-              <h2 className="text-xl font-bold font-sans tracking-tight mb-2">Campaign Action Center</h2>
-              <p className="text-neutral-400 text-xs">Review submissions uploaded by verified members, approve satisfactory results or request timely revisions.</p>
+              <h2 className="text-xl font-bold font-sans tracking-tight mb-1">Campaign Action Center</h2>
+              <p className="text-neutral-400 text-xs">A comprehensive dynamic ledger tracking all your uploaded campaigns, active member submissions, and approval states.</p>
             </div>
 
-            {/* Submissions Requiring verification Review Box */}
-            <div className="bg-neutral-950 rounded-2xl border border-neutral-850 p-4 sm:p-6 shadow-inner">
-              <h3 className="text-sm font-bold uppercase text-neutral-400 tracking-wider mb-4 flex items-center gap-2">
-                <Clock className="w-4.5 h-4.5 text-amber-500" />
-                <span>Pending Member Submissions ({myTasks.filter(t => t.status === 'submitted' || t.status === 'claimed' || t.status === 'revision').length})</span>
-              </h3>
-
-              {myTasks.filter(t => t.status === 'submitted').length === 0 ? (
-                <div className="text-center py-8 text-neutral-500 text-sm">
-                  No member proofs currently pending your approval check. 🎉
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {myTasks.filter(t => t.status === 'submitted').map(task => (
-                    <div key={task.id} className="p-5 bg-neutral-900 rounded-xl border border-neutral-850 flex flex-col md:flex-row justify-between gap-6">
-                      <div className="space-y-2 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className={`${getStatusColor(task.status)} px-2.5 py-0.5 rounded text-[10px] font-bold uppercase`}>
-                            {task.status}
-                          </span>
-                          <span className="text-xs text-neutral-500 font-mono">ID: {task.id}</span>
-                        </div>
-                        <h4 className="text-base font-bold text-white leading-tight">{task.title}</h4>
-                        
-                        <div className="bg-neutral-950 p-3 rounded-lg border border-neutral-800 text-xs text-neutral-300">
-                          <strong>Member Submission Proof URL:</strong> <br />
-                          <a 
-                            href={task.proofLink || '#'} 
-                            target="_blank" 
-                            rel="referrer noreferrer" 
-                            className="text-indigo-400 hover:underline flex items-center gap-1 font-mono mt-1 w-fit"
-                          >
-                            <span>{task.proofLink || 'N/A'}</span>
-                            <ExternalLink className="w-3 h-3" />
-                          </a>
-                        </div>
-                      </div>
-
-                      <div className="md:w-80 shrink-0 space-y-3">
-                        <label className="block text-[11px] font-semibold text-neutral-400 uppercase tracking-wider">
-                          Revision / Rejection note: (Required if not approving)
-                        </label>
-                        <textarea
-                          placeholder="Include comments guiding edits..."
-                          value={reviewFeedback[task.id] || ''}
-                          onChange={(e) => setReviewFeedback(prev => ({ ...prev, [task.id]: e.target.value }))}
-                          rows={2}
-                          className="w-full p-2.5 bg-neutral-950 text-white rounded-lg border border-neutral-800 text-xs font-sans resize-none placeholder-neutral-600 focus:outline-none focus:border-indigo-500"
-                        />
-
-                        {reviewActionSuccess[task.id] && (
-                          <div className="text-xs text-green-400 font-medium">✨ {reviewActionSuccess[task.id]}</div>
-                        )}
-
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleReviewSubmission(task.id, 'Approve')}
-                            className="flex-1 py-1.5 px-3 bg-emerald-600 hover:bg-emerald-500 font-bold text-xs text-white rounded-lg transition"
-                          >
-                            Approve & Credit
-                          </button>
-                          <button
-                            onClick={() => handleReviewSubmission(task.id, 'RequestRevision')}
-                            className="py-1.5 px-3 bg-violet-600 hover:bg-violet-500 font-bold text-xs text-white rounded-lg transition"
-                          >
-                            Revise
-                          </button>
-                          <button
-                            onClick={() => handleReviewSubmission(task.id, 'Reject')}
-                            className="py-1.5 px-3 bg-red-600 hover:bg-red-500 font-bold text-xs text-white rounded-lg transition"
-                          >
-                            Reject
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Campaign Statistics Overview list */}
-            <div>
-              <h3 className="text-sm font-bold uppercase text-neutral-400 tracking-wider mb-4">
-                Total Campaign Submissions History
-              </h3>
-              {myTasks.length === 0 ? (
-                <div className="text-center py-10 bg-neutral-950 rounded-2xl border border-neutral-800 text-neutral-500 text-sm">
-                  You haven't uploaded any campaign tasks yet. Ready to get started?
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm border-collapse min-w-[700px]">
-                    <thead>
-                      <tr className="border-b border-neutral-850 text-neutral-400 text-xs font-semibold uppercase tracking-wider">
-                        <th className="py-3 px-4">Task Details</th>
-                        <th className="py-3 px-4">Type</th>
-                        <th className="py-3 px-4 text-center">Status</th>
-                        <th className="py-3 px-4 text-right">Agency Pay</th>
-                        <th className="py-3 px-4 text-right">Calculated Member Reward</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-neutral-850">
-                      {myTasks.map(t => (
-                        <tr key={t.id} className="hover:bg-neutral-950/40 transition">
-                          <td className="py-4 px-4">
-                            <div className="font-bold text-white text-sm">{t.title}</div>
-                            <div className="text-xs text-neutral-500 font-mono mt-0.5">Subreddit: {t.targetSubreddit || t.postUrlToCommentOn || 'N/A'}</div>
+            {myTasks.length === 0 ? (
+              <div className="text-center py-20 bg-neutral-950 rounded-2xl border border-neutral-800 text-neutral-500 text-sm">
+                You haven't uploaded any campaign tasks yet. Ready to get started?
+              </div>
+            ) : (
+              <div className="overflow-x-auto bg-neutral-950 border border-neutral-805 rounded-2xl">
+                <table className="w-full text-left text-xs border-collapse min-w-[1000px]">
+                  <thead>
+                    <tr className="border-b border-neutral-800 text-neutral-400 font-semibold uppercase tracking-wider bg-neutral-900/40">
+                      <th className="py-4 px-4 font-bold">Task Title</th>
+                      <th className="py-4 px-4 font-bold">Type</th>
+                      <th className="py-4 px-4 font-bold text-right">Agency Pay</th>
+                      <th className="py-4 px-4 font-bold text-center">Status</th>
+                      <th className="py-4 px-4 font-bold">Date Created</th>
+                      <th className="py-4 px-4 font-bold">Date Approved</th>
+                      <th className="py-4 px-4 font-bold">Claimed By</th>
+                      <th className="py-4 px-4 font-bold">Proof Link</th>
+                      <th className="py-4 px-4 font-bold text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-850">
+                    {myTasks.map(t => {
+                      return (
+                        <tr key={t.id} className="hover:bg-neutral-900/20 transition">
+                          <td className="py-4 px-4 max-w-xs select-text">
+                            <div className="font-extrabold text-white text-sm">{t.title}</div>
+                            {t.description && (
+                              <p className="text-neutral-400 text-[10px] truncate mt-0.5" title={t.description}>{t.description}</p>
+                            )}
+                            {(t.targetSubreddit || t.postUrlToCommentOn) && (
+                              <div className="text-[9px] text-zinc-500 font-mono mt-1">
+                                {t.targetSubreddit ? `Subreddit: r/${t.targetSubreddit.replace(/^r\//, '')}` : `Comment on: ${t.postUrlToCommentOn}`}
+                              </div>
+                            )}
                           </td>
-                          <td className="py-4 px-4 text-xs font-semibold text-neutral-400">{t.type}</td>
-                          <td className="py-4 px-4 text-center">
-                            <span className={`${getStatusColor(t.status)} px-2.5 py-0.5 rounded text-[10px] font-bold uppercase`}>
-                              {t.status}
+                          <td className="py-4 px-4">
+                            <span className="px-2 py-0.5 bg-neutral-900 font-bold border border-neutral-800 rounded uppercase tracking-wide text-[9px] text-neutral-300">
+                              {t.type}
                             </span>
                           </td>
-                          <td className="py-4 px-4 text-right font-mono font-bold text-white">${t.agencyPay.toFixed(2)}</td>
-                          <td className="py-4 px-4 text-right font-mono text-indigo-400 font-bold">
-                            {t.memberPay ? `$${t.memberPay.toFixed(2)}` : 'Calculating...'}
+                          <td className="py-4 px-4 text-right font-mono font-bold text-white">
+                            ${(t.agencyPay || 0).toFixed(2)}
+                          </td>
+                          <td className="py-4 px-4 text-center">
+                            <span className={`${getStatusColor(t.status)} px-2.5 py-0.5 rounded text-[10px] font-bold uppercase`}>
+                              {getStatusLabel(t.status)}
+                            </span>
+                          </td>
+                          <td className="py-4 px-4 text-neutral-400 font-mono">
+                            {t.createdAt ? new Date(t.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
+                          </td>
+                          <td className="py-4 px-4 text-neutral-400 font-mono">
+                            {t.approvedAt ? new Date(t.approvedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
+                          </td>
+                          <td className="py-4 px-4 font-mono select-text">
+                            {t.claimedBy ? (
+                              <span className="text-indigo-400 font-bold">u/{t.claimedBy}</span>
+                            ) : (
+                              <span className="text-zinc-500 italic">Unclaimed</span>
+                            )}
+                          </td>
+                          <td className="py-4 px-4">
+                            {t.proofLink ? (
+                              <a
+                                href={t.proofLink}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="px-2 py-1 bg-neutral-900 border border-neutral-800 text-[10px] font-bold text-blue-400 rounded hover:underline hover:text-blue-300 flex items-center gap-1 w-fit"
+                              >
+                                <span>Proof Link</span>
+                                <ExternalLink className="w-2.5 h-2.5" />
+                              </a>
+                            ) : (
+                              <span className="text-neutral-600 font-normal">N/A</span>
+                            )}
+                          </td>
+                          <td className="py-4 px-4 text-center">
+                            {t.status === 'submitted' ? (
+                              <div className="flex flex-col gap-1.5 justify-center items-center min-w-[200px]">
+                                <div className="flex gap-1">
+                                  <button
+                                    onClick={() => handleReviewSubmission(t.id, 'Approve')}
+                                    className="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 font-black text-[9px] text-white rounded cursor-pointer transition uppercase tracking-wider"
+                                  >
+                                    Approve
+                                  </button>
+                                  <button
+                                    onClick={() => handleReviewSubmission(t.id, 'RequestRevision')}
+                                    className="px-2 py-1 bg-violet-600 hover:bg-violet-500 font-black text-[9px] text-white rounded cursor-pointer transition uppercase tracking-wider"
+                                  >
+                                    Revision
+                                  </button>
+                                  <button
+                                    onClick={() => handleReviewSubmission(t.id, 'Reject')}
+                                    className="px-2 py-1 bg-red-650 hover:bg-red-600 font-black text-[9px] text-white rounded cursor-pointer transition uppercase tracking-wider"
+                                  >
+                                    Reject
+                                  </button>
+                                </div>
+                                <input
+                                  type="text"
+                                  placeholder="Note for Revision / Reject..."
+                                  value={reviewFeedback[t.id] || ''}
+                                  onChange={(e) => setReviewFeedback(prev => ({ ...prev, [t.id]: e.target.value }))}
+                                  className="w-full max-w-[190px] p-1.5 bg-neutral-950 text-white border border-neutral-800 rounded text-[10px] font-sans focus:outline-none focus:border-indigo-500 placeholder-neutral-600"
+                                />
+                                {reviewActionSuccess[t.id] && (
+                                  <span className="text-[10px] text-green-400 font-medium">{reviewActionSuccess[t.id]}</span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-zinc-500 italic">No Action Needed</span>
+                            )}
                           </td>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
@@ -543,82 +520,6 @@ export const ClientDashboard: React.FC = () => {
                 </div>
               </form>
             )}
-          </div>
-        )}
-
-        {/* 3. SUPPORT CHAT INBOX */}
-        {activeTab === 'support' && (
-          <div className="max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-neutral-950 p-4 rounded-2xl border border-neutral-850 h-fit">
-              <h3 className="font-bold text-sm text-neutral-300 uppercase tracking-wider mb-3">Moderator Contacts</h3>
-              <div className="flex items-center gap-3 p-3 bg-neutral-900 border border-neutral-800 rounded-xl">
-                <div className="w-10 h-10 bg-indigo-600/30 rounded-xl flex items-center justify-center font-bold text-indigo-400">
-                  IV
-                </div>
-                <div>
-                  <div className="font-bold text-xs text-white">System Admin Desk</div>
-                  <div className="text-[10px] text-green-400 font-semibold">• ONLINE & LIVE</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Conversation threads interface */}
-            <div className="md:col-span-2 bg-neutral-950 rounded-2xl border border-neutral-850 flex flex-col h-[500px]">
-              <div className="p-4 border-b border-neutral-850 flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 bg-green-500 rounded-full"></span>
-                  <div className="font-bold text-sm">System Manager Chat</div>
-                </div>
-                <span className="text-[10px] text-neutral-500">Live Support Sandbox</span>
-              </div>
-
-              {/* Message scroll container */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 font-sans bg-neutral-950/40">
-                {!chatThread || chatThread.messages.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-center p-6">
-                    <MessageSquare className="w-10 h-10 text-neutral-600 mb-2" />
-                    <div className="text-neutral-400 font-bold text-sm">No message records.</div>
-                    <p className="text-neutral-500 text-xs mt-1 max-w-xs">Type a question below to launch messaging logs directly with administrators.</p>
-                  </div>
-                ) : (
-                  chatThread.messages.map(msg => {
-                    const isAdmin = msg.senderId === 'admin';
-                    return (
-                      <div key={msg.id} className={`flex flex-col ${isAdmin ? 'items-start' : 'items-end'}`}>
-                        <div className={`p-3 rounded-2xl max-w-xs sm:max-w-md text-sm ${
-                          isAdmin ? 'bg-neutral-800 text-neutral-200 rounded-tl-none' : 'bg-indigo-600 text-white rounded-tr-none'
-                        }`}>
-                          <p>{msg.text}</p>
-                          <div className="text-[9px] text-neutral-400 mt-1 text-right flex items-center justify-end gap-1 font-mono">
-                            <span>{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                            {!isAdmin && (
-                              <CheckCheck className="w-3 h-3 text-emerald-400 shrink-0" />
-                            )}
-                          </div>
-                        </div>
-                        <span className="text-[9px] text-neutral-500 uppercase font-semibold mt-0.5 px-1.5">{msg.senderName}</span>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-
-              <form onSubmit={handleSendMessage} className="p-4 border-t border-neutral-850 flex gap-2 shrink-0">
-                <input 
-                  type="text" 
-                  value={typedMessage}
-                  onChange={(e) => setTypedMessage(e.target.value)}
-                  placeholder="Type a message to administration..."
-                  className="flex-1 p-2.5 bg-neutral-900 border border-neutral-800 text-white rounded-xl text-sm focus:outline-none"
-                />
-                <button
-                  type="submit"
-                  className="px-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl flex items-center justify-center cursor-pointer font-bold"
-                >
-                  <Send className="w-4 h-4" />
-                </button>
-              </form>
-            </div>
           </div>
         )}
 

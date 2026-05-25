@@ -99,7 +99,7 @@ interface AppContextType {
   adminReviewClient: (clientId: string, status: 'approved' | 'rejected' | 'suspended', reason?: string) => void;
   adminToggleTaskUpload: (clientId: string, enabled: boolean) => void;
   adminToggleGlobalTaskUpload: (disabled: boolean) => void;
-  adminReviewClientTask: (taskId: string, action: 'publish' | 'reject', memberPay?: number) => void;
+  adminReviewClientTask: (taskId: string, action: 'publish' | 'reject' | 'remove' | 'force_complete', memberPay?: number, reason?: string) => Promise<void>;
   adminResolveDispute: (taskId: string, outcome: 'force_approved' | 'upheld') => Promise<void>;
   adminConfirmClientPayment: (clientId: string, amount: number, referenceNote?: string, receiptUrl?: string) => Promise<void>;
   adminReviewPayout: (requestId: string, status: 'Approved' | 'Rejected') => Promise<void>;
@@ -292,6 +292,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setClientChats(snap.docs.map(d => d.data() as ClientChat));
         });
 
+        const unsubClientTasks = onSnapshot(collection(db, 'client_tasks'), (snap) => {
+          setClientTasks(snap.docs.map(d => d.data() as ClientTask));
+        }, (error) => {
+          handleFirestoreError(error, OperationType.GET, 'client_tasks');
+        });
+
         const unsubTickets = onSnapshot(collection(db, 'tickets'), (snap) => {
           setTickets(snap.docs.map(d => d.data() as SupportTicket));
         });
@@ -307,6 +313,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           unsubTransactions();
           unsubNotifications();
           unsubChats();
+          unsubClientTasks();
           unsubTickets();
         };
       } else {
@@ -642,26 +649,136 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       deadline: taskData.deadline,
       notes: taskData.notes || '',
       agencyPay: taskData.agencyPay,
-      status: 'pending',
-      claimedBy: null
+      status: 'pending_review',
+      claimedBy: null,
+      createdAt: new Date().toISOString()
     };
 
-    setClientTasks(prev => [newClientTask, ...prev]);
+    try {
+      await setDoc(doc(db, 'client_tasks', newClientTask.id), newClientTask);
 
-    const adminNotif: AppNotification = {
-      id: `notif-client-task-${Date.now()}`,
-      userId: 'admin-1',
-      type: 'client_update',
-      title: 'New Client Task Proposal',
-      message: `Client "${currentClient.name}" proposed a high reward ${taskData.type} task: "${taskData.title}". Check proposed payouts.`,
-      read: false,
-      timestamp: new Date().toISOString()
-    };
-    await setDoc(doc(db, 'notifications', adminNotif.id), adminNotif);
+      const adminNotif: AppNotification = {
+        id: `notif-client-task-${Date.now()}`,
+        userId: 'admin-1',
+        type: 'client_update',
+        title: 'New Client Task Proposal',
+        message: `Client "${currentClient.name}" proposed a high reward ${taskData.type} task: "${taskData.title}". Check proposed payouts.`,
+        read: false,
+        timestamp: new Date().toISOString()
+      };
+      await setDoc(doc(db, 'notifications', adminNotif.id), adminNotif);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, `client_tasks/${newClientTask.id}`);
+    }
   };
 
   const clientReviewTaskSubmission = async (taskId: string, action: 'Approve' | 'RequestRevision' | 'Reject', feedback?: string) => {
-    // client task audit status transition
+    try {
+      const docRef = doc(db, 'client_tasks', taskId);
+      const snap = await getDoc(docRef);
+      if (!snap.exists()) throw new Error('Campaign task not found.');
+      
+      const pendingSub = submissions.find(s => s.taskId === taskId && s.status === 'Pending');
+
+      if (action === 'Approve') {
+        if (pendingSub) {
+          const uRef = doc(db, 'users', pendingSub.userId);
+          const userSnap = await getDoc(uRef);
+          if (userSnap.exists()) {
+            const u = userSnap.data() as User;
+            await updateDoc(uRef, {
+              balance: u.balance + pendingSub.reward,
+              pendingBalance: Math.max(0, u.pendingBalance - pendingSub.reward),
+              totalEarned: u.totalEarned + pendingSub.reward,
+              xp: u.xp + 100
+            });
+
+            const tx: Transaction = {
+              id: `tx-${Date.now()}`,
+              userId: pendingSub.userId,
+              type: 'earning',
+              amount: pendingSub.reward,
+              description: `Earning for client task: "${pendingSub.taskTitle}"`,
+              date: new Date().toISOString(),
+              status: 'Completed'
+            };
+            await setDoc(doc(db, 'transactions', tx.id), tx);
+          }
+
+          await updateDoc(doc(db, 'submissions', pendingSub.id), {
+            status: 'Approved',
+            feedback: feedback || 'Approved by Client'
+          });
+        }
+
+        await updateDoc(docRef, {
+          status: 'completed',
+          feedback: feedback || 'Approved & Credited by Client'
+        });
+
+        const taskRef = doc(db, 'tasks', taskId);
+        const taskSnap = await getDoc(taskRef);
+        if (taskSnap.exists()) {
+          await updateDoc(taskRef, { status: 'completed' });
+        }
+      } else if (action === 'RequestRevision') {
+        if (pendingSub) {
+          const uRef = doc(db, 'users', pendingSub.userId);
+          const userSnap = await getDoc(uRef);
+          if (userSnap.exists()) {
+            const u = userSnap.data() as User;
+            await updateDoc(uRef, {
+              pendingBalance: Math.max(0, u.pendingBalance - pendingSub.reward)
+            });
+          }
+
+          await updateDoc(doc(db, 'submissions', pendingSub.id), {
+            status: 'Rejected',
+            feedback: feedback || 'Revision requested.'
+          });
+        }
+
+        await updateDoc(docRef, {
+          status: 'revision',
+          revisionNote: feedback || 'Revision requested.'
+        });
+
+        const taskRef = doc(db, 'tasks', taskId);
+        const taskSnap = await getDoc(taskRef);
+        if (taskSnap.exists()) {
+          await updateDoc(taskRef, { status: 'available' });
+        }
+      } else { // Reject
+        if (pendingSub) {
+          const uRef = doc(db, 'users', pendingSub.userId);
+          const userSnap = await getDoc(uRef);
+          if (userSnap.exists()) {
+            const u = userSnap.data() as User;
+            await updateDoc(uRef, {
+              pendingBalance: Math.max(0, u.pendingBalance - pendingSub.reward)
+            });
+          }
+
+          await updateDoc(doc(db, 'submissions', pendingSub.id), {
+            status: 'Rejected',
+            feedback: feedback || 'Submission Rejected'
+          });
+        }
+
+        await updateDoc(docRef, {
+          status: 'revision',
+          revisionNote: feedback || 'Submission Rejected'
+        });
+
+        const taskRef = doc(db, 'tasks', taskId);
+        const taskSnap = await getDoc(taskRef);
+        if (taskSnap.exists()) {
+          await updateDoc(taskRef, { status: 'available' });
+        }
+      }
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `client_tasks/${taskId}`);
+    }
   };
 
   const memberClaimClientTask = async (taskId: string) => {
@@ -697,8 +814,110 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSettings(prev => ({ ...prev, disableAllClientUploads: disabled }));
   };
 
-  const adminReviewClientTask = async (taskId: string, action: 'publish' | 'reject', memberPay?: number) => {
-    // Review and publish agency task to user database collection
+  const adminReviewClientTask = async (taskId: string, action: 'publish' | 'reject' | 'remove' | 'force_complete', memberPay?: number, reason?: string) => {
+    try {
+      const docRef = doc(db, 'client_tasks', taskId);
+      const snap = await getDoc(docRef);
+      if (!snap.exists()) return;
+      const task = snap.data() as ClientTask;
+
+      if (action === 'publish') {
+        const pay = memberPay ?? (task.agencyPay * 0.70);
+        await updateDoc(docRef, {
+          status: 'approved/live',
+          memberPay: pay,
+          approvedAt: new Date().toISOString(),
+          approvedByAdmin: true
+        });
+
+        const newTask: Task = {
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          type: task.type,
+          reward: pay,
+          difficulty: 'Medium',
+          deadline: task.deadline,
+          maxSubmissions: 1,
+          completedSubmissionsCount: 0,
+          proofRequired: 'screenshot',
+          status: 'available',
+          targetSubreddit: task.targetSubreddit || '',
+          postUrlToCommentOn: task.postUrlToCommentOn || '',
+          postGuidelines: task.guidelines || ''
+        };
+        await setDoc(doc(db, 'tasks', newTask.id), newTask);
+
+        const clientNotif: AppNotification = {
+          id: `notif-client-approved-${Date.now()}`,
+          userId: task.clientId,
+          type: 'client_update',
+          title: 'Campaign Task Approved! 🚀',
+          message: `Your campaign "${task.title}" has been approved by admins and is now live for members. Creator pay: $${pay.toFixed(2)} USDT.`,
+          read: false,
+          timestamp: new Date().toISOString()
+        };
+        await setDoc(doc(db, 'notifications', clientNotif.id), clientNotif);
+      } else if (action === 'reject') {
+        await updateDoc(docRef, {
+          status: 'revision',
+          revisionNote: reason || 'Details insufficient or payout rate mismatch'
+        });
+      } else if (action === 'remove') {
+        await updateDoc(docRef, {
+          status: 'removed',
+          removedAt: new Date().toISOString(),
+          revisionNote: reason || 'Administrative removal'
+        });
+        await deleteDoc(doc(db, 'tasks', taskId));
+      } else if (action === 'force_complete') {
+        await updateDoc(docRef, {
+          status: 'completed',
+          approvedByAdmin: true,
+          approvedByClient: true,
+          completedAt: new Date().toISOString()
+        });
+
+        const pendingSub = submissions.find(s => s.taskId === taskId);
+        if (pendingSub && pendingSub.status === 'Pending') {
+          const uRef = doc(db, 'users', pendingSub.userId);
+          const uSnap = await getDoc(uRef);
+          if (uSnap.exists()) {
+            const u = uSnap.data() as User;
+            await updateDoc(uRef, {
+              balance: u.balance + pendingSub.reward,
+              pendingBalance: Math.max(0, u.pendingBalance - pendingSub.reward),
+              totalEarned: u.totalEarned + pendingSub.reward,
+              xp: u.xp + 100
+            });
+
+            const tx: Transaction = {
+              id: `tx-${Date.now()}`,
+              userId: pendingSub.userId,
+              type: 'earning',
+              amount: pendingSub.reward,
+              description: `Earning for client task: "${pendingSub.taskTitle}" (Force Completed)`,
+              date: new Date().toISOString(),
+              status: 'Completed'
+            };
+            await setDoc(doc(db, 'transactions', tx.id), tx);
+          }
+
+          await updateDoc(doc(db, 'submissions', pendingSub.id), {
+            status: 'Approved',
+            feedback: 'Force completed by Admin'
+          });
+        }
+
+        const taskRef = doc(db, 'tasks', taskId);
+        const tSnap = await getDoc(taskRef);
+        if (tSnap.exists()) {
+          await updateDoc(taskRef, { status: 'completed' });
+        }
+      }
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `client_tasks/${taskId}`);
+    }
   };
 
   const adminResolveDispute = async (taskId: string, outcome: 'force_approved' | 'upheld') => {
@@ -955,6 +1174,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       active_task_id: null,
       pendingBalance: currentUser.pendingBalance + (status === 'Pending' ? task.reward : 0)
     });
+
+    // Synchronize to client tasks if it's a client task
+    if (taskId.startsWith('client-task-')) {
+      const clientTaskRef = doc(db, 'client_tasks', taskId);
+      const ctSnap = await getDoc(clientTaskRef);
+      if (ctSnap.exists()) {
+        await updateDoc(clientTaskRef, {
+          status: isFake ? 'approved/live' : 'submitted',
+          proofLink: proofUrl || submissionLink || '',
+          submittedAt: new Date().toISOString(),
+          claimedBy: isFake ? null : currentUser.redditUsername
+        });
+      }
+    }
   };
 
   const claimTask = async (taskId: string): Promise<void> => {
@@ -975,6 +1208,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await updateDoc(doc(db, 'users', currentUser.id), {
       active_task_id: taskId
     });
+
+    // Synchronize to client tasks:
+    if (taskId.startsWith('client-task-')) {
+      const clientTaskRef = doc(db, 'client_tasks', taskId);
+      const ctSnap = await getDoc(clientTaskRef);
+      if (ctSnap.exists()) {
+        await updateDoc(clientTaskRef, {
+          status: 'claimed',
+          claimedBy: currentUser.redditUsername,
+          claimedAt: new Date().toISOString(),
+          completionDeadline: expire
+        });
+      }
+    }
   };
 
   const unclaimTask = async (taskId: string, notifyExpired: boolean = false) => {
@@ -1007,6 +1254,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
            timestamp: new Date().toISOString()
          };
          await setDoc(doc(db, 'notifications', notif.id), notif);
+      }
+    }
+
+    // Synchronize to client tasks:
+    if (taskId.startsWith('client-task-')) {
+      const clientTaskRef = doc(db, 'client_tasks', taskId);
+      const ctSnap = await getDoc(clientTaskRef);
+      if (ctSnap.exists()) {
+        await updateDoc(clientTaskRef, {
+          status: 'approved/live',
+          claimedBy: null,
+          claimedAt: null,
+          completionDeadline: null
+        });
       }
     }
   };
