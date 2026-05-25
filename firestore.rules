@@ -61,6 +61,11 @@ service cloud.firestore {
     match /clients/{clientId} {
       allow read, write: if isAuthenticated();
     }
+
+    // Client payments / proofs collection
+    match /client_payments/{paymentId} {
+      allow read, write: if isAuthenticated();
+    }
     
     // Tickets collection
     match /tickets/{ticketId} {

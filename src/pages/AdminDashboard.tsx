@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Task, Submission, Withdrawal, User, TaskType, Client, ClientTask, ClientPayment, ChatMessage, ClientChat } from '../types';
+import { Task, Submission, Withdrawal, User, TaskType, Client, ClientTask, ClientPayment, ClientPaymentProof, ChatMessage, ClientChat } from '../types';
 import { getKarmaTier } from '../utils/tierHelper';
 import { 
   Users, FileText, CheckCircle, Wallet, Sparkles, 
@@ -19,9 +19,9 @@ export const AdminDashboard: React.FC = () => {
     resetCooldown, adminUpdateUserKarma, forceUnclaimTask, extendUserDeadline,
     
     // New Client Hooks and Properties from AppContext
-    clients, clientTasks, clientPayments, clientChats,
+    clients, clientTasks, clientPayments, clientPaymentProofs, clientChats,
     adminReviewClient, adminToggleTaskUpload, adminToggleGlobalTaskUpload, adminReviewClientTask,
-    adminResolveDispute, adminConfirmClientPayment, adminReviewPayout, adminRemoveCompletedTask, adminDeductMember,
+    adminResolveDispute, adminConfirmClientPayment, adminVerifyPaymentProof, adminRejectPaymentProof, adminReviewPayout, adminRemoveCompletedTask, adminDeductMember,
     adminSendMessage, adminToggleChatResolution,
 
     // New Anti-Cheat properties
@@ -60,6 +60,12 @@ export const AdminDashboard: React.FC = () => {
   const [confirmPayNote, setConfirmPayNote] = useState<string>('');
   const [confirmPayReceiptUrl, setConfirmPayReceiptUrl] = useState<string>('');
   const [clientTaskRates, setClientTaskRates] = useState<{ [taskId: string]: number }>({});
+  
+  // Client payment review helper states
+  const [proofFilterStatus, setProofFilterStatus] = useState<'all' | 'pending' | 'verified' | 'rejected'>('all');
+  const [proofRejectionId, setProofRejectionId] = useState<string | null>(null);
+  const [proofRejectionReasonInput, setProofRejectionReasonInput] = useState<string>('');
+
   const [openChatId, setOpenChatId] = useState<string>('');
   const [adminReplyMessage, setAdminReplyMessage] = useState<string>('');
   
@@ -720,18 +726,225 @@ export const AdminDashboard: React.FC = () => {
 
         {/* ================= CLIENT PAYMENT DESK TAB ================= */}
         {activeTab === 'client-payments' && (
-          <div className="space-y-8">
+          <div className="space-y-10">
+            {/* STYLED SUMMARY STATS STRIP FOR ADMINISTRATORS */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              <div className="p-5 bg-zinc-950 rounded-2xl border border-white/5 flex flex-col justify-between">
+                <span className="text-[10px] text-zinc-500 font-extrabold uppercase tracking-widest block mb-1">Pending Proof Queue</span>
+                <span className="text-3xl font-black font-mono text-amber-500">
+                  {(clientPaymentProofs || []).filter(p => p.status === 'pending').length}
+                </span>
+                <span className="text-[10px] text-zinc-500 mt-2">Proofs awaiting approval verification</span>
+              </div>
+              <div className="p-5 bg-zinc-950 rounded-2xl border border-white/5 flex flex-col justify-between">
+                <span className="text-[10px] text-zinc-500 font-extrabold uppercase tracking-widest block mb-1">Owed Client Balances</span>
+                <span className="text-3xl font-black font-mono text-indigo-400">
+                  ${(clients || []).reduce((acc, curr) => acc + (curr.payAgencyBalance || 0), 0).toFixed(2)}
+                </span>
+                <span className="text-[10px] text-zinc-500 mt-2">Combined outstanding dues across all brands</span>
+              </div>
+              <div className="p-5 bg-zinc-950 rounded-2xl border border-white/5 flex flex-col justify-between">
+                <span className="text-[10px] text-zinc-500 font-extrabold uppercase tracking-widest block mb-1">Total Settled Invoices</span>
+                <span className="text-3xl font-black font-mono text-emerald-400">
+                  ${(clientPayments || []).reduce((acc, curr) => acc + curr.amount, 0).toFixed(2)}
+                </span>
+                <span className="text-[10px] text-zinc-500 mt-2">Officially confirmed settled value</span>
+              </div>
+            </div>
+
+            {/* 1. BRAND DEPOSIT PROOFS PIPELINE SECTION */}
+            <div className="p-6 bg-zinc-950/40 rounded-3xl border border-white/5 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-white/5 pb-4">
+                <div>
+                  <h2 className="text-base font-black text-white flex items-center gap-2">
+                    <CheckSquare className="w-5 h-5 text-indigo-400" /> Confirm Deposit Verification Proofs
+                  </h2>
+                  <p className="text-xs text-zinc-500 mt-0.5">Audit transaction proofs dispatched by agency clients. Approving credentials automatically credits outstanding dues.</p>
+                </div>
+
+                {/* Filter Selector */}
+                <div className="flex gap-2 items-center">
+                  <span className="text-xs font-semibold text-zinc-400 font-sans">Filter status:</span>
+                  <select
+                    value={proofFilterStatus}
+                    onChange={(e: any) => setProofFilterStatus(e.target.value)}
+                    className="text-xs text-white bg-zinc-950 border border-white/5 px-2.5 py-1.5 rounded-lg focus:outline-none"
+                  >
+                    <option value="all">All Submissions</option>
+                    <option value="pending">Pending Review</option>
+                    <option value="verified">Verified Deposited</option>
+                    <option value="rejected">Rejected Proofs</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* TABLE LIST */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-white/5 text-[10px] font-bold text-zinc-500 uppercase tracking-wider bg-neutral-900/30">
+                      <th className="py-3 px-3">Brand Manager / Company</th>
+                      <th className="py-3 px-3 text-right">Amount Submitted</th>
+                      <th className="py-3 px-3">Tx Hash Reference</th>
+                      <th className="py-3 px-3">Log Dates</th>
+                      <th className="py-3 px-3">Proof Document</th>
+                      <th className="py-3 px-3 text-center">Status</th>
+                      <th className="py-3 px-3 text-right">Moderator Audit Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {(!clientPaymentProofs || clientPaymentProofs.length === 0) ? (
+                      <tr>
+                        <td colSpan={7} className="py-10 text-center text-zinc-500 italic font-semibold">
+                          No deposit proofs submitted by clients yet.
+                        </td>
+                      </tr>
+                    ) : (
+                      clientPaymentProofs
+                        .filter(proof => {
+                          if (proofFilterStatus === 'all') return true;
+                          return proof.status === proofFilterStatus;
+                        })
+                        .map(proof => (
+                          <tr key={proof.id} className="hover:bg-white/[0.01] transition">
+                            <td className="py-4 px-3">
+                              <span className="font-bold text-white block">{proof.clientCompany}</span>
+                              <span className="text-[10px] text-zinc-500">{proof.clientName} (ID: {proof.clientId.substring(0, 8)})</span>
+                            </td>
+                            <td className="py-4 px-3 text-right font-mono font-black text-emerald-400">
+                              ${proof.amount.toFixed(2)} USDT
+                            </td>
+                            <td className="py-4 px-3 select-all truncate max-w-[150px]" title={proof.transactionId || 'None'}>
+                              <span className="text-[10px] text-zinc-300 font-mono">
+                                {proof.transactionId || 'N/A'}
+                              </span>
+                              {proof.notes && (
+                                <span className="text-[9px] text-zinc-500 block italic leading-none truncate mt-0.5">{proof.notes}</span>
+                              )}
+                            </td>
+                            <td className="py-4 px-3 text-zinc-400 font-mono text-[10px]">
+                              <p>Sub: {new Date(proof.submittedAt).toLocaleDateString()}</p>
+                              {proof.verifiedAt && (
+                                <p className="text-[9px] text-zinc-650 font-sans">Ver: {new Date(proof.verifiedAt).toLocaleDateString()}</p>
+                              )}
+                            </td>
+                            <td className="py-4 px-3">
+                              {proof.proofImageUrl && (
+                                <a
+                                  href={proof.proofImageUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-xs text-indigo-400 hover:underline font-bold inline-flex items-center gap-1"
+                                >
+                                  View Receipt <ExternalLink className="w-3 h-3" />
+                                </a>
+                              )}
+                            </td>
+                            <td className="py-4 px-3 text-center">
+                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                                proof.status === 'verified'
+                                  ? 'bg-emerald-950/80 border border-emerald-900 text-emerald-400'
+                                  : proof.status === 'rejected'
+                                  ? 'bg-red-950/80 border border-red-955 text-red-400'
+                                  : 'bg-amber-955/80 border border-amber-900 text-amber-400'
+                              }`}>
+                                {proof.status}
+                              </span>
+                            </td>
+                            <td className="py-4 px-3 text-right">
+                              {proof.status === 'pending' ? (
+                                <div className="space-y-2">
+                                  {proofRejectionId === proof.id ? (
+                                    <div className="flex flex-col items-end gap-2 bg-neutral-900 p-3 rounded-lg border border-red-900/30">
+                                      <input
+                                        type="text"
+                                        placeholder="Reason for rejection..."
+                                        value={proofRejectionReasonInput}
+                                        onChange={(e) => setProofRejectionReasonInput(e.target.value)}
+                                        className="w-full text-xs text-white bg-zinc-950 border border-red-900/40 p-1.5 rounded-md focus:outline-none placeholder-zinc-600"
+                                      />
+                                      <div className="flex gap-2">
+                                        <button
+                                          onClick={() => {
+                                            setProofRejectionId(null);
+                                            setProofRejectionReasonInput('');
+                                          }}
+                                          className="px-2 py-1 bg-zinc-850 hover:bg-zinc-800 text-zinc-400 text-[10px] rounded font-bold uppercase cursor-pointer"
+                                        >
+                                          Cancel
+                                        </button>
+                                        <button
+                                          onClick={() => {
+                                            if (!proofRejectionReasonInput.trim()) {
+                                              alert('Specify a rejection reason.');
+                                              return;
+                                            }
+                                            adminRejectPaymentProof(proof.id, proofRejectionReasonInput.trim(), 'admin@socialpanel.com');
+                                            setProofRejectionId(null);
+                                            setProofRejectionReasonInput('');
+                                          }}
+                                          className="px-2 py-1 bg-red-650 hover:bg-red-600 text-white text-[10px] rounded font-bold uppercase transition cursor-pointer"
+                                        >
+                                          Confirm Reject
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="flex gap-2 justify-end">
+                                      <button
+                                        onClick={() => {
+                                          setProofRejectionId(proof.id);
+                                          setProofRejectionReasonInput('');
+                                        }}
+                                        className="px-2.5 py-1.5 bg-red-950/45 hover:bg-red-900/50 text-red-400 border border-red-900/20 text-[10px] rounded-lg font-bold uppercase transition cursor-pointer"
+                                      >
+                                        Reject Proof
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          if (confirm(`Approve settlement payment of $${proof.amount.toFixed(2)} and credit outstanding balance?`)) {
+                                            adminVerifyPaymentProof(proof.id, 'admin@socialpanel.com');
+                                          }
+                                        }}
+                                        className="px-2.5 py-1.5 bg-emerald-950/45 hover:bg-emerald-900/50 text-emerald-400 border border-emerald-900/20 text-[10px] rounded-lg font-bold uppercase transition cursor-pointer"
+                                      >
+                                        Verify & Credit
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="text-[10px] text-zinc-500 font-medium">
+                                  {proof.status === 'verified' ? (
+                                    <p>Verified by {proof.verifiedBy || 'Admin'}</p>
+                                  ) : (
+                                    <div className="text-right">
+                                      <p className="text-red-400 font-bold text-[9px] uppercase">Reason of rejection:</p>
+                                      <p className="text-zinc-400 italic max-w-[200px] inline-block font-sans">{proof.rejectionReason}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* 2. MANUAL BILLING INVOICES SETTLER ROW */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               
               {/* Form panel */}
               <div className="space-y-6 lg:border-r lg:border-white/5 lg:pr-8">
-                <h2 className="text-base font-black text-emerald-400 border-b border-white/5 pb-3 flex items-center gap-2">
-                  <CreditCard className="w-5 h-5" /> Mark Invoice Paid
+                <h2 className="text-sm font-black uppercase text-zinc-300 border-b border-white/5 pb-3 flex items-center gap-2 font-sans tracking-wide">
+                  <CreditCard className="w-4 h-4 text-emerald-400" /> Mark Invoice Paid (Manual)
                 </h2>
 
                 <div className="p-4 bg-zinc-950 rounded-2xl border border-white/5 text-xs text-zinc-400 font-normal space-y-2">
-                  <p>✨ Select an onboarding client with outstanding dues below to log their Crypto or Bank transfer receipt.</p>
-                  <p>✨ Receipt confirmations immediately deduct from their agency balance and notify them inside their brand profile.</p>
+                  <p>✨ Select an onboarding client with outstanding dues below to log their Crypto or Bank transfer receipt manually without their submission.</p>
                 </div>
 
                 <div className="space-y-4">
@@ -745,7 +958,7 @@ export const AdminDashboard: React.FC = () => {
                         const cl = clients.find(c => c.id === cid);
                         setConfirmPayAmount(cl ? cl.payAgencyBalance : 0);
                       }}
-                      className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-3 py-2.5 rounded-xl focus:border-purple-500 focus:outline-none bg-zinc-900"
+                      className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-3 py-2.5 rounded-xl focus:border-purple-550 focus:outline-none bg-zinc-900"
                     >
                       <option value="">-- Choose Client Profile --</option>
                       {(clients || []).filter(c => c.payAgencyBalance > 0).map(c => (
@@ -764,7 +977,7 @@ export const AdminDashboard: React.FC = () => {
                       value={confirmPayAmount}
                       onChange={(e: any) => setConfirmPayAmount(Number(e.target.value))}
                       placeholder="e.g. 150.00"
-                      className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-3 py-2.5 rounded-xl focus:border-purple-500 font-mono"
+                      className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-3 py-2.5 rounded-xl focus:border-purple-550 font-mono"
                     />
                   </div>
 
@@ -775,7 +988,7 @@ export const AdminDashboard: React.FC = () => {
                       value={confirmPayNote}
                       onChange={(e: any) => setConfirmPayNote(e.target.value)}
                       placeholder="e.g. USDT BEP20 TxHash: 0x47a9ff..."
-                      className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-3 py-2.5 rounded-xl focus:border-purple-500"
+                      className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-3 py-2.5 rounded-xl focus:border-purple-550 focus:outline-none"
                     />
                   </div>
 
@@ -786,7 +999,7 @@ export const AdminDashboard: React.FC = () => {
                       value={confirmPayReceiptUrl}
                       onChange={(e: any) => setConfirmPayReceiptUrl(e.target.value)}
                       placeholder="https://ipfs.io/... or transaction image url"
-                      className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-3 py-2.5 rounded-xl focus:border-purple-500 font-mono"
+                      className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-3 py-2.5 rounded-xl focus:border-purple-550 font-mono focus:outline-none"
                     />
                   </div>
 
@@ -804,7 +1017,7 @@ export const AdminDashboard: React.FC = () => {
                       setConfirmPayNote('');
                       setConfirmPayReceiptUrl('');
                     }}
-                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl shadow-lg shadow-emerald-500/10 cursor-pointer"
+                    className="w-full py-3 bg-emerald-650 hover:bg-emerald-600 text-white font-black text-xs rounded-xl shadow-lg shadow-emerald-500/10 cursor-pointer text-center uppercase tracking-widest"
                   >
                     Clear Dues & Broadcast Receipt
                   </button>
@@ -813,14 +1026,14 @@ export const AdminDashboard: React.FC = () => {
 
               {/* History list */}
               <div className="lg:col-span-2 space-y-6">
-                <h2 className="text-base font-black border-b border-white/5 pb-3">History of Paid Client Receipts</h2>
+                <h2 className="text-sm font-black uppercase tracking-wider text-zinc-300 border-b border-white/5 pb-3">History of Paid Client Receipts</h2>
                 
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
-                      <tr className="border-b border-white/5 text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+                      <tr className="border-b border-white/5 text-[10px] font-bold text-zinc-550 uppercase tracking-wider">
                         <th className="py-2 px-1">Brand Name</th>
-                        <th className="py-2 px-1">Clearing Value</th>
+                        <th className="py-2 px-1 text-right">Clearing Value</th>
                         <th className="py-2 px-1">Receipt Ref</th>
                         <th className="py-2 px-1">Log Date</th>
                         <th className="py-2 px-1 text-right">Proof</th>
@@ -839,7 +1052,7 @@ export const AdminDashboard: React.FC = () => {
                             <td className="py-3 px-1 font-bold text-white">
                               {p.clientName}
                             </td>
-                            <td className="py-3 px-1 font-mono font-black text-emerald-400">
+                            <td className="py-3 px-1 text-right font-mono font-black text-emerald-400">
                               ${p.amount.toFixed(2)} USDT
                             </td>
                             <td className="py-3 px-1 font-mono text-[10px] text-zinc-400 select-text max-w-xs truncate" title={p.referenceNote}>
@@ -1702,35 +1915,52 @@ export const AdminDashboard: React.FC = () => {
                           </div>
                         </div>
 
-                      {/* Comment URL if comments */}
-                      {sub.submissionLink && (
-                        <div className="text-xs">
-                          <span className="text-zinc-500 block font-bold uppercase tracking-wider text-[10px]">Comment permalink url</span>
-                          <a 
-                            href={sub.submissionLink} 
-                            target="_blank" 
-                            rel="noreferrer" 
-                            className="text-blue-400 hover:underline font-bold inline-flex items-center gap-1 mt-0.5 break-all max-w-md"
-                          >
-                            Browse Reddit Comment Link <ExternalLink className="w-3.5 h-3.5" />
-                          </a>
-                        </div>
-                      )}
-
-                      {/* Screenshot proof preview */}
+                      {/* Proof display (handles link / screenshots gracefully) */}
                       <div>
-                        <span className="text-[10px] text-zinc-500 font-bold block uppercase tracking-wider mb-1.5">Submitted Screenshot Proof</span>
-                        <a href={sub.proofUrl} target="_blank" rel="noreferrer" className="inline-block relative group">
-                          <img 
-                            src={sub.proofUrl} 
-                            alt="Proof Screenshot" 
-                            className="w-48 h-32 object-cover rounded-xl border border-white/10 hover:border-purple-500/40 transition-colors"
-                            referrerPolicy="no-referrer"
-                          />
-                          <div className="absolute inset-0 bg-transparent group-hover:bg-zinc-950/20 rounded-xl transition-all flex items-center justify-center">
-                            <span className="text-[10px] bg-zinc-950/80 px-2 py-1 rounded text-white hidden group-hover:inline-block font-extrabold">Open Screenshot</span>
+                        {((sub.proofUrl || '').toLowerCase().includes('reddit.com') || (sub.submissionLink || '').toLowerCase().includes('reddit.com')) ? (
+                          <div>
+                            <span className="text-[10px] text-zinc-500 font-bold block uppercase tracking-wider mb-1">Submitted Reddit Proof Link</span>
+                            <a 
+                              href={sub.submissionLink || sub.proofUrl} 
+                              target="_blank" 
+                              rel="noreferrer" 
+                              className="text-blue-400 hover:underline font-bold inline-flex items-center gap-1 mt-0.5 break-all max-w-md font-mono text-xs"
+                            >
+                              Browse Reddit Proof Link <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                            <span className="text-[10px] text-zinc-500 block truncate max-w-xs mt-1 select-text">{sub.submissionLink || sub.proofUrl}</span>
                           </div>
-                        </a>
+                        ) : (
+                          <div>
+                            {sub.submissionLink && (
+                              <div className="text-xs mb-3">
+                                <span className="text-zinc-500 block font-bold uppercase tracking-wider text-[10px]">Comment permalink url</span>
+                                <a 
+                                  href={sub.submissionLink} 
+                                  target="_blank" 
+                                  rel="noreferrer" 
+                                  className="text-blue-400 hover:underline font-bold inline-flex items-center gap-1 mt-0.5 break-all max-w-md"
+                                >
+                                  Browse Reddit Comment Link <ExternalLink className="w-3.5 h-3.5" />
+                                </a>
+                              </div>
+                            )}
+                            <div>
+                              <span className="text-[10px] text-zinc-500 font-bold block uppercase tracking-wider mb-1.5">Submitted Screenshot Proof</span>
+                              <a href={sub.proofUrl} target="_blank" rel="noreferrer" className="inline-block relative group">
+                                <img 
+                                  src={sub.proofUrl} 
+                                  alt="Proof Screenshot" 
+                                  className="w-48 h-32 object-cover rounded-xl border border-white/10 hover:border-purple-500/40 transition-colors"
+                                  referrerPolicy="no-referrer"
+                                />
+                                <div className="absolute inset-0 bg-transparent group-hover:bg-zinc-950/20 rounded-xl transition-all flex items-center justify-center">
+                                  <span className="text-[10px] bg-zinc-950/80 px-2 py-1 rounded text-white hidden group-hover:inline-block font-extrabold">Open Screenshot</span>
+                                </div>
+                              </a>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
 

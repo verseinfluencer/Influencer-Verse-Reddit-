@@ -226,6 +226,22 @@ export interface ClientPayment {
   referenceNote?: string;
 }
 
+export interface ClientPaymentProof {
+  id: string;
+  clientId: string;
+  clientName: string;
+  clientCompany: string;
+  amount: number;
+  transactionId: string | null;
+  proofImageUrl: string;
+  notes: string | null;
+  status: 'pending' | 'verified' | 'rejected';
+  submittedAt: string;
+  verifiedAt: string | null;
+  verifiedBy: string | null;
+  rejectionReason: string | null;
+}
+
 export interface ChatMessage {
   id: string;
   senderId: string; // clientId or 'admin'

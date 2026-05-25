@@ -3,7 +3,8 @@ import { useApp } from '../context/AppContext';
 import { 
   Building, User, Coins, FileText, 
   History, PlusCircle, LayoutGrid, CheckCircle, 
-  XCircle, Clock, AlertTriangle, ExternalLink, RefreshCw 
+  XCircle, Clock, AlertTriangle, ExternalLink, RefreshCw,
+  Copy, UploadCloud
 } from 'lucide-react';
 
 export const ClientDashboard: React.FC = () => {
@@ -11,8 +12,10 @@ export const ClientDashboard: React.FC = () => {
     currentClient, 
     clientTasks, 
     clientPayments, 
+    clientPaymentProofs,
     clientCreateTask,
     clientReviewTaskSubmission,
+    clientSubmitPaymentProof,
     settings,
     clients
   } = useApp();
@@ -40,6 +43,86 @@ export const ClientDashboard: React.FC = () => {
   // Proof Review states
   const [reviewFeedback, setReviewFeedback] = useState<Record<string, string>>({});
   const [reviewActionSuccess, setReviewActionSuccess] = useState<Record<string, string>>({});
+
+  // Client Payment Proof submission form states
+  const [proofAmount, setProofAmount] = useState('');
+  const [proofTxId, setProofTxId] = useState('');
+  const [proofNotes, setProofNotes] = useState('');
+  const [proofImage, setProofImage] = useState('');
+  const [proofFileName, setProofFileName] = useState('');
+  const [proofUploading, setProofUploading] = useState(false);
+  const [proofSuccessMsg, setProofSuccessMsg] = useState('');
+  const [proofErrorMsg, setProofErrorMsg] = useState('');
+  const [copiedBinanceId, setCopiedBinanceId] = useState(false);
+
+  const handleCopyBinanceId = () => {
+    navigator.clipboard.writeText('1215158504');
+    setCopiedBinanceId(true);
+    setTimeout(() => setCopiedBinanceId(false), 2000);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      setProofErrorMsg('File size exceeds the 2MB limit.');
+      return;
+    }
+
+    setProofFileName(file.name);
+    setProofErrorMsg('');
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setProofImage(reader.result as string);
+    };
+    reader.onerror = () => {
+      setProofErrorMsg('Failed to process image file.');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleProofSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProofErrorMsg('');
+    setProofSuccessMsg('');
+
+    const amountFloat = parseFloat(proofAmount);
+    if (!proofAmount || isNaN(amountFloat) || amountFloat <= 0) {
+      setProofErrorMsg('Please enter a valid positive amount paid.');
+      return;
+    }
+
+    if (!proofImage) {
+      setProofErrorMsg('Please upload a screenshot or PDF proof of payment.');
+      return;
+    }
+
+    setProofUploading(true);
+    try {
+      await clientSubmitPaymentProof({
+        clientId: clientRecord.id,
+        clientName: clientRecord.name,
+        clientCompany: clientRecord.company,
+        amount: amountFloat,
+        transactionId: proofTxId.trim() || null,
+        proofImageUrl: proofImage,
+        notes: proofNotes.trim() || null
+      });
+
+      setProofSuccessMsg('Payment proof submitted. Admin will verify within 24 hours.');
+      setProofAmount('');
+      setProofTxId('');
+      setProofNotes('');
+      setProofImage('');
+      setProofFileName('');
+    } catch (err: any) {
+      setProofErrorMsg(err?.message || 'Failed to submit payment proof.');
+    } finally {
+      setProofUploading(false);
+    }
+  };
 
   const handleLaunchTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -521,62 +604,277 @@ export const ClientDashboard: React.FC = () => {
               </form>
             )}
           </div>
-        )}
-
-        {/* 4. RECEIPTS PAYMENTS TAB */}
+        )}        {/* 4. BILLING & RECEIPTS PAYMENTS TAB */}
         {activeTab === 'payments' && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-xl font-bold font-sans tracking-tight mb-2 flex items-center gap-2">
-                <History className="text-indigo-400" />
-                <span>Verified Outflow History</span>
+          <div className="space-y-8">
+            <div className="border-b border-white/5 pb-4">
+              <h2 className="text-xl font-bold font-sans tracking-tight mb-1 flex items-center gap-2">
+                <Coins className="text-indigo-400 w-5 h-5" />
+                <span>Client Billing & Deposit Portal</span>
               </h2>
-              <p className="text-neutral-400 text-xs">Verify completed digital invoices matched and confirmed by server coordinators.</p>
+              <p className="text-neutral-400 text-xs">Manage payment dues, trigger deposit instructions, upload verification proofs, and verify finalized invoices.</p>
             </div>
 
-            {myPayments.length === 0 ? (
-              <div className="text-center py-10 bg-neutral-950 rounded-2xl border border-neutral-800 text-neutral-500 text-sm">
-                No past invoices or payment settlement receipts found yet. Outstanding amounts show in top outstanding box.
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {myPayments.map(pay => (
-                  <div key={pay.id} className="p-5 bg-neutral-950 rounded-2xl border border-neutral-850 flex gap-4">
-                    <div className="w-12 h-12 bg-emerald-900/30 text-emerald-400 rounded-xl flex items-center justify-center shrink-0">
-                      <Coins className="w-6 h-6" />
-                    </div>
-                    <div className="space-y-2 flex-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-neutral-500 font-mono">Invoice Reference: #{pay.id}</span>
-                        <span className="px-2 py-0.5 bg-emerald-950 text-emerald-400 border border-emerald-900 text-[10px] rounded-full font-bold">
-                          PAID
-                        </span>
-                      </div>
-                      <div className="text-xl font-extrabold font-mono">${pay.amount.toFixed(2)} USDT</div>
-                      
-                      <div className="text-xs text-neutral-400 leading-relaxed bg-neutral-900 p-3 rounded-lg border border-neutral-800 font-sans">
-                        <strong>Reference Note:</strong> {pay.referenceNote || 'N/A'}<br />
-                        <span className="text-neutral-500 text-[10px]" style={{ display: 'block', marginTop: '4px' }}>
-                          Settled on: {new Date(pay.paidAt).toLocaleDateString()} at {new Date(pay.paidAt).toLocaleTimeString()}
-                        </span>
-                      </div>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+              {/* Left Side: Statement Box & Submission Form */}
+              <div className="lg:col-span-5 space-y-6">
+                {/* PAYMENT STATEMENT BANNER */}
+                <div className="bg-gradient-to-r from-purple-700 via-purple-900 to-indigo-900 p-6 rounded-3xl border border-purple-500/20 shadow-lg relative overflow-hidden">
+                  <div className="absolute right-[-20px] top-[-20px] opacity-10 blur-xl w-32 h-32 bg-blue-400 rounded-full"></div>
+                  <span className="text-[10px] text-purple-200 font-extrabold uppercase tracking-widest block mb-1">Billing Statement</span>
+                  <h3 className="text-2xl font-black font-mono text-white flex items-baseline gap-2">
+                    Total Amount Due: ${(clientRecord.payAgencyBalance || 0).toFixed(2)} <span className="text-xs font-bold text-purple-300 font-sans">USDT</span>
+                  </h3>
+                  <p className="text-[10px] text-purple-100/70 mt-2 leading-normal">
+                    This compiling agency balance accumulates as influencer tasks are completed. Settle dues to maintain active campaign upload privileges.
+                  </p>
+                </div>
 
-                      {pay.receiptUrl && (
-                        <a 
-                          href={pay.receiptUrl} 
-                          target="_blank" 
-                          rel="noreferrer referrer" 
-                          className="text-xs text-indigo-400 hover:underline flex items-center gap-1 font-semibold w-fit pt-2"
-                        >
-                          <span>Open Digital Payout Receipt</span>
-                          <ExternalLink className="w-3 flex shrink-0" />
-                        </a>
-                      )}
+                {/* PAY NOW INSTRUCTIONS SECTION */}
+                <div className="bg-neutral-950 p-5 rounded-2xl border border-white/5 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-zinc-300 uppercase tracking-wider">Deposit instructions</span>
+                    <span className="text-[9px] bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded font-black uppercase">BEP20 (BSC) Network</span>
+                  </div>
+
+                  <p className="text-xs text-zinc-400 leading-normal">
+                    Please transfer the total amount due to the official platform Binance ID shown below:
+                  </p>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">Binance ID</label>
+                    <div className="flex gap-2 items-center bg-zinc-900 border border-white/5 px-3 py-2.5 rounded-xl">
+                      <span className="text-sm font-black font-mono text-indigo-300 flex-1 select-all tracking-wider">1215158504</span>
+                      <button 
+                        type="button"
+                        onClick={handleCopyBinanceId}
+                        className="p-1 px-3 bg-zinc-800 hover:bg-zinc-700 text-[10px] font-black text-white rounded-lg transition flex items-center gap-1.5 cursor-pointer active:scale-95 border border-white/5"
+                      >
+                        {copiedBinanceId ? 'Copied!' : 'Copy'}
+                        <Copy className="w-3 h-3" />
+                      </button>
                     </div>
                   </div>
-                ))}
+
+                  <div className="p-3 bg-amber-500/5 border border-amber-500/15 rounded-xl flex items-start gap-2.5">
+                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                    <p className="text-[10px] text-amber-200/80 leading-normal">
+                      <strong>⚠️ Strict Warning:</strong> Only deposit <strong>USDT-BEP20</strong>. Depositing on different networks (TRC20, ERC20, Polygon) will result in irreversible financial loss.
+                    </p>
+                  </div>
+                </div>
+
+                {/* UPLOAD PROOF FORM */}
+                <form onSubmit={handleProofSubmit} className="bg-neutral-950 p-5 rounded-2xl border border-white/5 space-y-4">
+                  <div className="border-b border-white/5 pb-2">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-300">Submit Verification Proof</h4>
+                    <p className="text-[10px] text-zinc-500">Provide deposit details to prompt coordinator validation.</p>
+                  </div>
+                  
+                  {proofSuccessMsg && (
+                     <div className="p-3 bg-green-500/10 border border-green-500/20 text-green-400 text-xs rounded-xl flex items-start gap-2 select-text">
+                       <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                       <span>{proofSuccessMsg}</span>
+                     </div>
+                  )}
+
+                  {proofErrorMsg && (
+                    <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-xl flex items-start gap-2">
+                      <XCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                      <span>{proofErrorMsg}</span>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Amount Paid (USDT) *</label>
+                      <input 
+                        type="number"
+                        step="0.01"
+                        required
+                        value={proofAmount}
+                        onChange={(e) => setProofAmount(e.target.value)}
+                        placeholder="e.g. 150.00"
+                        className="w-full text-xs text-white bg-zinc-900 border border-white/5 px-3 py-2 rounded-xl focus:border-indigo-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Tx ID / Hash (Optional)</label>
+                      <input 
+                        type="text"
+                        value={proofTxId}
+                        onChange={(e) => setProofTxId(e.target.value)}
+                        placeholder="e.g. 0xef..."
+                        className="w-full text-xs text-white bg-zinc-900 border border-white/5 px-3 py-2 rounded-xl focus:border-indigo-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Reference Notes (Optional)</label>
+                    <input 
+                      type="text"
+                      value={proofNotes}
+                      onChange={(e) => setProofNotes(e.target.value)}
+                      placeholder="e.g. Deposited settlement for campaigns"
+                      className="w-full text-xs text-white bg-zinc-900 border border-white/5 px-3 py-2 rounded-xl focus:border-indigo-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Attach Receipt (Screenshot / PDF) *</label>
+                    <div className="relative border border-dashed border-white/10 hover:border-indigo-500/40 rounded-xl p-4 text-center cursor-pointer transition-colors bg-zinc-900 flex flex-col items-center justify-center">
+                      <input 
+                        type="file"
+                        accept="image/*,application/pdf"
+                        onChange={handleFileChange}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                      />
+                      <UploadCloud className="w-5 h-5 text-indigo-400 mb-1" />
+                      <p className="text-[10px] text-zinc-300 font-semibold truncate max-w-full">
+                        {proofFileName ? `Attached: ${proofFileName}` : 'Click or drag receipt files'}
+                      </p>
+                      <p className="text-[9px] text-zinc-600 mt-0.5">JPEG, PNG, or PDF format inside 2MB.</p>
+                    </div>
+                  </div>
+
+                  <button 
+                    type="submit"
+                    disabled={proofUploading}
+                    className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-550 text-white text-xs font-black uppercase rounded-xl transition cursor-pointer disabled:opacity-50 active:scale-[0.98] tracking-widest block"
+                  >
+                    {proofUploading ? 'Transmitting payload...' : 'Submit Payment Proof'}
+                  </button>
+                </form>
               </div>
-            )}
+
+              {/* Right Side: Ledger Lists & Audit Queues */}
+              <div className="lg:col-span-7 space-y-8">
+                {/* SUBMITTED PAYMENT PROOFS STATUS QUEUE */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black uppercase text-zinc-300 tracking-wider flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-amber-500" />
+                    <span>My Deposited Proofs (Pending Verification)</span>
+                  </h3>
+
+                  {(!clientPaymentProofs || clientPaymentProofs.filter(p => p.clientId === clientRecord.id).length === 0) ? (
+                    <div className="text-center py-8 bg-neutral-950 rounded-2xl border border-neutral-800 text-neutral-500 text-xs">
+                      No payment deposits uploaded yet. Use the left dashboard to dispatch.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto bg-neutral-950 border border-white/5 rounded-2xl">
+                      <table className="w-full text-left text-xs border-collapse min-w-[500px]">
+                        <thead>
+                          <tr className="border-b border-neutral-800 text-neutral-400 font-semibold uppercase tracking-wider bg-neutral-900/40 text-[10px]">
+                            <th className="py-3 px-4 font-bold">Date</th>
+                            <th className="py-3 px-4 font-bold text-right">Amount</th>
+                            <th className="py-3 px-4 font-bold text-center">Status</th>
+                            <th className="py-3 px-4 font-bold">Details</th>
+                            <th className="py-3 px-4 font-bold text-center">Receipt</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-neutral-850">
+                          {clientPaymentProofs.filter(p => p.clientId === clientRecord.id).map(proof => (
+                            <tr key={proof.id} className="hover:bg-neutral-900/10 transition">
+                              <td className="py-3 px-4 text-neutral-400 font-mono">
+                                {new Date(proof.submittedAt).toLocaleDateString()}
+                              </td>
+                              <td className="py-3 px-4 text-right font-mono font-bold text-white">
+                                ${proof.amount.toFixed(2)}
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                                  proof.status === 'verified' 
+                                    ? 'bg-emerald-950 border border-emerald-900 text-emerald-400'
+                                    : proof.status === 'rejected'
+                                    ? 'bg-red-950 border border-red-900 text-red-400'
+                                    : 'bg-amber-950 border border-amber-900 text-amber-400'
+                                }`}>
+                                  {proof.status === 'pending' ? 'Pending Review' : proof.status}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 max-w-[180px] break-words">
+                                <p className="text-[10px] text-zinc-300 font-medium font-mono truncate" title={proof.transactionId || 'None'}>
+                                  Tx: {proof.transactionId || 'N/A'}
+                                </p>
+                                {proof.notes && (
+                                  <p className="text-[9px] text-zinc-500 italic mt-0.5">{proof.notes}</p>
+                                )}
+                                {proof.rejectionReason && (
+                                  <p className="text-[10px] text-red-400 font-semibold mt-1">Rejection Reason: {proof.rejectionReason}</p>
+                                )}
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                <a 
+                                  href={proof.proofImageUrl} 
+                                  target="_blank" 
+                                  rel="noreferrer"
+                                  className="inline-block text-xs text-indigo-400 hover:underline font-bold"
+                                >
+                                  Preview Proof
+                                </a>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* OFFICIAL VERIFIED RECEIPTS INVOICES HISTORY */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black uppercase text-zinc-300 tracking-wider flex items-center gap-2">
+                    <History className="w-4 h-4 text-indigo-400" />
+                    <span>Verified Outflow Receipt History</span>
+                  </h3>
+
+                  {myPayments.length === 0 ? (
+                    <div className="text-center py-8 bg-neutral-950 rounded-2xl border border-neutral-800 text-neutral-500 text-xs">
+                      No verified receipt histories settled by server administrators as of yet.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {myPayments.map(pay => (
+                        <div key={pay.id} className="p-4 bg-neutral-950 rounded-xl border border-neutral-850 flex gap-4">
+                          <div className="w-10 h-10 bg-emerald-900/20 text-emerald-400 rounded-xl flex items-center justify-center shrink-0">
+                            <Coins className="w-5 h-5" />
+                          </div>
+                          <div className="space-y-1.5 flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[9px] text-neutral-500 font-mono">ID: #{pay.id}</span>
+                              <span className="px-1.5 py-0.2 bg-emerald-950 text-emerald-400 border border-emerald-900 text-[8px] rounded font-bold uppercase tracking-wider">
+                                PAID
+                              </span>
+                            </div>
+                            <div className="text-lg font-black font-mono text-emerald-400">${pay.amount.toFixed(2)} USDT</div>
+                            
+                            <p className="text-[10px] text-neutral-400 tracking-tight leading-relaxed select-text truncate" title={pay.referenceNote}>
+                              <strong>Ref:</strong> {pay.referenceNote || 'N/A'}
+                            </p>
+                            <span className="text-neutral-500 text-[8px] block">
+                              Settle Date: {new Date(pay.paidAt).toLocaleDateString()}
+                            </span>
+
+                            {pay.receiptUrl && (
+                              <a 
+                                href={pay.receiptUrl} 
+                                target="_blank" 
+                                rel="noreferrer" 
+                                className="text-[10px] text-indigo-400 hover:underline flex items-center gap-0.5 font-bold pt-1.5"
+                              >
+                                <span>Digital Invoice Receipt</span>
+                                <ExternalLink className="w-2.5 h-2.5 shrink-0" />
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         )}
 

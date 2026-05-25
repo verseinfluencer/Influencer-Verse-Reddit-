@@ -15,8 +15,7 @@ export const Marketplace: React.FC = () => {
 
   // Submission overlay modal states
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [proofUrl, setProofUrl] = useState('');
-  const [commentLink, setCommentLink] = useState('');
+  const [redditProofLink, setRedditProofLink] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [successSubmission, setSuccessSubmission] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -147,8 +146,7 @@ export const Marketplace: React.FC = () => {
 
   const handleOpenSubmission = (task: Task) => {
     setSelectedTask(task);
-    setProofUrl('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=400&h=300&q=80'); // Mocked placeholder screenshot
-    setCommentLink(task.type === 'comment' ? 'https://reddit.com/r/CryptoCurrency/comments/abc/comment/xyz' : '');
+    setRedditProofLink('');
     setSuccessSubmission(false);
     setErrorMessage(null);
   };
@@ -157,14 +155,22 @@ export const Marketplace: React.FC = () => {
     e.preventDefault();
     if (!selectedTask || !currentUser) return;
     
-    if (selectedTask.type === 'comment' && !commentLink) {
-      setErrorMessage('Please provide your Reddit comment URL link proof.');
+    const trimmedLink = redditProofLink.trim();
+    if (!trimmedLink) {
+      setErrorMessage('Please provide your Reddit Proof Link.');
+      return;
+    }
+
+    const stripped = trimmedLink.toLowerCase().replace(/^https?:\/\//, '');
+    const isValid = stripped.startsWith('reddit.com') || stripped.startsWith('www.reddit.com');
+    if (!isValid) {
+      setErrorMessage('Proof Link must be a valid Reddit URL starting with reddit.com or www.reddit.com');
       return;
     }
 
     setSubmitting(true);
     try {
-      await submitTaskProof(selectedTask.id, proofUrl, commentLink || undefined);
+      await submitTaskProof(selectedTask.id, trimmedLink, trimmedLink);
       setSubmitting(false);
       setSuccessSubmission(true);
       setTimeout(() => {
@@ -661,29 +667,16 @@ export const Marketplace: React.FC = () => {
                 </div>
 
                 {/* Proof fields */}
-                {selectedTask.type === 'comment' && (
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">Submitted Comment Permalink Link</label>
-                    <input 
-                      type="text" 
-                      value={commentLink}
-                      onChange={(e) => setCommentLink(e.target.value)}
-                      placeholder="https://reddit.com/r/CryptoCurrency/comments/best_ergonomic_chairs_post/comment/xyz" 
-                      className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-3 py-2.5 rounded-xl focus:border-purple-500 focus:outline-none"
-                    />
-                  </div>
-                )}
-
                 <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">Screenshot proof (base 64 simulation url)</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">Reddit Proof Link</label>
                   <input 
                     type="text" 
-                    value={proofUrl}
-                    onChange={(e) => setProofUrl(e.target.value)}
-                    className="w-full text-xs text-zinc-500 bg-zinc-950 border border-white/5 px-3 py-2.5 rounded-xl focus:border-purple-500 focus:outline-none font-mono"
-                    placeholder="https://images.unsplash.com/photo-..."
+                    value={redditProofLink}
+                    onChange={(e) => setRedditProofLink(e.target.value)}
+                    placeholder="https://reddit.com/r/..." 
+                    className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-3 py-2.5 rounded-xl focus:border-purple-500 focus:outline-none placeholder-zinc-600"
                   />
-                  <p className="text-[10px] text-zinc-500 font-semibold mt-1">Simulated high quality visual graphic mockup screenshot asset mapped safely in database.</p>
+                  <p className="text-[10px] text-zinc-500 font-semibold mt-1">Paste the direct link to your Reddit post or comment</p>
                 </div>
 
                 <button 
@@ -691,7 +684,7 @@ export const Marketplace: React.FC = () => {
                   disabled={submitting}
                   className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-500 text-xs font-black text-white rounded-xl shadow-lg hover:opacity-95 cursor-pointer disabled:opacity-50"
                 >
-                  {submitting ? 'Transmitting proof payloads...' : 'Transmit Verified Proof'}
+                  {submitting ? 'Transmitting proof payloads...' : 'Submit Proof'}
                 </button>
               </form>
             )}

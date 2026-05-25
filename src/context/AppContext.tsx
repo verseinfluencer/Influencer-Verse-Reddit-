@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
   User, Task, Submission, Withdrawal, Transaction, 
   SupportTicket, AppNotification, SystemSettings, TaskType,
-  Client, ClientTask, ClientPayment, ChatMessage, ClientChat,
+  Client, ClientTask, ClientPayment, ClientPaymentProof, ChatMessage, ClientChat,
   DeductionRecord, PayoutRequest, DuplicateGroup, FraudAlert, TicketMessage
 } from '../types';
 import { 
@@ -55,6 +55,7 @@ interface AppContextType {
   currentClient: Client | null;
   clientTasks: ClientTask[];
   clientPayments: ClientPayment[];
+  clientPaymentProofs: ClientPaymentProof[];
   clientChats: ClientChat[];
   
   // Auth
@@ -88,6 +89,19 @@ interface AppContextType {
     agencyPay: number;
   }) => Promise<void>;
   clientReviewTaskSubmission: (taskId: string, action: 'Approve' | 'RequestRevision' | 'Reject', feedback?: string) => Promise<void>;
+
+  // Client Payments Proof Handling
+  clientSubmitPaymentProof: (proof: {
+    clientId: string;
+    clientName: string;
+    clientCompany: string;
+    amount: number;
+    transactionId: string | null;
+    proofImageUrl: string;
+    notes: string | null;
+  }) => Promise<void>;
+  adminVerifyPaymentProof: (proofId: string, adminEmail: string) => Promise<void>;
+  adminRejectPaymentProof: (proofId: string, rejectReason: string, adminEmail: string) => Promise<void>;
 
   // Member Client Task Interactions
   memberClaimClientTask: (taskId: string) => Promise<void>;
@@ -186,6 +200,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [currentClient, setCurrentClient] = useState<Client | null>(null);
   const [clientTasks, setClientTasks] = useState<ClientTask[]>([]);
   const [clientPayments, setClientPayments] = useState<ClientPayment[]>([]);
+  const [clientPaymentProofs, setClientPaymentProofs] = useState<ClientPaymentProof[]>([]);
   const [clientChats, setClientChats] = useState<ClientChat[]>([]);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
@@ -298,6 +313,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           handleFirestoreError(error, OperationType.GET, 'client_tasks');
         });
 
+        const unsubClientPayments = onSnapshot(collection(db, 'client_payments'), (snap) => {
+          setClientPaymentProofs(snap.docs.map(d => d.data() as ClientPaymentProof));
+        }, (error) => {
+          handleFirestoreError(error, OperationType.GET, 'client_payments');
+        });
+
         const unsubTickets = onSnapshot(collection(db, 'tickets'), (snap) => {
           setTickets(snap.docs.map(d => d.data() as SupportTicket));
         });
@@ -314,6 +335,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           unsubNotifications();
           unsubChats();
           unsubClientTasks();
+          unsubClientPayments();
           unsubTickets();
         };
       } else {
@@ -1013,6 +1035,122 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
+  const clientSubmitPaymentProof = async (proof: {
+    clientId: string;
+    clientName: string;
+    clientCompany: string;
+    amount: number;
+    transactionId: string | null;
+    proofImageUrl: string;
+    notes: string | null;
+  }) => {
+    try {
+      const proofId = `proof-${Date.now()}`;
+      await setDoc(doc(db, 'client_payments', proofId), {
+        id: proofId,
+        clientId: proof.clientId,
+        clientName: proof.clientName,
+        clientCompany: proof.clientCompany,
+        amount: Number(proof.amount),
+        transactionId: proof.transactionId || null,
+        proofImageUrl: proof.proofImageUrl,
+        notes: proof.notes || null,
+        status: 'pending',
+        submittedAt: new Date().toISOString(),
+        verifiedAt: null,
+        verifiedBy: null,
+        rejectionReason: null
+      });
+    } catch (error) {
+      console.error('Error in clientSubmitPaymentProof:', error);
+      throw error;
+    }
+  };
+
+  const adminVerifyPaymentProof = async (proofId: string, adminEmail: string) => {
+    try {
+      const proofRef = doc(db, 'client_payments', proofId);
+      const proofSnap = await getDoc(proofRef);
+      if (!proofSnap.exists()) throw new Error('Proof not found');
+      const proof = proofSnap.data() as ClientPaymentProof;
+
+      const clientRef = doc(db, 'clients', proof.clientId);
+      const clientSnap = await getDoc(clientRef);
+      if (!clientSnap.exists()) throw new Error('Client not found');
+      const client = clientSnap.data() as Client;
+
+      const newBalance = Math.max(0, (client.payAgencyBalance || 0) - proof.amount);
+
+      const newPayment: ClientPayment = {
+        id: `payment-${Date.now()}`,
+        clientId: proof.clientId,
+        clientName: client.name,
+        amount: proof.amount,
+        tasksIncluded: [],
+        paidAt: new Date().toISOString(),
+        receiptUrl: proof.proofImageUrl,
+        markedPaidBy: adminEmail,
+        referenceNote: `Verified payment proof. Tx: ${proof.transactionId || 'None'}. Notes: ${proof.notes || ''}`
+      };
+
+      await updateDoc(clientRef, {
+        payAgencyBalance: newBalance,
+        payAgencyHistory: [newPayment, ...(client.payAgencyHistory || [])],
+        taskUploadEnabled: true
+      });
+
+      await updateDoc(proofRef, {
+        status: 'verified',
+        verifiedAt: new Date().toISOString(),
+        verifiedBy: adminEmail
+      });
+
+      const notifId = `notif-${Date.now()}`;
+      await setDoc(doc(db, 'notifications', notifId), {
+        id: notifId,
+        userId: proof.clientId,
+        title: 'Payment Proof Verified',
+        message: `Your payment proof of $${proof.amount.toFixed(2)} USDT has been verified! Outstanding balance credited.`,
+        type: 'payment',
+        read: false,
+        createdAt: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error in adminVerifyPaymentProof:', error);
+      throw error;
+    }
+  };
+
+  const adminRejectPaymentProof = async (proofId: string, rejectReason: string, adminEmail: string) => {
+    try {
+      const proofRef = doc(db, 'client_payments', proofId);
+      const proofSnap = await getDoc(proofRef);
+      if (!proofSnap.exists()) throw new Error('Proof not found');
+      const proof = proofSnap.data() as ClientPaymentProof;
+
+      await updateDoc(proofRef, {
+        status: 'rejected',
+        rejectionReason: rejectReason,
+        verifiedAt: new Date().toISOString(),
+        verifiedBy: adminEmail
+      });
+
+      const notifId = `notif-${Date.now()}`;
+      await setDoc(doc(db, 'notifications', notifId), {
+        id: notifId,
+        userId: proof.clientId,
+        title: 'Payment Proof Rejected',
+        message: `Your payment proof of $${proof.amount.toFixed(2)} USDT was rejected. Reason: ${rejectReason}`,
+        type: 'payment',
+        read: false,
+        createdAt: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error in adminRejectPaymentProof:', error);
+      throw error;
+    }
+  };
+
   const adminReviewPayout = async (requestId: string, status: 'Approved' | 'Rejected') => {
     // Review logic
   };
@@ -1645,6 +1783,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       currentClient,
       clientTasks,
       clientPayments,
+      clientPaymentProofs,
       clientChats,
       
       login,
@@ -1659,6 +1798,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       clientLogout,
       clientCreateTask,
       clientReviewTaskSubmission,
+      clientSubmitPaymentProof,
+      adminVerifyPaymentProof,
+      adminRejectPaymentProof,
       
       memberClaimClientTask,
       memberSubmitClientTaskProof,

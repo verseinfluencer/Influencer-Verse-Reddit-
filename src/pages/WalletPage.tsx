@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Wallet, DollarSign, Send, ArrowDownRight, ArrowUpRight, HelpCircle, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { Wallet, DollarSign, Send, ArrowDownRight, ArrowUpRight, HelpCircle, ShieldAlert, CheckCircle2, Copy } from 'lucide-react';
 
 export const WalletPage: React.FC = () => {
   const { currentUser, transactions, requestWithdrawal, submissions } = useApp();
@@ -12,6 +12,13 @@ export const WalletPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [copiedAdminId, setCopiedAdminId] = useState(false);
+
+  const handleCopyAdminId = () => {
+    navigator.clipboard.writeText('1215158504');
+    setCopiedAdminId(true);
+    setTimeout(() => setCopiedAdminId(false), 2000);
+  };
 
   if (!currentUser) return null;
 
@@ -197,6 +204,25 @@ export const WalletPage: React.FC = () => {
                   placeholder={withdrawMethod === 'USDT_BEP20' ? '0x71C7656EC7ab88b098defB751B...' : 'e.g. 48102948'} 
                   className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-3 py-2.5 rounded-xl font-mono focus:border-purple-500 focus:outline-none"
                 />
+              </div>
+
+              {/* Binance ID copy-to-verify widget */}
+              <div className="bg-zinc-950 p-3 rounded-xl border border-white/5 flex items-center justify-between gap-3 text-[11px] select-none">
+                <div className="space-y-0.5">
+                  <span className="text-[9px] font-black uppercase text-zinc-500 tracking-wider block">Official Agency Binance Pay ID</span>
+                  <span className="font-mono text-zinc-300 font-bold block select-all">1215158504</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopyAdminId}
+                  className={`px-2.5 py-1.5 text-[10px] uppercase font-bold rounded-lg border transition-all inline-flex items-center gap-1 cursor-pointer ${
+                    copiedAdminId
+                      ? 'bg-emerald-950/80 border-emerald-900 text-emerald-400'
+                      : 'bg-zinc-900 hover:bg-zinc-800 border-white/5 hover:border-white/10 text-zinc-350 hover:text-white'
+                  }`}
+                >
+                  {copiedAdminId ? 'Copied' : 'Copy ID'} <Copy className="w-3 h-3" />
+                </button>
               </div>
 
               {/* Strict Security Warn constraints */}
