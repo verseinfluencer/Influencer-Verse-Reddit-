@@ -64,6 +64,7 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     setError('');
 
     // Field Verifications

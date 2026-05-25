@@ -430,7 +430,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       throw new Error(`❌ Access denied. Your IP address (${currentSimulatedIP}) has been blacklisted.`);
     }
 
-    const normalizedNewEmail = normalizeEmail(userData.email);
+    const trimmedEmail = (userData.email || '').trim().toLowerCase();
+    const normalizedNewEmail = normalizeEmail(trimmedEmail);
     if (normalizedNewEmail === normalizeEmail('kalloldeyprivate20@gmail.com')) {
       throw new Error('❌ The admin email address is reserved and normal registrations are prohibited.');
     }
@@ -447,7 +448,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     try {
-      const creds = await createUserWithEmailAndPassword(auth, userData.email, userData.password || 'password123');
+      const creds = await createUserWithEmailAndPassword(auth, trimmedEmail, userData.password || 'password123');
       const uid = creds.user.uid;
       const uarray = new Uint8Array(6);
       crypto.getRandomValues(uarray);
@@ -474,7 +475,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const newUser: User = {
         id: uid,
         fullName: userData.fullName || null,
-        email: userData.email || null,
+        email: trimmedEmail || null,
         redditUsername: userData.redditUsername || null,
         redditProfileLink: userData.redditProfileLink || null,
         status: 'Pending',
@@ -529,6 +530,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       return newUser;
     } catch (err: any) {
+      console.error("Firebase auth registration error detail:", err);
+      const code = err?.code || "";
+      const msg = err?.message || "";
+      if (code === 'auth/email-already-in-use' || msg.includes('email-already-in-use')) {
+        throw new Error("This email is already registered. Please sign in instead.");
+      }
+      if (code === 'auth/invalid-email' || msg.includes('invalid-email')) {
+        throw new Error("Please enter a valid email address.");
+      }
+      if (code === 'auth/weak-password' || msg.includes('weak-password')) {
+        throw new Error("Password must be at least 6 characters.");
+      }
       throw new Error(err.message || 'Registration failed.');
     }
   };
@@ -583,66 +596,83 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const clientRegister = async (clientData: Omit<Client, 'id' | 'status' | 'registeredAt' | 'payAgencyBalance' | 'payAgencyHistory' | 'taskUploadEnabled'> & { password?: string }): Promise<Client> => {
-    const creds = await createUserWithEmailAndPassword(auth, clientData.gmail, clientData.password || 'client123');
-    const uid = creds.user.uid;
-    const newClient: Client = {
-      id: uid,
-      name: clientData.name,
-      company: clientData.company,
-      country: clientData.country,
-      whatsapp: clientData.whatsapp,
-      gmail: clientData.gmail,
-      gmailVerified: true,
-      paymentMethod: clientData.paymentMethod,
-      budget: clientData.budget,
-      paymentNotes: clientData.paymentNotes || '',
-      status: 'pending',
-      taskUploadEnabled: true,
-      registeredAt: new Date().toISOString(),
-      payAgencyBalance: 0,
-      payAgencyHistory: []
-    };
-    await setDoc(doc(db, 'clients', uid), newClient);
+    try {
+      const trimmedGmail = (clientData.gmail || '').trim().toLowerCase();
+      const creds = await createUserWithEmailAndPassword(auth, trimmedGmail, clientData.password || 'client123');
+      const uid = creds.user.uid;
+      const newClient: Client = {
+        id: uid,
+        name: clientData.name,
+        company: clientData.company,
+        country: clientData.country,
+        whatsapp: clientData.whatsapp,
+        gmail: trimmedGmail,
+        gmailVerified: true,
+        paymentMethod: clientData.paymentMethod,
+        budget: clientData.budget,
+        paymentNotes: clientData.paymentNotes || '',
+        status: 'pending',
+        taskUploadEnabled: true,
+        registeredAt: new Date().toISOString(),
+        payAgencyBalance: 0,
+        payAgencyHistory: []
+      };
+      await setDoc(doc(db, 'clients', uid), newClient);
 
-    const clientUser: User = {
-      id: uid,
-      fullName: clientData.name || null,
-      email: clientData.gmail || null,
-      redditUsername: 'client_' + (clientData.name || '').toLowerCase().replace(/\s+/g, '_') || null,
-      redditProfileLink: 'https://reddit.com',
-      status: 'Approved',
-      referralCode: 'CLIENTVIP',
-      streak: 0,
-      xp: 0,
-      balance: 0,
-      totalEarned: 0,
-      pendingBalance: 0,
-      withdrawn: 0,
-      joinDate: new Date().toISOString().split('T')[0] || null,
-      role: 'client',
-      karma: 0,
-      karmaYesterday: 0,
-      referredBy: null,
-      rejectionReason: null,
-      lastLoginDate: null,
-      avatarUrl: null,
-      gender: null,
-      last_claimed_at: null,
-      cooldown_expires_at: null,
-      active_task_id: null,
-      deductionHistory: null,
-      lastPayoutRequestDate: null,
-      payoutRequests: null,
-      fraudScore: null,
-      fraudFlags: null,
-      submissionHashes: null,
-      isSuspended: false,
-      suspensionReason: null,
-      isBanned: false,
-      banReason: null
-    };
-    await setDoc(doc(db, 'users', uid), clientUser);
-    return newClient;
+      const clientUser: User = {
+        id: uid,
+        fullName: clientData.name || null,
+        email: trimmedGmail || null,
+        redditUsername: 'client_' + (clientData.name || '').toLowerCase().replace(/\s+/g, '_') || null,
+        redditProfileLink: 'https://reddit.com',
+        status: 'Approved',
+        referralCode: 'CLIENTVIP',
+        streak: 0,
+        xp: 0,
+        balance: 0,
+        totalEarned: 0,
+        pendingBalance: 0,
+        withdrawn: 0,
+        joinDate: new Date().toISOString().split('T')[0] || null,
+        role: 'client',
+        karma: 0,
+        karmaYesterday: 0,
+        referredBy: null,
+        rejectionReason: null,
+        lastLoginDate: null,
+        avatarUrl: null,
+        gender: null,
+        last_claimed_at: null,
+        cooldown_expires_at: null,
+        active_task_id: null,
+        deductionHistory: null,
+        lastPayoutRequestDate: null,
+        payoutRequests: null,
+        fraudScore: null,
+        fraudFlags: null,
+        submissionHashes: null,
+        isSuspended: false,
+        suspensionReason: null,
+        isBanned: false,
+        banReason: null
+      };
+      await setDoc(doc(db, 'users', uid), clientUser);
+      return newClient;
+    } catch (err: any) {
+      console.error("Firebase auth client registration error detail:", err);
+      const code = err?.code || "";
+      const msg = err?.message || "";
+      if (code === 'auth/email-already-in-use' || msg.includes('email-already-in-use')) {
+        throw new Error("This email is already registered. Please sign in instead.");
+      }
+      if (code === 'auth/invalid-email' || msg.includes('invalid-email')) {
+        throw new Error("Please enter a valid email address.");
+      }
+      if (code === 'auth/weak-password' || msg.includes('weak-password')) {
+        throw new Error("Password must be at least 6 characters.");
+      }
+      throw new Error(err.message || 'Client registration failed.');
+    }
   };
 
   const clientLogin = async (email: string, password: string): Promise<Client> => {

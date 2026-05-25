@@ -66,9 +66,15 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return; // Prevent double submission
     setErrorMsg(null);
 
-    if (!fullName || !email || !password || !confirmPassword || !redditUsername || !redditProfileLink) {
+    const trimmedEmail = email.trim().toLowerCase();
+    const trimmedFullName = fullName.trim();
+    const trimmedRedditUsername = redditUsername.trim();
+    const trimmedProfileLink = redditProfileLink.trim();
+
+    if (!trimmedFullName || !trimmedEmail || !password || !confirmPassword || !trimmedRedditUsername || !trimmedProfileLink) {
       setErrorMsg('Please complete all fields.');
       return;
     }
@@ -96,12 +102,13 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
     setLoading(true);
     try {
       // clean username for saving
-      const canonicalUsername = redditUsername.startsWith('u/') ? redditUsername : `u/${redditUsername}`;
+      const canonicalUsername = trimmedRedditUsername.startsWith('u/') ? trimmedRedditUsername : `u/${trimmedRedditUsername}`;
       await signup({
-        fullName,
-        email,
+        fullName: trimmedFullName,
+        email: trimmedEmail,
+        password: password,
         redditUsername: canonicalUsername,
-        redditProfileLink,
+        redditProfileLink: trimmedProfileLink,
         referralCode: referralCode.trim() || undefined,
         honeypotFilled: !!websiteUrl
       });
