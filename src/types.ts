@@ -95,12 +95,19 @@ export interface Submission {
   proofUrl: string; // base64 or placeholder url
   submissionLink?: string; // comment url if comment task
   status: 'Pending' | 'Approved' | 'Rejected';
-  feedback?: string;
+  feedback?: string | null;
   submittedAt: string;
-  matchScore?: number;
-  aiConfidence?: string;
+  matchScore?: number | null;
+  aiConfidence?: string | null;
   isFlagged?: boolean;
-  flagReason?: string;
+  flagReason?: string | null;
+  adminNote?: string | null;
+  rejectionReason?: string | null;
+  clientNote?: string | null;
+  reviewedAt?: string | null;
+  reviewedBy?: string | null;
+  approvedAt?: string | null;
+  clientApprovedAt?: string | null;
 }
 
 export interface Withdrawal {

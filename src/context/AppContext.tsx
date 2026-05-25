@@ -1362,8 +1362,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       proofUrl,
       submissionLink: submissionLink || '',
       status,
-      feedback: feedback || undefined,
-      submittedAt: new Date().toISOString()
+      feedback: feedback || null,
+      submittedAt: new Date().toISOString(),
+      matchScore: null,
+      aiConfidence: null,
+      isFlagged: false,
+      flagReason: null,
+      adminNote: null,
+      rejectionReason: null,
+      clientNote: null,
+      reviewedAt: null,
+      reviewedBy: null,
+      approvedAt: null,
+      clientApprovedAt: null
     };
 
     await setDoc(doc(db, 'submissions', newSub.id), newSub);
