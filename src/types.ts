@@ -5,26 +5,26 @@ export interface User {
   redditUsername: string; // e.g. "u/some_user" or just "some_user"
   redditProfileLink: string;
   status: 'Pending' | 'Approved' | 'Rejected' | 'Banned';
-  rejectionReason?: string;
+  rejectionReason?: string | null;
   referralCode: string;
-  referredBy?: string;
+  referredBy?: string | null;
   streak: number;
-  lastLoginDate?: string; // for streak check
+  lastLoginDate?: string | null; // for streak check
   xp: number;
   balance: number; // Available USDT
   totalEarned: number; // Sum of all approved earnings
   pendingBalance: number; // Under review task submissions
   withdrawn: number; // Sum of completed withdrawals
   joinDate: string;
-  avatarUrl?: string;
+  avatarUrl?: string | null;
   role: 'user' | 'admin' | 'client';
-  gender?: 'Male' | 'Female' | 'Non-binary' | 'Prefer not to say';
+  gender?: 'Male' | 'Female' | 'Non-binary' | 'Prefer not to say' | null;
   
   // Karma fields (Private to public users - only admins and self can see)
   karma: number;
   karmaYesterday: number;
-  karmaBadge?: string;
-  karmaLastSynced?: string; // ISO string for when Reddit karma was last updated
+  karmaBadge?: string | null;
+  karmaLastSynced?: string | null; // ISO string for when Reddit karma was last updated
 
   // Task Claiming & Cooldown fields (Firebase / Server state mirror)
   last_claimed_at?: string | null; // ISO timestamp
@@ -32,21 +32,21 @@ export interface User {
   active_task_id?: string | null;
 
   // New Member Payout & Deduction fields
-  deductionHistory?: DeductionRecord[];
-  lastPayoutRequestDate?: string;
-  payoutRequests?: PayoutRequest[];
+  deductionHistory?: DeductionRecord[] | null;
+  lastPayoutRequestDate?: string | null;
+  payoutRequests?: PayoutRequest[] | null;
 
   // Anti-Cheat tracking fields
-  ipHistory?: { ip: string; timestamp: string; location: string; }[];
-  deviceFingerprints?: string[];
-  fraudScore?: number; // 0-100
-  fraudFlags?: { type: string; timestamp: string; details: string; }[];
-  submissionHashes?: string[];
-  loginHistory?: { ip: string; country: string; timestamp: string; }[];
-  isSuspended?: boolean;
-  suspensionReason?: string;
-  isBanned?: boolean;
-  banReason?: string;
+  ipHistory?: { ip: string; timestamp: string; location: string; }[] | null;
+  deviceFingerprints?: string[] | null;
+  fraudScore?: number | null; // 0-100
+  fraudFlags?: { type: string; timestamp: string; details: string; }[] | null;
+  submissionHashes?: string[] | null;
+  loginHistory?: { ip: string; country: string; timestamp: string; }[] | null;
+  isSuspended?: boolean | null;
+  suspensionReason?: string | null;
+  isBanned?: boolean | null;
+  banReason?: string | null;
 }
 
 export type TaskType = 'post' | 'comment';
