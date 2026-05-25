@@ -94,9 +94,14 @@ export interface Submission {
   redditUsername: string;
   proofUrl: string; // base64 or placeholder url
   submissionLink?: string; // comment url if comment task
-  status: 'Pending' | 'Approved' | 'Rejected' | 'pending_review';
+  status: 'Pending' | 'Approved' | 'Rejected' | 'pending_review' | 'Under Admin Review' | 'Admin Approved (Waiting for Client Approval)' | 'Client Approved (Payment Released)' | 'Client Rejected';
   feedback?: string | null;
   submittedAt: string;
+  submissionTime?: string | null;
+  adminApprovalTime?: string | null;
+  clientApprovalTime?: string | null;
+  paymentReleasedTime?: string | null;
+  approvedBy?: string | null;
   matchScore?: number | null;
   aiConfidence?: string | null;
   isFlagged?: boolean;

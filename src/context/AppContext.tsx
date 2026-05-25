@@ -266,19 +266,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
 
         // Current user setup
-        const unsubUser = onSnapshot(doc(db, 'users', firebaseUser.uid), async (snap) => {
+        const unsubUser = onSnapshot(doc(db, 'users', firebaseUser.uid), (snap) => {
           if (snap.exists()) {
             const uData = snap.data() as User;
-            if (uData.isBanned || uData.status === 'banned' || uData.status === 'Banned') {
-              setCurrentUser(null);
-              await signOut(auth);
-              return;
-            }
-            if (uData.isSuspended || uData.status === 'suspended' || uData.status === 'Suspended') {
-              setCurrentUser(null);
-              await signOut(auth);
-              return;
-            }
             setCurrentUser(uData);
           }
         });
@@ -365,55 +355,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const checkBannedOrSuspended = async () => {
     if (!currentUser) return;
-    try {
-      const userDoc = await getDoc(doc(db, 'users', currentUser.id));
-      if (userDoc.exists()) {
-        const userData = userDoc.data() as User;
-        if (userData.isBanned || userData.status === 'banned' || userData.status === 'Banned') {
-          setCurrentUser(null);
-          await signOut(auth);
-          throw new Error('banned');
-        }
-        if (userData.isSuspended || userData.status === 'suspended' || userData.status === 'Suspended') {
-          setCurrentUser(null);
-          await signOut(auth);
-          throw new Error('suspended');
-        }
-      }
-    } catch (err: any) {
-      if (err.message === 'banned' || err.message === 'suspended') {
-        throw err;
-      }
-      console.error('Error in checking status:', err);
+    if (currentUser.isBanned || currentUser.status === 'banned' || currentUser.status === 'Banned') {
+      throw new Error("❌ Your account is banned. You cannot perform this action.");
+    }
+    if (currentUser.isSuspended || currentUser.status === 'suspended' || currentUser.status === 'Suspended') {
+      throw new Error("⚠️ Your account is suspended. You cannot perform this action.");
     }
   };
-
-  useEffect(() => {
-    if (!currentUser) return;
-
-    const checkStatus = async () => {
-      try {
-        const uDoc = await getDoc(doc(db, 'users', currentUser.id));
-        if (uDoc.exists()) {
-          const uData = uDoc.data() as User;
-          if (uData.isBanned || uData.status === 'banned' || uData.status === 'Banned') {
-            setCurrentUser(null);
-            await signOut(auth);
-          } else if (uData.isSuspended || uData.status === 'suspended' || uData.status === 'Suspended') {
-            setCurrentUser(null);
-            await signOut(auth);
-          }
-        }
-      } catch (err) {
-        console.error('Error in periodic status check:', err);
-      }
-    };
-
-    checkStatus();
-
-    const interval = setInterval(checkStatus, 300000); // 5 minutes background check
-    return () => clearInterval(interval);
-  }, [currentUser?.id]);
 
   const login = async (email: string, password: string): Promise<User> => {
     if (blacklistedIPs.includes(currentSimulatedIP)) {
@@ -483,14 +431,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       const u = userDoc.data() as User;
-      if (u.status === 'Banned' || u.status === 'banned' || u.isBanned) {
-        await signOut(auth);
-        throw new Error('❌ Your account has been permanently banned for violating our Terms of Service. Contact: verseinfluencer@yahoo.com');
-      }
-      if (u.status === 'Suspended' || u.status === 'suspended' || u.isSuspended) {
-        await signOut(auth);
-        throw new Error('⚠️ Your account has been temporarily suspended. Contact: verseinfluencer@yahoo.com for more information.');
-      }
 
       const locationInfo = getEstimatedLocationByIP(currentSimulatedIP);
       const country = locationInfo.country;
@@ -792,6 +732,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     agencyPay: number;
   }) => {
     if (!currentClient) return;
+    if (currentClient.status === 'suspended' || currentClient.status === 'Suspended') {
+      throw new Error("⚠️ Your account is suspended. You cannot perform this action.");
+    }
+    if (currentClient.status === 'banned' || currentClient.status === 'Banned') {
+      throw new Error("❌ Your account is banned. You cannot perform this action.");
+    }
     const newClientTask: ClientTask = {
       id: `client-task-${Date.now()}`,
       clientId: currentClient.id,
@@ -834,7 +780,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const snap = await getDoc(docRef);
       if (!snap.exists()) throw new Error('Campaign task not found.');
       
-      const pendingSub = submissions.find(s => s.taskId === taskId && s.status === 'Pending');
+      const clientName = currentClient?.name || currentClient?.company || 'Client';
+
+      // 9. Prevent duplicate wallet credits (important): check if already processed
+      const q = query(collection(db, 'submissions'), where('taskId', '==', taskId));
+      const subSnap = await getDocs(q);
+      const pendingSub = subSnap.docs.map(d => d.data() as Submission)
+        .find(s => s.status === 'Admin Approved (Waiting for Client Approval)');
 
       if (action === 'Approve') {
         if (pendingSub) {
@@ -859,11 +811,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               status: 'Completed'
             };
             await setDoc(doc(db, 'transactions', tx.id), tx);
+
+            // Add notification to member
+            const memberNotif: AppNotification = {
+              id: `notif-${Date.now()}`,
+              userId: pendingSub.userId,
+              type: 'task_approved',
+              title: 'Client Approved Your Task! 💰',
+              message: `Your proof for "${pendingSub.taskTitle}" was approved by the client! +$${pendingSub.reward} USDT has been credited to your wallet.`,
+              read: false,
+              timestamp: new Date().toISOString()
+            };
+            await setDoc(doc(db, 'notifications', memberNotif.id), memberNotif);
           }
 
+          // Update the submission with full audit logs
           await updateDoc(doc(db, 'submissions', pendingSub.id), {
-            status: 'Approved',
-            feedback: feedback || 'Approved by Client'
+            status: 'Client Approved (Payment Released)',
+            feedback: feedback || 'Approved & Payment Released by Client',
+            clientApprovedAt: new Date().toISOString(),
+            paymentReleasedTime: new Date().toISOString(),
+            approvedBy: clientName
           });
         }
 
@@ -877,7 +845,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (taskSnap.exists()) {
           await updateDoc(taskRef, { status: 'completed' });
         }
-      } else if (action === 'RequestRevision') {
+      } else { // RequestRevision / Reject -> Both act as client rejection
         if (pendingSub) {
           const uRef = doc(db, 'users', pendingSub.userId);
           const userSnap = await getDoc(uRef);
@@ -889,36 +857,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
 
           await updateDoc(doc(db, 'submissions', pendingSub.id), {
-            status: 'Rejected',
-            feedback: feedback || 'Revision requested.'
+            status: 'Client Rejected',
+            feedback: feedback || 'Rejected by Client.',
+            rejectionReason: feedback || 'Guidelines not met',
+            clientNote: feedback || 'Guidelines not met',
+            clientApprovedAt: new Date().toISOString()
           });
-        }
 
-        await updateDoc(docRef, {
-          status: 'revision',
-          revisionNote: feedback || 'Revision requested.'
-        });
-
-        const taskRef = doc(db, 'tasks', taskId);
-        const taskSnap = await getDoc(taskRef);
-        if (taskSnap.exists()) {
-          await updateDoc(taskRef, { status: 'available' });
-        }
-      } else { // Reject
-        if (pendingSub) {
-          const uRef = doc(db, 'users', pendingSub.userId);
-          const userSnap = await getDoc(uRef);
-          if (userSnap.exists()) {
-            const u = userSnap.data() as User;
-            await updateDoc(uRef, {
-              pendingBalance: Math.max(0, u.pendingBalance - pendingSub.reward)
-            });
-          }
-
-          await updateDoc(doc(db, 'submissions', pendingSub.id), {
-            status: 'Rejected',
-            feedback: feedback || 'Submission Rejected'
-          });
+          // Add notification to member
+          const memberNotif: AppNotification = {
+            id: `notif-${Date.now()}`,
+            userId: pendingSub.userId,
+            type: 'task_rejected',
+            title: 'Client Rejected Your Proof ❌',
+            message: `Your proof for "${pendingSub.taskTitle}" was rejected by the client. Reason: ${feedback || 'None provided'}.`,
+            read: false,
+            timestamp: new Date().toISOString()
+          };
+          await setDoc(doc(db, 'notifications', memberNotif.id), memberNotif);
         }
 
         await updateDoc(docRef, {
@@ -956,8 +912,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       redditUsername: currentUser.redditUsername || null,
       proofUrl: proofLink || null,
       submissionLink: proofLink || null,
-      status: 'pending_review',
+      status: 'Under Admin Review' as any,
       submittedAt: new Date().toISOString(),
+      submissionTime: new Date().toISOString(),
       feedback: null,
       adminNote: null,
       rejectionReason: null,
@@ -1065,8 +1022,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           completedAt: new Date().toISOString()
         });
 
-        const pendingSub = submissions.find(s => s.taskId === taskId);
-        if (pendingSub && pendingSub.status === 'Pending') {
+        // 9. Prevent duplicate wallet credits
+        const q = query(collection(db, 'submissions'), where('taskId', '==', taskId));
+        const subSnap = await getDocs(q);
+        const pendingSub = subSnap.docs.map(d => d.data() as Submission)
+          .find(s => s.status === 'Admin Approved (Waiting for Client Approval)' || s.status === 'Under Admin Review');
+
+        if (pendingSub) {
           const uRef = doc(db, 'users', pendingSub.userId);
           const uSnap = await getDoc(uRef);
           if (uSnap.exists()) {
@@ -1091,8 +1053,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
 
           await updateDoc(doc(db, 'submissions', pendingSub.id), {
-            status: 'Approved',
-            feedback: 'Force completed by Admin'
+            status: 'Client Approved (Payment Released)',
+            feedback: 'Force completed by Admin',
+            adminApprovalTime: pendingSub.adminApprovalTime || new Date().toISOString(),
+            clientApprovalTime: new Date().toISOString(),
+            paymentReleasedTime: new Date().toISOString(),
+            approvedBy: 'admin'
           });
         }
 
@@ -1144,6 +1110,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     proofImageUrl: string;
     notes: string | null;
   }) => {
+    if (currentClient) {
+      if (currentClient.status === 'suspended' || currentClient.status === 'Suspended') {
+        throw new Error("⚠️ Your account is suspended. You cannot perform this action.");
+      }
+      if (currentClient.status === 'banned' || currentClient.status === 'Banned') {
+        throw new Error("❌ Your account is banned. You cannot perform this action.");
+      }
+    }
     try {
       const proofId = `proof-${Date.now()}`;
       await setDoc(doc(db, 'client_payments', proofId), {
@@ -1294,6 +1268,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const clientSendMessage = async (text: string, fileUrl?: string) => {
     if (!currentClient) return;
+    if (currentClient.status === 'banned' || currentClient.status === 'Banned') {
+      throw new Error("❌ Your account is banned. You cannot send messages.");
+    }
     const chatId = currentClient.id;
     const newMsg: ChatMessage = {
       id: `msg-${Date.now()}`,
@@ -1443,11 +1420,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const lowerLink = (submissionLink || proofUrl || '').toLowerCase();
     const isFake = lowerLink.includes('404') || lowerLink.includes('removed') || lowerLink.includes('deleted') || lowerLink.length < 15;
 
-    let status: 'Pending' | 'Rejected' = 'Pending';
+    let status: string = 'Under Admin Review';
     let feedback = '';
 
     if (isFake) {
-      status = 'Rejected';
+      status = 'Client Rejected';
       feedback = 'Auto-rejected: Your submission contains invalid or deleted links.';
     }
 
@@ -1462,9 +1439,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       redditUsername: currentUser.redditUsername || null,
       proofUrl: proofUrl || null,
       submissionLink: submissionLink || null,
-      status: status || 'Pending',
+      status: status as any,
       feedback: feedback || null,
       submittedAt: new Date().toISOString(),
+      submissionTime: new Date().toISOString(), // Audit field
       matchScore: null,
       aiConfidence: null,
       isFlagged: false,
@@ -1492,7 +1470,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     await updateDoc(doc(db, 'users', currentUser.id), {
       active_task_id: null,
-      pendingBalance: currentUser.pendingBalance + (status === 'Pending' ? task.reward : 0)
+      pendingBalance: currentUser.pendingBalance + (status === 'Under Admin Review' ? task.reward : 0)
     });
 
     // Synchronize to client tasks if it's a client task
@@ -1501,7 +1479,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const ctSnap = await getDoc(clientTaskRef);
       if (ctSnap.exists()) {
         await updateDoc(clientTaskRef, {
-          status: isFake ? 'approved/live' : 'submitted',
+          status: isFake ? 'approved/live' : 'under_admin_review',
           proofLink: proofUrl || submissionLink || '',
           submittedAt: new Date().toISOString(),
           claimedBy: isFake ? null : currentUser.redditUsername
@@ -1798,47 +1776,105 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!userSnap.exists()) return;
     const u = userSnap.data() as User;
 
-    await updateDoc(subRef, {
-      status,
-      feedback: feedback || null
-    });
+    const isClientTask = sub.taskId && sub.taskId.startsWith('client-task-');
 
     if (status === 'Approved') {
-      await updateDoc(uRef, {
-        balance: u.balance + sub.reward,
-        pendingBalance: Math.max(0, u.pendingBalance - sub.reward),
-        totalEarned: u.totalEarned + sub.reward,
-        xp: u.xp + 100
+      if (isClientTask) {
+        // Dual-verification workflow: Admin Approves FIRST, but WALLET BALANCE IS NOT CREDITED YET.
+        // It transitions task status to Admin Approved (Waiting for Client Approval).
+        await updateDoc(subRef, {
+          status: 'Admin Approved (Waiting for Client Approval)',
+          feedback: feedback || 'Admin pre-approved. Awaiting client review.',
+          adminApprovalTime: new Date().toISOString()
+        });
+
+        // Elevate client task campaign status so it is now active for client action/review
+        const clientTaskRef = doc(db, 'client_tasks', sub.taskId);
+        const ctSnap = await getDoc(clientTaskRef);
+        if (ctSnap.exists()) {
+          await updateDoc(clientTaskRef, {
+            status: 'submitted' // Client dashboard monitors 'submitted'
+          });
+        }
+
+        const notif: AppNotification = {
+          id: `notif-${Date.now()}`,
+          userId: sub.userId,
+          type: 'task_approved',
+          title: 'Admin Pre-Approved Your Task 🔍',
+          message: `Your proof for "${sub.taskTitle}" has passed admin review! Awaiting client final approval to release payout.`,
+          read: false,
+          timestamp: new Date().toISOString()
+        };
+        await setDoc(doc(db, 'notifications', notif.id), notif);
+      } else {
+        // Standard non-client task -> Admin is the final authority, credit wallet balance
+        // Prevent duplicate credits check
+        if (sub.status === 'Client Approved (Payment Released)' || sub.status === 'Approved') {
+          return;
+        }
+
+        await updateDoc(subRef, {
+          status: 'Client Approved (Payment Released)',
+          feedback: feedback || 'Approved and credited by Admin.',
+          adminApprovalTime: new Date().toISOString(),
+          clientApprovalTime: new Date().toISOString(),
+          paymentReleasedTime: new Date().toISOString(),
+          approvedBy: 'admin'
+        });
+
+        await updateDoc(uRef, {
+          balance: u.balance + sub.reward,
+          pendingBalance: Math.max(0, u.pendingBalance - sub.reward),
+          totalEarned: u.totalEarned + sub.reward,
+          xp: u.xp + 100
+        });
+
+        const tx: Transaction = {
+          id: `tx-${Date.now()}`,
+          userId: sub.userId,
+          type: 'earning',
+          amount: sub.reward,
+          description: `Earning for task: "${sub.taskTitle}"`,
+          date: new Date().toISOString(),
+          status: 'Completed'
+        };
+        await setDoc(doc(db, 'transactions', tx.id), tx);
+
+        const notif: AppNotification = {
+          id: `notif-${Date.now()}`,
+          userId: sub.userId,
+          type: 'task_approved',
+          title: 'Submission Approved! 💰',
+          message: `Your submission for "${sub.taskTitle}" has been approved. +${sub.reward} USDT.`,
+          read: false,
+          timestamp: new Date().toISOString()
+        };
+        await setDoc(doc(db, 'notifications', notif.id), notif);
+      }
+    } else { // Rejected
+      await updateDoc(subRef, {
+        status: 'Client Rejected',
+        feedback: feedback || 'Rejected by Admin.',
+        rejectionReason: feedback || 'Guidelines not met',
+        adminApprovalTime: new Date().toISOString()
       });
 
-      const tx: Transaction = {
-        id: `tx-${Date.now()}`,
-        userId: sub.userId,
-        type: 'earning',
-        amount: sub.reward,
-        description: `Earning for task: "${sub.taskTitle}"`,
-        date: new Date().toISOString(),
-        status: 'Completed'
-      };
-      await setDoc(doc(db, 'transactions', tx.id), tx);
-    } else {
       await updateDoc(uRef, {
         pendingBalance: Math.max(0, u.pendingBalance - sub.reward)
       });
-    }
 
-    const notif: AppNotification = {
-      id: `notif-${Date.now()}`,
-      userId: sub.userId,
-      type: status === 'Approved' ? 'task_approved' : 'task_rejected',
-      title: status === 'Approved' ? 'Submission Approved! 💰' : 'Submission Rejected ❌',
-      message: status === 'Approved' 
-        ? `Your submission for "${sub.taskTitle}" has been approved. +${sub.reward} USDT.`
-        : `Your submission for "${sub.taskTitle}" was rejected. Feedback: ${feedback || 'None provided'}`,
-      read: false,
-      timestamp: new Date().toISOString()
-    };
-    await setDoc(doc(db, 'notifications', notif.id), notif);
+      const notif: AppNotification = {
+        id: `notif-${Date.now()}`,
+        userId: sub.userId,
+        type: 'task_rejected',
+        title: 'Submission Rejected ❌',
+        message: `Your submission for "${sub.taskTitle}" was rejected. Feedback: ${feedback || 'None provided'}`,
+        read: false,
+        timestamp: new Date().toISOString()
+      };
+      await setDoc(doc(db, 'notifications', notif.id), notif);
+    }
   };
 
   const adminReviewWithdrawal = async (withdrawalId: string, status: 'Approved' | 'Rejected') => {
