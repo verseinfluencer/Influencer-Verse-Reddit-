@@ -94,7 +94,7 @@ export interface Submission {
   redditUsername: string;
   proofUrl: string; // base64 or placeholder url
   submissionLink?: string; // comment url if comment task
-  status: 'Pending' | 'Approved' | 'Rejected';
+  status: 'Pending' | 'Approved' | 'Rejected' | 'pending_review';
   feedback?: string | null;
   submittedAt: string;
   matchScore?: number | null;
@@ -108,6 +108,11 @@ export interface Submission {
   reviewedBy?: string | null;
   approvedAt?: string | null;
   clientApprovedAt?: string | null;
+  memberId?: string | null;
+  memberName?: string | null;
+  proofLink?: string | null;
+  memberPay?: number | null;
+  agencyPay?: number | null;
 }
 
 export interface Withdrawal {

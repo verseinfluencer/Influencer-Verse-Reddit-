@@ -873,7 +873,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const memberSubmitClientTaskProof = async (taskId: string, proofLink: string) => {
-    //proof upload details
+    if (!currentUser) throw new Error('Unauthenticated');
+    const submissionId = `sub-${Date.now()}`;
+    const submissionData: Submission = {
+      id: submissionId,
+      taskId: taskId || null,
+      taskTitle: 'Client Task Submission',
+      taskType: 'Twitter' as TaskType,
+      reward: 0,
+      userId: currentUser.id || null,
+      userFullName: currentUser.fullName || null,
+      redditUsername: currentUser.redditUsername || null,
+      proofUrl: proofLink || null,
+      submissionLink: proofLink || null,
+      status: 'pending_review',
+      submittedAt: new Date().toISOString(),
+      feedback: null,
+      adminNote: null,
+      rejectionReason: null,
+      clientNote: null,
+      reviewedAt: null,
+      reviewedBy: null,
+      approvedAt: null,
+      clientApprovedAt: null,
+      memberId: currentUser.id || null,
+      memberName: currentUser.fullName || currentUser.name || null,
+      proofLink: proofLink || null,
+      memberPay: null,
+      agencyPay: null
+    };
+
+    await setDoc(doc(db, 'submissions', submissionId), submissionData);
   };
 
   const memberRaiseDispute = async (taskId: string, reason: string) => {
@@ -1352,16 +1382,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const newSub: Submission = {
       id: `sub-${Date.now()}`,
-      taskId,
-      taskTitle: task.title,
-      taskType: task.type,
-      reward: task.reward,
-      userId: currentUser.id,
-      userFullName: currentUser.fullName,
-      redditUsername: currentUser.redditUsername,
-      proofUrl,
-      submissionLink: submissionLink || '',
-      status,
+      taskId: taskId || null,
+      taskTitle: task.title || null,
+      taskType: task.type || null,
+      reward: task.reward || 0,
+      userId: currentUser.id || null,
+      userFullName: currentUser.fullName || null,
+      redditUsername: currentUser.redditUsername || null,
+      proofUrl: proofUrl || null,
+      submissionLink: submissionLink || null,
+      status: status || 'Pending',
       feedback: feedback || null,
       submittedAt: new Date().toISOString(),
       matchScore: null,
@@ -1374,7 +1404,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       reviewedAt: null,
       reviewedBy: null,
       approvedAt: null,
-      clientApprovedAt: null
+      clientApprovedAt: null,
+      memberId: currentUser.id || null,
+      memberName: currentUser.fullName || currentUser.name || null,
+      proofLink: proofUrl || submissionLink || null,
+      memberPay: task.reward || null,
+      agencyPay: null
     };
 
     await setDoc(doc(db, 'submissions', newSub.id), newSub);

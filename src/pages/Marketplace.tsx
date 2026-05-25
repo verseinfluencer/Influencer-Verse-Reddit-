@@ -157,14 +157,7 @@ export const Marketplace: React.FC = () => {
     
     const trimmedLink = redditProofLink.trim();
     if (!trimmedLink) {
-      setErrorMessage('Please provide your Reddit Proof Link.');
-      return;
-    }
-
-    const stripped = trimmedLink.toLowerCase().replace(/^https?:\/\//, '');
-    const isValid = stripped.startsWith('reddit.com') || stripped.startsWith('www.reddit.com');
-    if (!isValid) {
-      setErrorMessage('Proof Link must be a valid Reddit URL starting with reddit.com or www.reddit.com');
+      setErrorMessage('Please provide your Proof Link.');
       return;
     }
 
