@@ -6,7 +6,7 @@ import { getKarmaTier } from '../utils/tierHelper';
 export const Leaderboard: React.FC = () => {
   const { users, currentUser } = useApp();
   const [selectedTierFilter, setSelectedTierFilter] = useState<string>('all');
-  const [leaderboardType, setLeaderboardType] = useState<'earners' | 'referrers' | 'karma'>('earners');
+  const [leaderboardType, setLeaderboardType] = useState<'earners' | 'karma'>('earners');
 
   // Filter out admins/banned accounts from leaderboard
   const legitimateUsers = users.filter(u => u.role !== 'admin' && u.status !== 'Banned');
@@ -23,10 +23,8 @@ export const Leaderboard: React.FC = () => {
     const list = [...filteredUsers];
     if (leaderboardType === 'earners') {
       return list.sort((a, b) => b.totalEarned - a.totalEarned);
-    } else if (leaderboardType === 'karma') {
-      return list.sort((a, b) => (b.karma || 0) - (a.karma || 0));
     } else {
-      return list.sort((a, b) => b.streak - a.streak);
+      return list.sort((a, b) => (b.karma || 0) - (a.karma || 0));
     }
   };
 
@@ -88,14 +86,6 @@ export const Leaderboard: React.FC = () => {
               Top Earners
             </button>
             <button 
-              onClick={() => setLeaderboardType('referrers')}
-              className={`flex-1 md:flex-none px-4 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                leaderboardType === 'referrers' ? 'bg-purple-600 text-white shadow-md' : 'text-zinc-500 hover:text-white'
-              }`}
-            >
-              Streak Masters
-            </button>
-            <button 
               onClick={() => setLeaderboardType('karma')}
               className={`flex-1 md:flex-none px-4 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                 leaderboardType === 'karma' ? 'bg-purple-600 text-white shadow-md' : 'text-zinc-500 hover:text-white'
@@ -133,16 +123,14 @@ export const Leaderboard: React.FC = () => {
               </div>
               <div className="p-2.5 bg-zinc-950/60 rounded-xl border border-white/5 select-text w-full">
                 <span className="text-[9px] text-zinc-500 font-bold block uppercase tracking-wider">
-                  {leaderboardType === 'earners' ? 'Total Rewards Earned' : leaderboardType === 'karma' ? 'Reddit Karma Standing' : 'Consecutive daily Streak'}
+                  {leaderboardType === 'earners' ? 'Total Rewards Earned' : 'Reddit Karma Standing'}
                 </span>
                 <span className="text-base font-black text-white font-mono leading-none">
-                  {leaderboardType === 'earners' ? `$${podium[1].totalEarned.toFixed(2)} USDT` : 
-                   leaderboardType === 'karma' ? (
-                     (isAdmin || currentUser?.id === podium[1].id) 
-                       ? `${podium[1].karma?.toLocaleString() || 0} Karma` 
-                       : `${t.name} Level`
-                   ) : 
-                   `${podium[1].streak} days`}
+                  {leaderboardType === 'earners' ? `$${podium[1].totalEarned.toFixed(2)} USDT` : (
+                    (isAdmin || currentUser?.id === podium[1].id) 
+                      ? `${podium[1].karma?.toLocaleString() || 0} Karma` 
+                      : `${t.name} Level`
+                  )}
                 </span>
               </div>
             </div>
@@ -178,16 +166,14 @@ export const Leaderboard: React.FC = () => {
               
               <div className="p-3 bg-zinc-950/80 rounded-2xl border border-purple-500/10 select-text w-full">
                 <span className="text-[9px] text-zinc-500 font-bold block uppercase tracking-wider">
-                  {leaderboardType === 'earners' ? 'Total Rewards Earned' : leaderboardType === 'karma' ? 'Reddit Karma Standing' : 'Consecutive daily Streak'}
+                  {leaderboardType === 'earners' ? 'Total Rewards Earned' : 'Reddit Karma Standing'}
                 </span>
                 <span className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-purple-200 font-mono leading-none">
-                  {leaderboardType === 'earners' ? `$${podium[0].totalEarned.toFixed(2)} USDT` : 
-                   leaderboardType === 'karma' ? (
-                     (isAdmin || currentUser?.id === podium[0].id) 
-                       ? `${podium[0].karma?.toLocaleString() || 0} Karma` 
-                       : `${t.name} Level`
-                   ) : 
-                   `${podium[0].streak} days`}
+                  {leaderboardType === 'earners' ? `$${podium[0].totalEarned.toFixed(2)} USDT` : (
+                    (isAdmin || currentUser?.id === podium[0].id) 
+                      ? `${podium[0].karma?.toLocaleString() || 0} Karma` 
+                      : `${t.name} Level`
+                  )}
                 </span>
               </div>
             </div>
@@ -216,16 +202,14 @@ export const Leaderboard: React.FC = () => {
               </div>
               <div className="p-2.5 bg-zinc-950/60 rounded-xl border border-white/5 select-text w-full">
                 <span className="text-[9px] text-zinc-500 font-bold block uppercase tracking-wider">
-                  {leaderboardType === 'earners' ? 'Total Rewards Earned' : leaderboardType === 'karma' ? 'Reddit Karma Standing' : 'Consecutive daily Streak'}
+                  {leaderboardType === 'earners' ? 'Total Rewards Earned' : 'Reddit Karma Standing'}
                 </span>
                 <span className="text-base font-black text-white font-mono leading-none">
-                  {leaderboardType === 'earners' ? `$${podium[2].totalEarned.toFixed(2)} USDT` : 
-                   leaderboardType === 'karma' ? (
-                     (isAdmin || currentUser?.id === podium[2].id) 
-                       ? `${podium[2].karma?.toLocaleString() || 0} Karma` 
-                       : `${t.name} Level`
-                   ) : 
-                   `${podium[2].streak} days`}
+                  {leaderboardType === 'earners' ? `$${podium[2].totalEarned.toFixed(2)} USDT` : (
+                    (isAdmin || currentUser?.id === podium[2].id) 
+                      ? `${podium[2].karma?.toLocaleString() || 0} Karma` 
+                      : `${t.name} Level`
+                  )}
                 </span>
               </div>
             </div>
@@ -281,13 +265,11 @@ export const Leaderboard: React.FC = () => {
                       </td>
                       <td className="py-4 px-2 text-right">
                         <span className="text-sm font-black font-mono text-white">
-                          {leaderboardType === 'earners' ? `$${item.totalEarned.toFixed(2)} USDT` : 
-                           leaderboardType === 'karma' ? (
-                             (isAdmin || currentUser?.id === item.id) 
-                               ? `${item.karma?.toLocaleString() || 0} Karma` 
-                               : `${t.emoji} ${t.name} Level`
-                           ) : 
-                           `${item.streak} Streak`}
+                          {leaderboardType === 'earners' ? `$${item.totalEarned.toFixed(2)} USDT` : (
+                            (isAdmin || currentUser?.id === item.id) 
+                              ? `${item.karma?.toLocaleString() || 0} Karma` 
+                              : `${t.emoji} ${t.name} Level`
+                          )}
                         </span>
                       </td>
                     </tr>

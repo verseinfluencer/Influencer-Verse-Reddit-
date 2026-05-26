@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Task, Submission } from '../types';
-import { Search, Filter, ShieldAlert, CheckCircle, Clock, ExternalLink, Calendar, PlusCircle, Sparkles, BookOpen, UserMinus, X } from 'lucide-react';
+import { Search, Filter, ShieldAlert, CheckCircle, Clock, ExternalLink, Calendar, PlusCircle, Sparkles, BookOpen, UserMinus, X, Copy } from 'lucide-react';
 import { getTierRequirementText, getKarmaTier } from '../utils/tierHelper';
 
 export const Marketplace: React.FC = () => {
@@ -24,6 +24,49 @@ export const Marketplace: React.FC = () => {
   const [, setTick] = useState(0);
   const [claimLoading, setClaimLoading] = useState<string | null>(null);
   const [claimError, setClaimError] = useState<string | null>(null);
+
+  // Copy success toast message state
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const triggerToast = (msg: string) => {
+    setToastMessage(msg);
+    const id = setTimeout(() => {
+      setToastMessage(current => current === msg ? null : current);
+    }, 2500);
+    return id;
+  };
+
+  const handleCopyText = async (text: string, successMessage: string) => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        triggerToast(successMessage);
+      } else {
+        // Fallback for iframe and older browser environments
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.top = '0';
+        textArea.style.left = '0';
+        textArea.style.position = 'fixed';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+          const successful = document.execCommand('copy');
+          if (successful) {
+            triggerToast(successMessage);
+          } else {
+            console.error('Fallback copy was unsuccessful');
+          }
+        } catch (err) {
+          console.error('Fallback copy failed', err);
+        }
+        document.body.removeChild(textArea);
+      }
+    } catch (err) {
+      console.error('Failed to copy: ', err);
+    }
+  };
 
   // Tick every second to keep live count down responsive
   React.useEffect(() => {
@@ -91,7 +134,8 @@ export const Marketplace: React.FC = () => {
       return titleMatch || descMatch || subMatch || reqTitleMatch || postGuideMatch || commentGuideMatch;
     })();
     
-    const matchesType = activeType === 'all' ? true : t.type === activeType;
+    const normalizedType = t.type ? (t.type.toLowerCase().includes('comment') ? 'comment' : 'post') : 'post';
+    const matchesType = activeType === 'all' ? true : normalizedType === activeType;
     const matchesDiff = activeDiff === 'all' ? true : t.difficulty === activeDiff;
 
     const matchesTier = (() => {
@@ -475,6 +519,13 @@ export const Marketplace: React.FC = () => {
                     <span className="text-xs text-zinc-500 font-bold">🎯 {task.difficulty}</span>
                   </div>
 
+                  {task.type === 'post' && task.targetSubreddit && (
+                    <div className="mb-2 flex items-center gap-1.5 select-all">
+                      <span className="text-[10px] text-zinc-550 uppercase tracking-wider font-bold">Subreddit:</span>
+                      <span className="text-purple-400 font-extrabold text-xs bg-purple-500/10 px-2 py-0.5 rounded-md border border-purple-500/15">{task.targetSubreddit.startsWith('r/') ? task.targetSubreddit : 'r/' + task.targetSubreddit}</span>
+                    </div>
+                  )}
+
                   <h3 className="text-base font-extrabold text-white mb-2 leading-tight group-hover:text-purple-400 transition-all select-text">
                     {task.title}
                   </h3>
@@ -483,19 +534,150 @@ export const Marketplace: React.FC = () => {
                     {task.description}
                   </p>
 
+                  {/* Premium Reddit post actions details inside the card */}
+                  {task.type === 'post' && (
+                    <div className="mt-2.5 mb-4 bg-zinc-950/70 border border-white/5 rounded-xl p-3 space-y-2.5 text-[11px] select-text">
+                      {task.requiredPostTitle && (
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-extrabold">Required Title</span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopyText(task.requiredPostTitle || '', 'Title copied');
+                              }}
+                              className="text-[9px] text-purple-400 hover:text-purple-300 font-extrabold flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-2 py-0.5 rounded transition-all border border-purple-500/5 cursor-pointer"
+                            >
+                              <Copy className="w-2.5 h-2.5" /> Copy Title
+                            </button>
+                          </div>
+                          <p className="text-white font-mono font-bold leading-normal text-xs break-words">"{task.requiredPostTitle}"</p>
+                        </div>
+                      )}
+
+                      {task.postGuidelines && (
+                        <div className="space-y-1 border-t border-white/5 pt-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-extrabold">Post Body / Content</span>
+                            <div className="flex gap-1.5">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCopyText(task.postGuidelines || '', 'Post body copied');
+                                }}
+                                className="text-[9px] text-purple-400 hover:text-purple-300 font-extrabold flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-2 py-0.5 rounded transition-all border border-purple-500/5 cursor-pointer"
+                              >
+                                <Copy className="w-2.5 h-2.5" /> Copy Body
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const formattedAll = `Title: ${task.requiredPostTitle || ''}\n\nBody:\n${task.postGuidelines || ''}`;
+                                  handleCopyText(formattedAll, 'Title & post body copied');
+                                }}
+                                className="text-[9px] text-pink-400 hover:text-pink-300 font-extrabold flex items-center gap-1 bg-pink-500/10 hover:bg-pink-500/20 px-2 py-0.5 rounded transition-all border border-pink-500/5 cursor-pointer"
+                              >
+                                <Copy className="w-2.5 h-2.5" /> Copy All
+                              </button>
+                            </div>
+                          </div>
+                          <p className="text-zinc-300 font-normal leading-normal select-text break-words line-clamp-2 hover:line-clamp-none transition-all duration-300">
+                            {task.postGuidelines}
+                          </p>
+                        </div>
+                      )}
+
+                      {task.targetSubreddit && (
+                        <div className="pt-2 border-t border-white/5 flex gap-2">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const sub = task.targetSubreddit || '';
+                              const cleanSub = sub.startsWith('r/') ? sub.substring(2) : sub;
+                              window.open(`https://reddit.com/r/${cleanSub}`, '_blank');
+                            }}
+                            className="w-full py-1.5 bg-zinc-900 border border-white/5 hover:bg-zinc-850 hover:border-purple-500/25 text-[10px] font-black text-purple-450 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer"
+                          >
+                            <ExternalLink className="w-3 h-3 text-purple-400 animate-pulse" /> Open Subreddit
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Comment tasks experience inside card */}
+                  {task.type === 'comment' && (
+                    <div className="mt-2.5 mb-4 bg-zinc-950/70 border border-white/5 rounded-xl p-3 space-y-2.5 text-[11px] select-text">
+                      {task.postUrlToCommentOn && (
+                        <div className="space-y-1">
+                          <span className="text-[9px] text-zinc-500 uppercase tracking-widest block font-extrabold">Reddit Post Link</span>
+                          <div className="flex items-center justify-between gap-3">
+                            <a
+                              href={task.postUrlToCommentOn}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-blue-400 font-mono text-[10px] hover:underline truncate max-w-[120px] block font-bold"
+                            >
+                              {task.postUrlToCommentOn}
+                            </a>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopyText(task.postUrlToCommentOn || '', 'Post URL copied');
+                              }}
+                              className="text-[9px] text-purple-400 hover:text-purple-300 font-extrabold flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-2 py-0.5 rounded transition-all border border-purple-500/5 cursor-pointer shrink-0 font-sans"
+                            >
+                              <Copy className="w-2.5 h-2.5" /> Copy Link
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {task.commentGuidelines && (
+                        <div className="space-y-1 border-t border-white/5 pt-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-extrabold">Comment Text</span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopyText(task.commentGuidelines || '', 'Comment text copied');
+                              }}
+                              className="text-[9px] text-purple-400 hover:text-purple-300 font-extrabold flex items-center gap-0.5 bg-purple-500/10 hover:bg-purple-500/20 px-2 py-0.5 rounded transition-all border border-purple-500/5 cursor-pointer font-sans"
+                            >
+                              <Copy className="w-2.5 h-2.5" /> Copy Comment Text
+                            </button>
+                          </div>
+                          <p className="text-zinc-300 font-normal leading-normal select-text break-words line-clamp-2 hover:line-clamp-none transition-all duration-300">
+                            {task.commentGuidelines}
+                          </p>
+                        </div>
+                      )}
+
+                      {task.postUrlToCommentOn && (
+                        <div className="pt-2 border-t border-white/5 flex gap-2">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(task.postUrlToCommentOn, '_blank');
+                            }}
+                            className="w-full py-1.5 bg-zinc-900 border border-white/5 hover:bg-zinc-850 hover:border-purple-500/25 text-[10px] font-black text-purple-450 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer"
+                          >
+                            <ExternalLink className="w-3 h-3 text-purple-400 animate-pulse" /> Open Post
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="space-y-1.5 mb-6 text-[11px] font-semibold text-zinc-500 select-text">
-                    {task.type === 'post' && task.targetSubreddit && (
-                      <div className="flex justify-between border-b border-white/5 pb-1">
-                        <span>Target subreddit:</span>
-                        <span className="text-purple-400 font-bold">{task.targetSubreddit}</span>
-                      </div>
-                    )}
-                    {task.type === 'comment' && (
-                      <div className="flex justify-between border-b border-white/5 pb-1">
-                        <span>Platform comment:</span>
-                        <span className="text-zinc-400 font-bold">See guidlines</span>
-                      </div>
-                    )}
                     <div className="flex justify-between border-b border-white/5 pb-1">
                       <span>Deadline Date:</span>
                       <span className="text-zinc-400">{task.deadline}</span>
@@ -531,14 +713,21 @@ export const Marketplace: React.FC = () => {
 
                   {userSub ? (
                     <div className={`px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1 border ${
-                      userSub.status === 'Approved' ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400' :
-                      userSub.status === 'Pending' ? 'bg-yellow-500/10 border-yellow-500/25 text-yellow-400 animate-pulse' :
+                      (userSub.status === 'Client Approved (Payment Released)' || userSub.status === 'Approved') ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400' :
+                      (userSub.status === 'Pending' || userSub.status === 'Under Admin Review') ? 'bg-yellow-500/10 border-yellow-500/25 text-yellow-500 animate-pulse' :
+                      userSub.status === 'Admin Approved (Waiting for Client Approval)' ? 'bg-indigo-500/15 border-indigo-500/25 text-indigo-400 font-bold' :
                       'bg-red-500/10 border-red-500/25 text-red-500'
                     }`}>
-                      {userSub.status === 'Approved' && <CheckCircle className="w-3.5 h-3.5" />}
-                      {userSub.status === 'Pending' && <Clock className="w-3.5 h-3.5" />}
-                      {userSub.status === 'Rejected' && <ShieldAlert className="w-3.5 h-3.5" />}
-                      {userSub.status === 'Pending' ? 'Proof Reviewing' : `Submission ${userSub.status}`}
+                      {(userSub.status === 'Client Approved (Payment Released)' || userSub.status === 'Approved') && <CheckCircle className="w-3.5 h-3.5" />}
+                      {(userSub.status === 'Pending' || userSub.status === 'Under Admin Review') && <Clock className="w-3.5 h-3.5" />}
+                      {userSub.status === 'Admin Approved (Waiting for Client Approval)' && <Clock className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />}
+                      {(userSub.status === 'Client Rejected' || userSub.status === 'Rejected') && <ShieldAlert className="w-3.5 h-3.5" />}
+                      {
+                        (userSub.status === 'Client Approved (Payment Released)' || userSub.status === 'Approved') ? 'Approved' :
+                        (userSub.status === 'Pending' || userSub.status === 'Under Admin Review') ? 'Under Review' :
+                        userSub.status === 'Admin Approved (Waiting for Client Approval)' ? 'Pre-Approved' :
+                        'Rejected'
+                      }
                     </div>
                   ) : slotsLeft === 0 ? (
                     <div className="px-3 py-1.5 bg-zinc-800 text-zinc-500 text-[10px] font-bold rounded-lg border border-zinc-700/50">
@@ -622,39 +811,141 @@ export const Marketplace: React.FC = () => {
                 )}
 
                 {/* Left/Right Guideline breakdown */}
-                <div className="bg-zinc-950 border border-white/5 rounded-2xl p-4 space-y-2.5">
-                  <span className="text-[10px] text-zinc-500 block uppercase tracking-wider font-bold">Campaign Guidelines Constraints</span>
+                <div className="bg-zinc-950 border border-white/5 rounded-2xl p-4 space-y-3.5">
+                  <span className="text-[10px] text-zinc-500 block uppercase tracking-wider font-bold border-b border-white/5 pb-1.5">Campaign Details & Copy Panel</span>
                   
                   {selectedTask.type === 'post' ? (
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span>Target community subreddit:</span>
-                        <span className="text-white font-extrabold">{selectedTask.targetSubreddit}</span>
-                      </div>
-                      <div className="flex justify-between gap-4 font-normal">
-                        <span className="shrink-0">Title constraint:</span>
-                        <span className="text-white font-mono font-bold text-right text-[11px] select-text">"{selectedTask.requiredPostTitle}"</span>
-                      </div>
-                      <div className="text-[11px] font-normal text-zinc-400 border-t border-white/5 pt-2 leading-relaxed select-text">
-                        <strong>Required keywords:</strong> {selectedTask.postGuidelines || 'Post naturally regarding Layer 2 capabilities.'}
-                      </div>
+                    <div className="space-y-3">
+                      {selectedTask.targetSubreddit && (
+                        <div className="flex justify-between items-center bg-zinc-900/60 p-2.5 rounded-xl border border-white/5">
+                          <div>
+                            <span className="text-[9px] text-zinc-500 block uppercase tracking-widest font-black">Subreddit</span>
+                            <span className="text-purple-400 font-extrabold text-xs">
+                              {selectedTask.targetSubreddit.startsWith('r/') ? selectedTask.targetSubreddit : 'r/' + selectedTask.targetSubreddit}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const sub = selectedTask.targetSubreddit || '';
+                              const cleanSub = sub.startsWith('r/') ? sub.substring(2) : sub;
+                              window.open(`https://reddit.com/r/${cleanSub}`, '_blank');
+                            }}
+                            className="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-500 text-[10px] font-black text-white rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                          >
+                            <ExternalLink className="w-3 h-3" /> Open Subreddit
+                          </button>
+                        </div>
+                      )}
+
+                      {selectedTask.requiredPostTitle && (
+                        <div className="space-y-1 bg-zinc-900 border border-white/5 p-2.5 rounded-xl">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-extrabold">Reddit Post Title</span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyText(selectedTask.requiredPostTitle || '', 'Title copied')}
+                              className="text-[9px] text-purple-400 hover:text-purple-300 font-extrabold flex items-center gap-1 bg-purple-500/15 px-2 py-0.5 rounded cursor-pointer transition-all border border-purple-500/10"
+                            >
+                              <Copy className="w-2.5 h-2.5" /> Copy Title
+                            </button>
+                          </div>
+                          <p className="text-white font-mono font-bold text-[11px] select-text break-words">
+                            "{selectedTask.requiredPostTitle}"
+                          </p>
+                        </div>
+                      )}
+
+                      {selectedTask.postGuidelines && (
+                        <div className="space-y-1 bg-zinc-900 border border-white/5 p-2.5 rounded-xl">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-extrabold">Post Body / Content</span>
+                            <div className="flex gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleCopyText(selectedTask.postGuidelines || '', 'Post body copied')}
+                                className="text-[9px] text-purple-400 hover:text-purple-300 font-extrabold flex items-center gap-1 bg-purple-500/15 px-2 py-0.5 rounded cursor-pointer transition-all border border-purple-500/10"
+                              >
+                                <Copy className="w-2.5 h-2.5" /> Copy Body
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const formattedAll = `Title: ${selectedTask.requiredPostTitle || ''}\n\nBody:\n${selectedTask.postGuidelines || ''}`;
+                                  handleCopyText(formattedAll, 'Title & post body copied');
+                                }}
+                                className="text-[9px] text-pink-400 hover:text-pink-300 font-extrabold flex items-center gap-1 bg-pink-500/15 px-2 py-0.5 rounded cursor-pointer transition-all border border-pink-500/10"
+                              >
+                                <Copy className="w-2.5 h-2.5" /> Copy All
+                              </button>
+                            </div>
+                          </div>
+                          <p className="text-zinc-300 font-normal text-[11px] select-text break-words whitespace-pre-wrap leading-relaxed">
+                            {selectedTask.postGuidelines}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   ) : (
-                    <div className="space-y-2">
-                      <div className="flex justify-between font-normal gap-4">
-                        <span className="shrink-0">Comment target URL:</span>
-                        <a 
-                          href={selectedTask.postUrlToCommentOn} 
-                          target="_blank"  
-                          rel="noreferrer" 
-                          className="text-blue-400 font-bold hover:underline truncate max-w-[220px]"
-                        >
-                          Open Campaign Link <ExternalLink className="w-3 h-3 inline pb-0.5" />
-                        </a>
-                      </div>
-                      <div className="text-[11px] font-normal text-zinc-400 border-t border-white/5 pt-2 leading-relaxed select-text">
-                        <strong>Required guidelines:</strong> {selectedTask.commentGuidelines || 'Verify details naturally.'}
-                      </div>
+                    <div className="space-y-3">
+                      {selectedTask.postUrlToCommentOn && (
+                        <div className="flex justify-between items-center bg-zinc-900/60 p-2.5 rounded-xl border border-white/5">
+                          <div className="min-w-0 flex-1 mr-2">
+                            <span className="text-[9px] uppercase tracking-widest text-zinc-500 block font-black">Target Reddit Post</span>
+                            <a
+                              href={selectedTask.postUrlToCommentOn}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-xs font-bold text-blue-400 hover:underline truncate block"
+                            >
+                              {selectedTask.postUrlToCommentOn}
+                            </a>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => window.open(selectedTask.postUrlToCommentOn, '_blank')}
+                            className="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-500 text-[10px] font-black text-white rounded-lg transition-all flex items-center gap-1 shrink-0 cursor-pointer"
+                          >
+                            <ExternalLink className="w-3 h-3" /> Open Post
+                          </button>
+                        </div>
+                      )}
+
+                      {selectedTask.postUrlToCommentOn && (
+                        <div className="space-y-1 bg-zinc-900 border border-white/5 p-2.5 rounded-xl">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-extrabold">Post URL Link</span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyText(selectedTask.postUrlToCommentOn || '', 'Post URL copied')}
+                              className="text-[9px] text-purple-400 hover:text-purple-300 font-extrabold flex items-center gap-1 bg-purple-500/15 px-2 py-0.5 rounded cursor-pointer transition-all border border-purple-500/10"
+                            >
+                              <Copy className="w-2.5 h-2.5" /> Copy Post URL
+                            </button>
+                          </div>
+                          <p className="text-white font-mono text-[10px] select-text break-all">
+                            {selectedTask.postUrlToCommentOn}
+                          </p>
+                        </div>
+                      )}
+
+                      {selectedTask.commentGuidelines && (
+                        <div className="space-y-1 bg-zinc-900 border border-white/5 p-2.5 rounded-xl">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-extrabold">Comment Text / Guidelines</span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyText(selectedTask.commentGuidelines || '', 'Comment text copied')}
+                              className="text-[9px] text-purple-400 hover:text-purple-300 font-extrabold flex items-center gap-0.5 bg-purple-500/15 px-2 py-0.5 rounded cursor-pointer transition-all border border-purple-500/10"
+                            >
+                              <Copy className="w-2.5 h-2.5" /> Copy Comment Text
+                            </button>
+                          </div>
+                          <p className="text-zinc-300 text-[11px] select-text break-words whitespace-pre-wrap leading-relaxed">
+                            {selectedTask.commentGuidelines}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -683,6 +974,13 @@ export const Marketplace: React.FC = () => {
             )}
             
           </div>
+        </div>
+      )}
+
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-[100] bg-zinc-950/95 border border-purple-500/50 text-white text-xs px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 font-bold animate-bounce backdrop-blur-md select-none">
+          <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{toastMessage}</span>
         </div>
       )}
 

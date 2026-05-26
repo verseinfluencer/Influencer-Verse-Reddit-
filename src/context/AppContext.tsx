@@ -3,7 +3,7 @@ import {
   User, Task, Submission, Withdrawal, Transaction, 
   SupportTicket, AppNotification, SystemSettings, TaskType,
   Client, ClientTask, ClientPayment, ClientPaymentProof, ChatMessage, ClientChat,
-  DeductionRecord, PayoutRequest, DuplicateGroup, FraudAlert, TicketMessage
+  DeductionRecord, PayoutRequest, DuplicateGroup, FraudAlert, TicketMessage, AuditLog
 } from '../types';
 import { 
   INITIAL_USERS, INITIAL_TASKS, INITIAL_SUBMISSIONS, 
@@ -33,7 +33,9 @@ import {
   deleteDoc, 
   getDoc, 
   getDocs, 
-  onSnapshot 
+  onSnapshot,
+  query,
+  where
 } from 'firebase/firestore';
 import { auth, db, OperationType, handleFirestoreError } from '../utils/firebase';
 
@@ -142,6 +144,7 @@ interface AppContextType {
   clearAllNotifications: () => void;
   
 
+
   // Admin Actions
   adminApproveUser: (userId: string) => void;
   adminRejectUser: (userId: string, reason: string) => void;
@@ -153,6 +156,7 @@ interface AppContextType {
   adminEditTask: (taskId: string, taskData: Partial<Task>) => void;
   adminDeleteTask: (taskId: string) => void;
   adminReviewSubmission: (submissionId: string, status: 'Approved' | 'Rejected', feedback?: string) => void;
+  adminFinalReleasePayment: (submissionId: string, action: 'Approve' | 'Reject', feedback?: string) => Promise<void>;
   adminReviewWithdrawal: (withdrawalId: string, status: 'Approved' | 'Rejected') => void;
   adminCreateAnnouncement: (title: string, message: string) => void;
   adminUpdateSettings: (settings: SystemSettings) => void;
@@ -179,6 +183,11 @@ interface AppContextType {
   deleteDuplicateGroup: (groupId: string) => void;
   mergeDuplicateAccounts: (groupId: string, primaryUsername: string) => void;
   scanForDuplicates: () => void;
+
+  // Moderator Role and Audit Log Actions
+  auditLogs: AuditLog[];
+  adminPromoteToModerator: (targetUserId: string, operatorUser: User) => Promise<void>;
+  adminRemoveModerator: (targetUserId: string, operatorUser: User) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -204,6 +213,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [clientPaymentProofs, setClientPaymentProofs] = useState<ClientPaymentProof[]>([]);
   const [clientChats, setClientChats] = useState<ClientChat[]>([]);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
   // Anti-cheat mock storage values fallback
   const [blacklistedIPs, setBlacklistedIPs] = useState<string[]>(['198.51.100.42']);
@@ -286,7 +296,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
 
         const unsubTasks = onSnapshot(collection(db, 'tasks'), (snap) => {
-          setTasks(snap.docs.map(d => d.data() as Task));
+          setTasks(snap.docs.map(d => {
+            const data = d.data();
+            const rawType = data.type || 'post';
+            const normalizedType = String(rawType).toLowerCase().includes('comment') ? 'comment' : 'post';
+            return {
+              ...data,
+              type: normalizedType
+            } as Task;
+          }));
         });
 
         const unsubSubmissions = onSnapshot(collection(db, 'submissions'), (snap) => {
@@ -325,6 +343,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setTickets(snap.docs.map(d => d.data() as SupportTicket));
         });
 
+        const unsubAuditLogs = onSnapshot(collection(db, 'audit_logs'), (snap) => {
+          setAuditLogs(snap.docs.map(d => d.data() as AuditLog));
+        }, (error) => {
+          console.error("Error fetching audit logs", error);
+        });
+
         return () => {
           unsubUser();
           unsubClientProfile();
@@ -339,6 +363,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           unsubClientTasks();
           unsubClientPayments();
           unsubTickets();
+          unsubAuditLogs();
         };
       } else {
         setCurrentUser(null);
@@ -976,7 +1001,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           id: task.id,
           title: task.title,
           description: task.description,
-          type: task.type,
+          type: task.type.toLowerCase().includes('comment') ? 'comment' : 'post',
           reward: pay,
           difficulty: 'Medium',
           deadline: task.deadline,
@@ -1613,6 +1638,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
 
+
   const adminApproveUser = async (userId: string) => {
     await updateDoc(doc(db, 'users', userId), {
       status: 'Approved'
@@ -1725,9 +1751,68 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await setDoc(doc(db, 'notifications', notif.id), notif);
   };
 
+  const adminPromoteToModerator = async (targetUserId: string, operatorUser: User) => {
+    await updateDoc(doc(db, 'users', targetUserId), {
+      role: 'moderator'
+    });
+
+    const notif: AppNotification = {
+      id: `notif-${Date.now()}`,
+      userId: targetUserId,
+      type: 'verification',
+      title: 'Promoted to Moderator',
+      message: '🎉 Congratulations! You have been promoted to a Moderator in Influencer Verse.',
+      read: false,
+      timestamp: new Date().toISOString(),
+      createdAt: new Date().toISOString()
+    };
+    await setDoc(doc(db, 'notifications', notif.id), notif);
+
+    const logId = `log-${Date.now()}`;
+    await setDoc(doc(db, 'audit_logs', logId), {
+      id: logId,
+      action: 'Promote to Moderator',
+      targetUserId,
+      operatorId: operatorUser.id,
+      operatorName: operatorUser.fullName,
+      operatorRole: operatorUser.role,
+      timestamp: new Date().toISOString()
+    });
+  };
+
+  const adminRemoveModerator = async (targetUserId: string, operatorUser: User) => {
+    await updateDoc(doc(db, 'users', targetUserId), {
+      role: 'user'
+    });
+
+    const notif: AppNotification = {
+      id: `notif-${Date.now()}`,
+      userId: targetUserId,
+      type: 'verification',
+      title: 'Demoted to Member',
+      message: 'Your Moderator privileges have been removed.',
+      read: false,
+      timestamp: new Date().toISOString(),
+      createdAt: new Date().toISOString()
+    };
+    await setDoc(doc(db, 'notifications', notif.id), notif);
+
+    const logId = `log-${Date.now()}`;
+    await setDoc(doc(db, 'audit_logs', logId), {
+      id: logId,
+      action: 'Demote Moderator to Member',
+      targetUserId,
+      operatorId: operatorUser.id,
+      operatorName: operatorUser.fullName,
+      operatorRole: operatorUser.role,
+      timestamp: new Date().toISOString()
+    });
+  };
+
   const adminCreateTask = async (taskData: Omit<Task, 'id' | 'completedSubmissionsCount' | 'status'> & { isSpecial?: boolean; minKarmaRequired?: number; specialLabel?: string }) => {
     const newTask: Task = {
       ...taskData,
+      type: taskData.type.toLowerCase().includes('comment') ? 'comment' : 'post',
       id: `task-${Date.now()}`,
       completedSubmissionsCount: 0,
       status: 'available'
@@ -1736,7 +1821,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const adminEditTask = async (taskId: string, taskData: Partial<Task>) => {
-    await updateDoc(doc(db, 'tasks', taskId), taskData);
+    const editData = { ...taskData };
+    if (editData.type) {
+      editData.type = editData.type.toLowerCase().includes('comment') ? 'comment' : 'post';
+    }
+    await updateDoc(doc(db, 'tasks', taskId), editData);
   };
 
   const adminDeleteTask = async (taskId: string) => {
@@ -1756,15 +1845,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const isClientTask = sub.taskId && sub.taskId.startsWith('client-task-');
 
     if (status === 'Approved') {
-      if (isClientTask) {
-        // Dual-verification workflow: Admin Approves FIRST, but WALLET BALANCE IS NOT CREDITED YET.
-        // It transitions task status to Admin Approved (Waiting for Client Approval).
-        await updateDoc(subRef, {
-          status: 'Admin Approved (Waiting for Client Approval)',
-          feedback: feedback || 'Admin pre-approved. Awaiting client review.',
-          adminApprovalTime: new Date().toISOString()
-        });
+      // 3. If admin approves → task status becomes "Admin Approved (Waiting for Client Approval)" ONLY.
+      // Wallet balance is NOT updated here.
+      await updateDoc(subRef, {
+        status: 'Admin Approved (Waiting for Client Approval)',
+        feedback: feedback || 'Admin approved. Awaiting final client confirmation.',
+        adminApprovalTime: new Date().toISOString()
+      });
 
+      if (isClientTask) {
         // Elevate client task campaign status so it is now active for client action/review
         const clientTaskRef = doc(db, 'client_tasks', sub.taskId);
         const ctSnap = await getDoc(clientTaskRef);
@@ -1773,62 +1862,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             status: 'submitted' // Client dashboard monitors 'submitted'
           });
         }
-
-        const notif: AppNotification = {
-          id: `notif-${Date.now()}`,
-          userId: sub.userId,
-          type: 'task_approved',
-          title: 'Admin Pre-Approved Your Task 🔍',
-          message: `Your proof for "${sub.taskTitle}" has passed admin review! Awaiting client final approval to release payout.`,
-          read: false,
-          timestamp: new Date().toISOString()
-        };
-        await setDoc(doc(db, 'notifications', notif.id), notif);
-      } else {
-        // Standard non-client task -> Admin is the final authority, credit wallet balance
-        // Prevent duplicate credits check
-        if (sub.status === 'Client Approved (Payment Released)' || sub.status === 'Approved') {
-          return;
-        }
-
-        await updateDoc(subRef, {
-          status: 'Client Approved (Payment Released)',
-          feedback: feedback || 'Approved and credited by Admin.',
-          adminApprovalTime: new Date().toISOString(),
-          clientApprovalTime: new Date().toISOString(),
-          paymentReleasedTime: new Date().toISOString(),
-          approvedBy: 'admin'
-        });
-
-        await updateDoc(uRef, {
-          balance: u.balance + sub.reward,
-          pendingBalance: Math.max(0, u.pendingBalance - sub.reward),
-          totalEarned: u.totalEarned + sub.reward,
-          xp: u.xp + 100
-        });
-
-        const tx: Transaction = {
-          id: `tx-${Date.now()}`,
-          userId: sub.userId,
-          type: 'earning',
-          amount: sub.reward,
-          description: `Earning for task: "${sub.taskTitle}"`,
-          date: new Date().toISOString(),
-          status: 'Completed'
-        };
-        await setDoc(doc(db, 'transactions', tx.id), tx);
-
-        const notif: AppNotification = {
-          id: `notif-${Date.now()}`,
-          userId: sub.userId,
-          type: 'task_approved',
-          title: 'Submission Approved! 💰',
-          message: `Your submission for "${sub.taskTitle}" has been approved. +${sub.reward} USDT.`,
-          read: false,
-          timestamp: new Date().toISOString()
-        };
-        await setDoc(doc(db, 'notifications', notif.id), notif);
       }
+
+      const notif: AppNotification = {
+        id: `notif-${Date.now()}`,
+        userId: sub.userId,
+        type: 'task_approved',
+        title: 'Admin Pre-Approved Your Task 🔍',
+        message: `Your proof for "${sub.taskTitle}" has passed admin review! Awaiting client final approval to release payout.`,
+        read: false,
+        timestamp: new Date().toISOString()
+      };
+      await setDoc(doc(db, 'notifications', notif.id), notif);
     } else { // Rejected
       await updateDoc(subRef, {
         status: 'Client Rejected',
@@ -1851,6 +1896,122 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         timestamp: new Date().toISOString()
       };
       await setDoc(doc(db, 'notifications', notif.id), notif);
+    }
+  };
+
+  const adminFinalReleasePayment = async (submissionId: string, action: 'Approve' | 'Reject', feedback?: string) => {
+    try {
+      const subRef = doc(db, 'submissions', submissionId);
+      const subSnap = await getDoc(subRef);
+      if (!subSnap.exists()) return;
+      const sub = subSnap.data() as Submission;
+      const uRef = doc(db, 'users', sub.userId);
+      const userSnap = await getDoc(uRef);
+      if (!userSnap.exists()) return;
+      const u = userSnap.data() as User;
+
+      // 9. Prevent duplicate wallet credits (important)
+      if (sub.status === 'Client Approved (Payment Released)') {
+        return;
+      }
+
+      if (action === 'Approve') {
+        const adminEmail = currentUser?.email || 'admin';
+        await updateDoc(uRef, {
+          balance: u.balance + sub.reward,
+          pendingBalance: Math.max(0, u.pendingBalance - sub.reward),
+          totalEarned: u.totalEarned + sub.reward,
+          xp: u.xp + 100
+        });
+
+        const tx: Transaction = {
+          id: `tx-${Date.now()}`,
+          userId: sub.userId,
+          type: 'earning',
+          amount: sub.reward,
+          description: `Earning for task: "${sub.taskTitle}"`,
+          date: new Date().toISOString(),
+          status: 'Completed'
+        };
+        await setDoc(doc(db, 'transactions', tx.id), tx);
+
+        await updateDoc(subRef, {
+          status: 'Client Approved (Payment Released)',
+          feedback: feedback || 'Approved & Payment Released',
+          clientApprovalTime: new Date().toISOString(),
+          paymentReleasedTime: new Date().toISOString(),
+          approvedBy: `Admin-Client (${adminEmail})`
+        });
+
+        const notif: AppNotification = {
+          id: `notif-${Date.now()}`,
+          userId: sub.userId,
+          type: 'task_approved',
+          title: 'Submission Approved! 💰',
+          message: `Your submission for "${sub.taskTitle}" has been approved. +${sub.reward} USDT.`,
+          read: false,
+          timestamp: new Date().toISOString()
+        };
+        await setDoc(doc(db, 'notifications', notif.id), notif);
+
+        // Update corresponding task if any
+        if (sub.taskId) {
+          const clientTaskRef = doc(db, 'client_tasks', sub.taskId);
+          const ctSnap = await getDoc(clientTaskRef);
+          if (ctSnap.exists()) {
+            await updateDoc(clientTaskRef, {
+              status: 'completed',
+              feedback: feedback || 'Approved & Paid by Admin'
+            });
+          }
+          const taskRef = doc(db, 'tasks', sub.taskId);
+          const taskSnap = await getDoc(taskRef);
+          if (taskSnap.exists()) {
+            await updateDoc(taskRef, { status: 'completed' });
+          }
+        }
+      } else {
+        // Reject
+        await updateDoc(uRef, {
+          pendingBalance: Math.max(0, u.pendingBalance - sub.reward)
+        });
+
+        await updateDoc(subRef, {
+          status: 'Client Rejected',
+          feedback: feedback || 'Rejected by Client/Admin.',
+          rejectionReason: feedback || 'Guidelines not met',
+          clientApprovalTime: new Date().toISOString()
+        });
+
+        const notif: AppNotification = {
+          id: `notif-${Date.now()}`,
+          userId: sub.userId,
+          type: 'task_rejected',
+          title: 'Submission Rejected ❌',
+          message: `Your submission for "${sub.taskTitle}" was rejected. Feedback: ${feedback || 'None provided'}`,
+          read: false,
+          timestamp: new Date().toISOString()
+        };
+        await setDoc(doc(db, 'notifications', notif.id), notif);
+
+        if (sub.taskId) {
+          const clientTaskRef = doc(db, 'client_tasks', sub.taskId);
+          const ctSnap = await getDoc(clientTaskRef);
+          if (ctSnap.exists()) {
+            await updateDoc(clientTaskRef, {
+              status: 'revision',
+              revisionNote: feedback || 'Rejected'
+            });
+          }
+          const taskRef = doc(db, 'tasks', sub.taskId);
+          const taskSnap = await getDoc(taskRef);
+          if (taskSnap.exists()) {
+            await updateDoc(taskRef, { status: 'available' });
+          }
+        }
+      }
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -2048,7 +2209,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       markNotificationRead,
       clearAllNotifications,
       
-    
+
       
       adminApproveUser,
       adminRejectUser,
@@ -2060,6 +2221,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       adminEditTask,
       adminDeleteTask,
       adminReviewSubmission,
+      adminFinalReleasePayment,
       adminReviewWithdrawal,
       adminCreateAnnouncement,
       adminUpdateSettings,
@@ -2083,7 +2245,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       dismissFraudAlert,
       deleteDuplicateGroup,
       mergeDuplicateAccounts,
-      scanForDuplicates
+      scanForDuplicates,
+
+      auditLogs,
+      adminPromoteToModerator,
+      adminRemoveModerator
     }}>
       {children}
     </AppContext.Provider>

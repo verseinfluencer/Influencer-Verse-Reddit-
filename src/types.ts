@@ -17,7 +17,7 @@ export interface User {
   withdrawn: number; // Sum of completed withdrawals
   joinDate: string;
   avatarUrl?: string | null;
-  role: 'user' | 'admin' | 'client';
+  role: 'user' | 'member' | 'moderator' | 'admin' | 'client';
   gender?: 'Male' | 'Female' | 'Non-binary' | 'Prefer not to say' | null;
   
   // Karma fields (Private to public users - only admins and self can see)
@@ -314,5 +314,16 @@ export interface FraudAlert {
   status: 'pending' | 'dismissed' | 'resolved';
   details: string;
   recommendedAction: string;
+}
+
+export interface AuditLog {
+  id: string;
+  action: string;
+  targetUserId: string;
+  targetUserName?: string;
+  operatorId: string;
+  operatorName: string;
+  operatorRole: string;
+  timestamp: string;
 }
 

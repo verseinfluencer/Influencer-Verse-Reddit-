@@ -1,7 +1,7 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
 import { EarningsChart } from '../components/EarningsChart';
-import { Flame, Award, Gift, TrendingUp, CheckCircle, Wallet, ArrowUpRight, Zap, RefreshCw, UserCheck, Star } from 'lucide-react';
+import { Award, Gift, TrendingUp, CheckCircle, Wallet, ArrowUpRight, Zap, RefreshCw, UserCheck, Star } from 'lucide-react';
 import { getKarmaTier, getKarmaProgressBar } from '../utils/tierHelper';
 
 interface UserDashboardProps {
@@ -9,7 +9,7 @@ interface UserDashboardProps {
 }
 
 export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
-  const { currentUser, submissions, transactions, claimDailyStreak, settings, syncRedditKarma } = useApp();
+  const { currentUser, submissions, transactions, settings, syncRedditKarma } = useApp();
 
   const [isSyncing, setIsSyncing] = React.useState(false);
   const [syncSuccess, setSyncSuccess] = React.useState(false);
@@ -65,16 +65,11 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
     { title: "Campaign Veteran", desc: "Approved in 5 tasks", active: completedTaskCount >= 5, badge: "🛡️" },
     { title: "Earning Captain", desc: "Made over $50.00 USDT", active: currentUser.totalEarned >= 50.00, badge: "💎" },
     { title: "Silver Veteran", desc: "Reached Silver Tier (1000+ Karma)", active: currentUser.karma >= 1000, badge: "🥈" },
-    { title: "Streak Master", desc: "Claimed daily streak 3+", active: currentUser.streak >= 3, badge: "🔥" }
+    { title: "Streak Master", desc: "Claimed daily streak 3+", active: (currentUser.streak || 0) >= 3, badge: "🔥" }
   ];
 
   // User transactions
   const userTx = transactions.filter(tx => tx.userId === currentUser.id).slice(0, 5);
-
-  // Check if they already claimed today
-  const todayStr = new Date().toISOString().split('T')[0];
-  const lastClaimed = currentUser.lastLoginDate;
-  const streakClaimed = lastClaimed === todayStr;
 
   // Get all approved submissions for currentUser sorted chronologically by submission date
   const approvedSubsByDate = submissions
@@ -105,7 +100,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 text-white select-none" id="user-dashboard-container">
       
       {/* Upper Welcome Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 pb-2">
+      <div className="pb-2">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <span className="text-2xl md:text-3xl font-black font-display">Creator Dashboard</span>
@@ -116,31 +111,6 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
           <p className="text-xs text-zinc-400 font-semibold">
             Reddit Account Linked: <strong className="text-purple-400 tracking-wide font-mono">{currentUser.redditUsername}</strong>
           </p>
-        </div>
-
-        {/* Daily Streak Trigger Widget */}
-        <div className="flex items-center gap-4 bg-white/5 border border-white/10 p-4 rounded-[24px] backdrop-blur-md w-full lg:w-auto">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-500 animate-pulse">
-              <Flame className="w-5 h-5 fill-orange-500" />
-            </div>
-            <div>
-              <span className="text-xs font-black text-white block leading-none">Daily Login Streak</span>
-              <span className="text-[10px] text-zinc-500 font-bold">{currentUser.streak} Consecutive Days</span>
-            </div>
-          </div>
-          
-          <button 
-            disabled={streakClaimed}
-            onClick={claimDailyStreak}
-            className={`ml-auto lg:ml-4 px-4 py-2.5 text-xs font-black uppercase tracking-wider rounded-full transition-all cursor-pointer ${
-              streakClaimed 
-                ? 'bg-zinc-800 text-zinc-500 border border-zinc-700/50 cursor-not-allowed' 
-                : 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-lg shadow-orange-500/20 active:scale-95 hover:scale-[1.02]'
-            }`}
-          >
-            {streakClaimed ? 'Claimed 🔥' : 'Claim Daily'}
-          </button>
         </div>
       </div>
 

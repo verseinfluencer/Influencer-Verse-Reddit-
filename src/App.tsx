@@ -33,7 +33,7 @@ function MainAppContent() {
   };
 
   const isPending = currentUser?.status === 'Pending' || currentUser?.status === 'pending';
-  const isAdmin = currentUser?.role === 'admin';
+  const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'moderator';
 
   // Render the core active page component dynamically
   const renderPage = () => {

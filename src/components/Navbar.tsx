@@ -61,10 +61,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
           {/* Center Links - Desktop */}
           {currentUser && (
             <div className="hidden md:flex items-center gap-2">
-              {currentUser.role === 'admin' ? (
+              {(currentUser.role === 'admin' || currentUser.role === 'moderator') ? (
                 <>
                   <button onClick={() => onNavigate('admin')} className={navItemClass('admin')}>
-                    <BarChart className="w-4 h-4" /> Admin Control
+                    <BarChart className="w-4 h-4" /> {currentUser.role === 'admin' ? 'Admin Control' : 'Moderator Panel'}
                   </button>
                   <button onClick={() => onNavigate('faq')} className={navItemClass('faq')}>
                     FAQ
@@ -232,13 +232,15 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
                         {currentUser.role === 'client' ? (
                           <p className="text-[10px] text-indigo-400 font-semibold">Brand Client Account</p>
                         ) : (
-                          <p className="text-[10px] text-purple-400 font-medium truncate max-w-[180px]">{currentUser.redditUsername}</p>
-                        )}
-                        {currentUser.role === 'user' && !isPendingUser && (
-                          <div className="mt-1.5 flex items-center justify-between bg-zinc-950 px-2 py-1 rounded-lg">
-                            <span className="text-[10px] text-zinc-400">Streak:</span>
-                            <span className="text-xs text-yellow-500 font-bold flex items-center gap-0.5">🔥 {currentUser.streak} days</span>
-                          </div>
+                          <>
+                            <p className="text-[10px] text-purple-400 font-medium truncate max-w-[180px]">{currentUser.redditUsername}</p>
+                            {currentUser.role === 'admin' && (
+                              <span className="inline-block mt-1 text-[9px] font-extrabold uppercase tracking-wider bg-red-500/10 border border-red-500/20 text-red-400 px-1.5 py-0.5 rounded">Admin</span>
+                            )}
+                            {currentUser.role === 'moderator' && (
+                              <span className="inline-block mt-1 text-[9px] font-extrabold uppercase tracking-wider bg-amber-500/15 border border-amber-500/25 text-amber-500 px-1.5 py-0.5 rounded">Moderator</span>
+                            )}
+                          </>
                         )}
                       </div>
 
@@ -318,10 +320,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-white/10 bg-zinc-950 p-4 space-y-3">
           {currentUser ? (
-            currentUser.role === 'admin' ? (
+            (currentUser.role === 'admin' || currentUser.role === 'moderator') ? (
               <>
                 <button onClick={() => { onNavigate('admin'); setMobileMenuOpen(false); }} className="block w-full text-left py-2 px-3 bg-zinc-900 rounded-lg text-sm font-semibold">
-                  Admin Dashboard
+                  {currentUser.role === 'admin' ? 'Admin Dashboard' : 'Moderator Panel'}
                 </button>
                 <button onClick={() => { onNavigate('tickets'); setMobileMenuOpen(false); }} className="block w-full text-left py-2 px-3 bg-zinc-900 rounded-lg text-sm font-semibold">
                   Support Tickets

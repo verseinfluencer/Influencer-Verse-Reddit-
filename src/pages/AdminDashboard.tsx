@@ -11,10 +11,11 @@ import {
 
 export const AdminDashboard: React.FC = () => {
   const { 
+    currentUser,
     users, tasks, submissions, withdrawals, transactions, settings,
     adminApproveUser, adminRejectUser, adminBanUser, adminSuspendUser, adminUnbanUser, adminUnsuspendUser,
     adminCreateTask, adminEditTask, adminDeleteTask,
-    adminReviewSubmission, adminReviewWithdrawal,
+    adminReviewSubmission, adminFinalReleasePayment, adminReviewWithdrawal,
     adminCreateAnnouncement, adminUpdateSettings,
     resetCooldown, adminUpdateUserKarma, forceUnclaimTask, extendUserDeadline,
     
@@ -26,10 +27,14 @@ export const AdminDashboard: React.FC = () => {
 
     // New Anti-Cheat properties
     blacklistedIPs, duplicateGroups, fraudAlerts, currentSimulatedIP, setCurrentSimulatedIP, currentSimulatedCountry, setCurrentSimulatedCountry,
-    blacklistIP, unblacklistIP, adminReviewFraudAction, dismissFraudAlert, deleteDuplicateGroup, mergeDuplicateAccounts, scanForDuplicates
+    blacklistIP, unblacklistIP, adminReviewFraudAction, dismissFraudAlert, deleteDuplicateGroup, mergeDuplicateAccounts, scanForDuplicates,
+
+    auditLogs,
+    adminPromoteToModerator,
+    adminRemoveModerator
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'users' | 'clients' | 'client-tasks' | 'client-payments' | 'client-chats' | 'tasks' | 'submissions' | 'withdrawals' | 'announcements' | 'settings' | 'security' | 'track-data'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'clients' | 'client-tasks' | 'client-payments' | 'client-chats' | 'tasks' | 'submissions' | 'withdrawals' | 'announcements' | 'settings' | 'security' | 'track-data' | 'audit-log'>('users');
 
   // Relative timer and manual refresh trigger for "Track Data"
   const [lastRefreshedTrigger, setLastRefreshedTrigger] = useState(0);
@@ -102,6 +107,7 @@ export const AdminDashboard: React.FC = () => {
   const [settingsSuccess, setSettingsSuccess] = useState(false);
   const [selectedAdminTierFilter, setSelectedAdminTierFilter] = useState<string>('all');
   const [selectedAdminStatusFilter, setSelectedAdminStatusFilter] = useState<string>('all');
+  const [selectedAdminRoleFilter, setSelectedAdminRoleFilter] = useState<string>('all');
   
   // Ban/Suspend confirmation values
   const [banTargetUser, setBanTargetUser] = useState<User | null>(null);
@@ -110,6 +116,10 @@ export const AdminDashboard: React.FC = () => {
   const [suspendTargetUser, setSuspendTargetUser] = useState<User | null>(null);
   const [suspendReasonInput, setSuspendReasonInput] = useState('');
   const [suspendDuration, setSuspendDuration] = useState('1 day');
+
+  // Moderator promotion/demotion confirmation values
+  const [promoteTargetUser, setPromoteTargetUser] = useState<User | null>(null);
+  const [demoteTargetUser, setDemoteTargetUser] = useState<User | null>(null);
 
   const [adminTaskFilter, setAdminTaskFilter] = useState<'All' | 'Pending' | 'Live' | 'Submitted' | 'Completed' | 'Removed'>('All');
   const [adminTaskAuditReason, setAdminTaskAuditReason] = useState<Record<string, string>>({});
@@ -136,12 +146,25 @@ export const AdminDashboard: React.FC = () => {
     if (selectedAdminTierFilter !== 'all' && getKarmaTier(u.karma).name.toLowerCase() !== selectedAdminTierFilter.toLowerCase()) {
       return false;
     }
+    // 3. Role filter
+    if (selectedAdminRoleFilter !== 'all') {
+      const uRole = u.role || 'user';
+      if (selectedAdminRoleFilter === 'moderators' && uRole !== 'moderator') {
+        return false;
+      }
+      if (selectedAdminRoleFilter === 'admins' && uRole !== 'admin') {
+        return false;
+      }
+      if (selectedAdminRoleFilter === 'members' && (uRole !== 'user' && uRole !== 'member')) {
+        return false;
+      }
+    }
     return true;
   });
 
   // Overview metrics
   const pendingVerificationsCount = users.filter(u => u.status === 'Pending').length;
-  const pendingSubmissionsCount = submissions.filter(s => s.status === 'Pending').length;
+  const pendingSubmissionsCount = submissions.filter(s => s.status === 'Pending' || s.status === 'Under Admin Review').length;
   const pendingWithdrawalsCount = withdrawals.filter(w => w.status === 'Pending').length;
   const totalPayoutAmt = withdrawals.filter(w => w.status === 'Approved').reduce((acc, curr) => acc + curr.amount, 0);
 
@@ -235,8 +258,12 @@ export const AdminDashboard: React.FC = () => {
       {/* Upper Brand Control Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-2 border-b border-white/5">
         <div>
-          <span className="text-[10px] font-extrabold uppercase tracking-widest text-purple-400 block mb-1">Administrative Center</span>
-          <h1 className="text-2xl md:text-3xl font-black">Admin Panel Controls</h1>
+          <span className="text-[10px] font-extrabold uppercase tracking-widest text-purple-400 block mb-1">
+            {currentUser?.role === 'moderator' ? 'Moderator Control Center' : 'Administrative Center'}
+          </span>
+          <h1 className="text-2xl md:text-3xl font-black">
+            {currentUser?.role === 'moderator' ? 'Moderator Panel' : 'Admin Panel Controls'}
+          </h1>
         </div>
 
         {/* Tab Selection */}
@@ -245,14 +272,15 @@ export const AdminDashboard: React.FC = () => {
             { id: 'users', label: 'Users Map', count: pendingVerificationsCount },
             { id: 'clients', label: 'Clients Registry', count: pendingClientsCount },
             { id: 'client-tasks', label: 'Client Approvals', count: pendingClientTasksCount },
-            { id: 'client-payments', label: 'Agency Payments', count: outstandingDuesCount },
+            ...(currentUser?.role === 'admin' ? [{ id: 'client-payments', label: 'Agency Payments', count: outstandingDuesCount }] : []),
             { id: 'client-chats', label: 'Client Support', count: unresolvedChatsCount },
             { id: 'tasks', label: 'Tasks Desk', count: null },
             { id: 'submissions', label: 'Task Submits', count: pendingSubmissionsCount },
-            { id: 'withdrawals', label: 'Withdraw Desk', count: pendingWithdrawalsCount },
+            ...(currentUser?.role === 'admin' ? [{ id: 'withdrawals', label: 'Withdraw Desk', count: pendingWithdrawalsCount }] : []),
             { id: 'track-data', label: '📊 Track Data', count: null },
             { id: 'security', label: '🛡️ Security Center', count: (fraudAlerts || []).filter(a => a.status === 'pending').length },
-            { id: 'announcements', label: 'Publish Feed', count: null }
+            { id: 'announcements', label: 'Publish Feed', count: null },
+            { id: 'audit-log', label: '📜 Role Audit Logs', count: null }
           ].map(tab => (
             <button
                key={tab.id}
@@ -1278,6 +1306,9 @@ export const AdminDashboard: React.FC = () => {
                   <h2 className="text-base font-black">User Management</h2>
                   <div className="flex items-center gap-2 text-[10px] text-zinc-500 font-semibold uppercase">
                     <span>Total registered creators: {users.length}</span>
+                    {selectedAdminRoleFilter !== 'all' && (
+                      <span className="text-emerald-400 font-bold">• Role: {selectedAdminRoleFilter}</span>
+                    )}
                     {selectedAdminTierFilter !== 'all' && (
                       <span className="text-purple-400 font-bold">• Filtered by: {selectedAdminTierFilter} Tier ({filteredUsersForAdmin.length} matching)</span>
                     )}
@@ -1287,23 +1318,40 @@ export const AdminDashboard: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Tier filter dropdown */}
-                <div className="flex items-center gap-2 bg-zinc-950 px-3 py-1.5 rounded-xl border border-white/5 font-semibold text-xs text-zinc-400 select-none">
-                  <span>Filter by Custom Tier:</span>
-                  <select
-                    value={selectedAdminTierFilter}
-                    onChange={(e) => setSelectedAdminTierFilter(e.target.value)}
-                    className="bg-zinc-900 border border-white/10 text-white rounded-lg focus:outline-none focus:ring-0 cursor-pointer text-xs font-black p-1 px-2"
-                  >
-                    <option value="all">👑 All Tiers</option>
-                    <option value="bronze">🥉 Bronze</option>
-                    <option value="silver">🥈 Silver</option>
-                    <option value="gold">⭐ Gold</option>
-                    <option value="diamond">💎 Diamond</option>
-                    <option value="platinum">🔥 Platinum</option>
-                    <option value="elite">👑 Elite</option>
-                    <option value="legend">🚀 Legend</option>
-                  </select>
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Role filter dropdown */}
+                  <div className="flex items-center gap-2 bg-zinc-950 px-3 py-1.5 rounded-xl border border-white/5 font-semibold text-xs text-zinc-400 select-none">
+                    <span>Role:</span>
+                    <select
+                      value={selectedAdminRoleFilter}
+                      onChange={(e) => setSelectedAdminRoleFilter(e.target.value)}
+                      className="bg-zinc-900 border border-white/10 text-white rounded-lg focus:outline-none focus:ring-0 cursor-pointer text-xs font-black p-1 px-2"
+                    >
+                      <option value="all">🛡️ All Roles</option>
+                      <option value="members">👤 Members</option>
+                      <option value="moderators">🔰 Moderators</option>
+                      <option value="admins">👑 Admins</option>
+                    </select>
+                  </div>
+
+                  {/* Tier filter dropdown */}
+                  <div className="flex items-center gap-2 bg-zinc-950 px-3 py-1.5 rounded-xl border border-white/5 font-semibold text-xs text-zinc-400 select-none">
+                    <span>Filter by Custom Tier:</span>
+                    <select
+                      value={selectedAdminTierFilter}
+                      onChange={(e) => setSelectedAdminTierFilter(e.target.value)}
+                      className="bg-zinc-900 border border-white/10 text-white rounded-lg focus:outline-none focus:ring-0 cursor-pointer text-xs font-black p-1 px-2"
+                    >
+                      <option value="all">👑 All Tiers</option>
+                      <option value="bronze">🥉 Bronze</option>
+                      <option value="silver">🥈 Silver</option>
+                      <option value="gold">⭐ Gold</option>
+                      <option value="diamond">💎 Diamond</option>
+                      <option value="platinum">🔥 Platinum</option>
+                      <option value="elite">👑 Elite</option>
+                      <option value="legend">🚀 Legend</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
@@ -1377,6 +1425,19 @@ export const AdminDashboard: React.FC = () => {
                               <span className="px-1.5 py-0.2 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded font-extrabold text-[9px] uppercase tracking-wider select-none">
                                 {ut.emoji} {ut.name}
                               </span>
+                              {(u.role === 'admin') ? (
+                                <span className="px-1.5 py-0.2 bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded font-extrabold text-[9px] uppercase tracking-wider select-none">
+                                  👑 Admin
+                                </span>
+                              ) : (u.role === 'moderator' || (u.role as string) === 'Moderator') ? (
+                                <span className="px-1.5 py-0.2 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded font-extrabold text-[9px] uppercase tracking-wider select-none">
+                                  🔰 Moderator
+                                </span>
+                              ) : (
+                                <span className="px-1.5 py-0.2 bg-zinc-500/20 text-zinc-300 border border-zinc-500/30 rounded font-extrabold text-[9px] uppercase tracking-wider select-none">
+                                  👤 Member
+                                </span>
+                              )}
                             </div>
                             <p className="text-zinc-500 font-mono font-bold text-[10px]">{u.email}</p>
                             {/* Display private gender field strictly to admin */}
@@ -1542,6 +1603,25 @@ export const AdminDashboard: React.FC = () => {
                         )}
                         {u.role === 'admin' && (
                           <span className="text-[10px] text-zinc-500 font-extrabold uppercase">Platform Admin Locked</span>
+                        )}
+                        {currentUser?.role === 'admin' && u.role !== 'admin' && (
+                          <div className="pt-2 border-t border-white/5 flex gap-1.5 justify-end">
+                            {u.role === 'moderator' ? (
+                              <button
+                                onClick={() => setDemoteTargetUser(u)}
+                                className="px-2.5 py-1 bg-amber-600 hover:bg-amber-500 text-white text-[10px] font-black rounded cursor-pointer transition-all uppercase tracking-wider"
+                              >
+                                Remove Moderator
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => setPromoteTargetUser(u)}
+                                className="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-black rounded cursor-pointer transition-all uppercase tracking-wider"
+                              >
+                                Promote to Moderator
+                              </button>
+                            )}
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -1940,8 +2020,10 @@ export const AdminDashboard: React.FC = () => {
                     <div 
                       key={sub.id} 
                       className={`p-5 rounded-2xl border flex flex-col md:flex-row justify-between gap-6 ${
-                        sub.status === 'Pending' 
+                        (sub.status === 'Pending' || sub.status === 'Under Admin Review') 
                           ? 'bg-purple-600/[0.03] border-purple-500/25' 
+                          : sub.status === 'Admin Approved (Waiting for Client Approval)'
+                          ? 'bg-indigo-600/[0.02] border-indigo-500/20'
                           : 'bg-zinc-950 border-white/5'
                       }`}
                     >
@@ -1951,8 +2033,10 @@ export const AdminDashboard: React.FC = () => {
                           <span className="text-xs font-black text-zinc-400 uppercase tracking-wider">{sub.taskType} Audit</span>
                           <span className="text-sm font-extrabold text-white">{sub.taskTitle}</span>
                           <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                            sub.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-500' :
-                            sub.status === 'Pending' ? 'bg-yellow-500/10 text-yellow-500 animate-pulse' : 'bg-red-500/10 text-red-500'
+                            sub.status === 'Client Approved (Payment Released)' || sub.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-500' :
+                            (sub.status === 'Pending' || sub.status === 'Under Admin Review') ? 'bg-yellow-500/10 text-yellow-500 animate-pulse' :
+                            sub.status === 'Admin Approved (Waiting for Client Approval)' ? 'bg-sky-500/10 text-sky-400 font-bold' :
+                            'bg-red-500/10 text-red-500'
                           }`}>
                             {sub.status}
                           </span>
@@ -2032,19 +2116,19 @@ export const AdminDashboard: React.FC = () => {
                       <div>
                         <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-2">Audit Action Panel</span>
                         
-                        {sub.status === 'Pending' ? (
+                        {(sub.status === 'Pending' || sub.status === 'Under Admin Review') ? (
                           <div className="space-y-2.5">
                             <button 
                               onClick={() => adminReviewSubmission(sub.id, 'Approved', submissionFeedback[sub.id])}
-                              className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-xs font-black text-white rounded-xl shadow-md cursor-pointer"
+                              className="w-full py-2 bg-purple-600 hover:bg-purple-500 text-xs font-black text-white rounded-xl shadow-md cursor-pointer transition uppercase tracking-wider text-center"
                             >
-                              Approve & Pay Creator
+                              Pass Admin pre-review
                             </button>
                             <button 
                               onClick={() => adminReviewSubmission(sub.id, 'Rejected', submissionFeedback[sub.id] || 'Guidelines not met')}
-                              className="w-full py-2 bg-zinc-900 border border-white/5 hover:bg-zinc-800 text-xs font-extrabold text-zinc-300 rounded-xl cursor-pointer"
+                              className="w-full py-2 bg-zinc-900 border border-white/5 hover:bg-zinc-800 text-xs font-extrabold text-zinc-300 rounded-xl cursor-pointer transition uppercase tracking-wider text-center"
                             >
-                              Reject Proof Submission
+                              Admin Reject Proof
                             </button>
 
                             <input 
@@ -2052,13 +2136,38 @@ export const AdminDashboard: React.FC = () => {
                               value={submissionFeedback[sub.id] || ''}
                               onChange={(e) => setSubmissionFeedback({ ...submissionFeedback, [sub.id]: e.target.value })}
                               placeholder="Feedback / Rejection Reason description..."
-                              className="w-full text-[10px] bg-zinc-950 border border-white/5 px-2.5 py-1.5 rounded-lg text-white"
+                              className="w-full text-[10px] bg-zinc-950 border border-white/5 px-2.5 py-1.5 rounded-lg text-white block"
+                            />
+                          </div>
+                        ) : sub.status === 'Admin Approved (Waiting for Client Approval)' ? (
+                          <div className="space-y-2.5">
+                            <span className="text-[10px] text-indigo-400 block font-bold mb-1">Pre-review Passed! Awaiting Client final action.</span>
+                            <button 
+                              onClick={() => adminFinalReleasePayment(sub.id, 'Approve', submissionFeedback[sub.id])}
+                              className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-xs font-black text-white rounded-xl shadow-md cursor-pointer transition uppercase tracking-wider text-center"
+                            >
+                              Force Approve & Pay
+                            </button>
+                            <button 
+                              onClick={() => adminFinalReleasePayment(sub.id, 'Reject', submissionFeedback[sub.id] || 'Rejected')}
+                              className="w-full py-2 bg-red-650 hover:bg-red-650 text-xs font-black text-white rounded-xl shadow-md cursor-pointer transition uppercase tracking-wider text-center"
+                            >
+                              Force Reject
+                            </button>
+
+                            <input 
+                              type="text"
+                              value={submissionFeedback[sub.id] || ''}
+                              onChange={(e) => setSubmissionFeedback({ ...submissionFeedback, [sub.id]: e.target.value })}
+                              placeholder="Override Note / Feedback..."
+                              className="w-full text-[10px] bg-zinc-950 border border-white/5 px-2.5 py-1.5 rounded-lg text-white block"
                             />
                           </div>
                         ) : (
                           <div className="p-3 bg-zinc-950/60 rounded-xl text-[11px] font-semibold text-zinc-500 border border-white/5">
                             <span className="text-zinc-400 block font-bold mb-0.5">Audit complete</span>
-                            Reviewed and verified by Administrator. {sub.feedback && <span className="block mt-1 text-[10px] italic">Feedback: "{sub.feedback}"</span>}
+                            Reviewed status: <strong className="text-indigo-400 uppercase tracking-widest text-[10px] block mt-1">{sub.status}</strong>
+                            {sub.feedback && <span className="block mt-1.5 text-[10px] italic">Feedback: "{sub.feedback}"</span>}
                           </div>
                         )}
                       </div>
@@ -2616,6 +2725,80 @@ export const AdminDashboard: React.FC = () => {
           </div>
         )}
 
+        {/* ================= ROLE AUDIT LOG PANEL ================= */}
+        {activeTab === 'audit-log' && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-white/5">
+              <div className="space-y-1">
+                <h2 className="text-base font-black">Role Promotion & Demotion Audit Logs</h2>
+                <p className="text-xs text-zinc-500 font-semibold uppercase">
+                  Historical tracking of all moderator actions and role changes
+                </p>
+              </div>
+            </div>
+
+            <div className="p-6 bg-zinc-950 rounded-2xl border border-white/5 space-y-4">
+              {(!auditLogs || auditLogs.length === 0) ? (
+                <div className="text-center py-12 text-zinc-500 space-y-2">
+                  <p className="font-bold text-sm">📜 No role audits logged yet</p>
+                  <p className="text-xs">Promotions and demotions will be securely recorded here in real-time.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-white/5 text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+                        <th className="py-3 px-2">Operator</th>
+                        <th className="py-3 px-2">Action / Event</th>
+                        <th className="py-3 px-2">Target User</th>
+                        <th className="py-3 px-2">Timestamp</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5 text-xs font-mono">
+                      {[...auditLogs]
+                        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                        .map(log => {
+                          const targetUser = users.find(u => u.id === log.targetUserId);
+                          return (
+                            <tr key={log.id} className="hover:bg-white/[0.01]">
+                              <td className="py-3 px-2">
+                                <span className="font-bold text-white">{log.operatorName}</span>
+                                <span className="ml-2 px-1 rounded text-[9px] bg-red-400/10 text-red-400 font-sans uppercase">
+                                  {log.operatorRole}
+                                </span>
+                              </td>
+                              <td className="py-3 px-2">
+                                <span className={`px-2 py-0.5 rounded font-bold text-[10px] tracking-wide uppercase ${
+                                  log.action?.includes('Promote') 
+                                    ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' 
+                                    : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                }`}>
+                                  {log.action}
+                                </span>
+                              </td>
+                              <td className="py-3 px-2">
+                                {targetUser ? (
+                                  <span className="text-purple-300 font-sans font-bold">
+                                    {targetUser.fullName} (@{targetUser.redditUsername})
+                                  </span>
+                                ) : (
+                                  <span className="text-zinc-500">ID: {log.targetUserId}</span>
+                                )}
+                              </td>
+                              <td className="py-3 px-2 text-zinc-400 font-semibold">
+                                {new Date(log.timestamp).toLocaleString()}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
 
 
       </div>
@@ -2745,6 +2928,76 @@ export const AdminDashboard: React.FC = () => {
                 }`}
               >
                 Confirm Suspend
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Promote to Moderator Confirmation Modal Overlay */}
+      {promoteTargetUser && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 select-none animate-fade-in">
+          <div className="bg-zinc-950 border border-purple-500/20 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <div>
+              <h3 className="text-lg font-black text-white">🔰 Promote User to Moderator?</h3>
+              <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                Are you sure you want to promote <span className="text-purple-400 font-extrabold">{promoteTargetUser.fullName} (@{promoteTargetUser.redditUsername})</span>? They will gain access to the Moderator Control Panel with permissions to review/moderate tasks, submissions and members.
+              </p>
+            </div>
+
+            <div className="flex gap-2.5 justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setPromoteTargetUser(null)}
+                className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-xl text-xs font-black cursor-pointer transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!currentUser) return;
+                  await adminPromoteToModerator(promoteTargetUser.id, currentUser);
+                  setPromoteTargetUser(null);
+                }}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-xl text-xs font-black text-white cursor-pointer transition-all shadow-md shadow-purple-900/20"
+              >
+                Confirm Promotion
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Demote Moderator Confirmation Modal Overlay */}
+      {demoteTargetUser && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 select-none animate-fade-in">
+          <div className="bg-zinc-950 border border-amber-500/20 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <div>
+              <h3 className="text-lg font-black text-white">👤 Remove Moderator Privileges?</h3>
+              <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                Are you sure you want to demote <span className="text-amber-400 font-extrabold">{demoteTargetUser.fullName}</span>? They will lose all Moderator Control Panel access and be reverted to a standard member.
+              </p>
+            </div>
+
+            <div className="flex gap-2.5 justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setDemoteTargetUser(null)}
+                className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-xl text-xs font-black cursor-pointer transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!currentUser) return;
+                  await adminRemoveModerator(demoteTargetUser.id, currentUser);
+                  setDemoteTargetUser(null);
+                }}
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-500 rounded-xl text-xs font-black text-white cursor-pointer transition-all shadow-md shadow-amber-900/20"
+              >
+                Confirm Demotion
               </button>
             </div>
           </div>
