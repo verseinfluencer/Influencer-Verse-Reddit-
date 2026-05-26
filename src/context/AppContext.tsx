@@ -141,8 +141,6 @@ interface AppContextType {
   markNotificationRead: (id: string) => void;
   clearAllNotifications: () => void;
   
-  // Daily Streak
-  claimDailyStreak: () => void;
 
   // Admin Actions
   adminApproveUser: (userId: string) => void;
@@ -1614,27 +1612,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const claimDailyStreak = async () => {
-    if (!currentUser) return;
-    await checkBannedOrSuspended();
-    const reward = 0.50; // default claim reward
-    await updateDoc(doc(db, 'users', currentUser.id), {
-      balance: currentUser.balance + reward,
-      streak: currentUser.streak + 1,
-      xp: currentUser.xp + 50
-    });
-
-    const bonusTx: Transaction = {
-      id: `streak-tx-${Date.now()}`,
-      userId: currentUser.id,
-      type: 'earning',
-      amount: reward,
-      description: 'Daily Check-in Streak Reward',
-      date: new Date().toISOString(),
-      status: 'Completed'
-    };
-    await setDoc(doc(db, 'transactions', bonusTx.id), bonusTx);
-  };
 
   const adminApproveUser = async (userId: string) => {
     await updateDoc(doc(db, 'users', userId), {
@@ -2071,7 +2048,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       markNotificationRead,
       clearAllNotifications,
       
-      claimDailyStreak,
+    
       
       adminApproveUser,
       adminRejectUser,
