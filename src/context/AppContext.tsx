@@ -163,7 +163,7 @@ interface AppContextType {
   
   // Custom Claiming & Karma admin actions
   forceUnclaimTask: (taskId: string) => void;
-  extendUserDeadline: (taskId: string) => void;
+  extendUserDeadline: (taskId: string, operator: User) => Promise<void>;
   resetCooldown: (userId: string) => void;
   adminUpdateUserKarma: (userId: string, targetKarma: number) => void;
   syncRedditKarma: () => Promise<void>;
@@ -349,6 +349,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           console.error("Error fetching audit logs", error);
         });
 
+        const unsubDuplicateGroups = onSnapshot(collection(db, 'duplicate_groups'), (snap) => {
+          setDuplicateGroups(snap.docs.map(d => d.data() as DuplicateGroup));
+        }, (error) => {
+          console.error("Error fetching duplicate groups", error);
+        });
+
+        const unsubFraudAlerts = onSnapshot(collection(db, 'fraud_alerts'), (snap) => {
+          setFraudAlerts(snap.docs.map(d => d.data() as FraudAlert));
+        }, (error) => {
+          console.error("Error fetching fraud alerts", error);
+        });
+
         return () => {
           unsubUser();
           unsubClientProfile();
@@ -364,6 +376,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           unsubClientPayments();
           unsubTickets();
           unsubAuditLogs();
+          unsubDuplicateGroups();
+          unsubFraudAlerts();
         };
       } else {
         setCurrentUser(null);
@@ -1378,24 +1392,144 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setBlacklistedIPs(prev => prev.filter(item => item !== ip));
   };
 
-  const adminReviewFraudAction = (alertId: string, action: 'dismiss' | 'warn' | 'suspend' | 'ban' | 'freeze') => {
-    // Complete dashboard security logs action tracker
+  const adminReviewFraudAction = async (alertId: string, action: 'dismiss' | 'warn' | 'suspend' | 'ban' | 'freeze') => {
+    try {
+      if (action === 'dismiss') {
+        await updateDoc(doc(db, 'fraud_alerts', alertId), { status: 'dismissed' });
+      } else {
+        await updateDoc(doc(db, 'fraud_alerts', alertId), { status: 'resolved', recommendedAction: `Taken Action: ${action}` });
+      }
+    } catch (e) {
+      setFraudAlerts(prev => prev.map(a => a.id === alertId ? { ...a, status: action === 'dismiss' ? 'dismissed' as const : 'resolved' as const } : a));
+    }
   };
 
-  const dismissFraudAlert = (alertId: string) => {
-    setFraudAlerts(prev => prev.map(a => a.id === alertId ? { ...a, status: 'dismissed' as const } : a));
+  const dismissFraudAlert = async (alertId: string) => {
+    try {
+      await updateDoc(doc(db, 'fraud_alerts', alertId), { status: 'dismissed' });
+    } catch (e) {
+      setFraudAlerts(prev => prev.map(a => a.id === alertId ? { ...a, status: 'dismissed' as const } : a));
+    }
   };
 
-  const deleteDuplicateGroup = (groupId: string) => {
-    setDuplicateGroups(prev => prev.filter(g => g.id !== groupId));
+  const deleteDuplicateGroup = async (groupId: string) => {
+    try {
+      await deleteDoc(doc(db, 'duplicate_groups', groupId));
+    } catch (e) {
+      setDuplicateGroups(prev => prev.filter(g => g.id !== groupId));
+    }
   };
 
-  const mergeDuplicateAccounts = (groupId: string, primaryUsername: string) => {
-    // Merge duplicated profile credentials
+  const mergeDuplicateAccounts = async (groupId: string, primaryUsername: string) => {
+    try {
+      await deleteDoc(doc(db, 'duplicate_groups', groupId));
+    } catch (e) {
+      setDuplicateGroups(prev => prev.filter(g => g.id !== groupId));
+    }
   };
 
-  const scanForDuplicates = () => {
-    // Anti-cheat duplication auto audit logs
+  const scanForDuplicates = async () => {
+    try {
+      const groups: DuplicateGroup[] = [];
+      const alerts: FraudAlert[] = [];
+
+      const ipToUsers: Record<string, User[]> = {};
+      const fingerprintToUsers: Record<string, User[]> = {};
+      const redditToUsers: Record<string, User[]> = {};
+
+      users.forEach(u => {
+        if (u.ipHistory) {
+          u.ipHistory.forEach(history => {
+            if (history.ip && history.ip !== '127.0.0.1') {
+              if (!ipToUsers[history.ip]) ipToUsers[history.ip] = [];
+              if (!ipToUsers[history.ip].some(existing => existing.id === u.id)) {
+                ipToUsers[history.ip].push(u);
+              }
+            }
+          });
+        }
+        if (u.deviceFingerprints) {
+          u.deviceFingerprints.forEach(fp => {
+            if (fp) {
+              if (!fingerprintToUsers[fp]) fingerprintToUsers[fp] = [];
+              if (!fingerprintToUsers[fp].some(existing => existing.id === u.id)) {
+                fingerprintToUsers[fp].push(u);
+              }
+            }
+          });
+        }
+        if (u.redditUsername) {
+          const normReddit = u.redditUsername.toLowerCase().trim().replace('u/', '');
+          if (normReddit) {
+            if (!redditToUsers[normReddit]) redditToUsers[normReddit] = [];
+            if (!redditToUsers[normReddit].some(existing => existing.id === u.id)) {
+              redditToUsers[normReddit].push(u);
+            }
+          }
+        }
+      });
+
+      Object.entries(ipToUsers).forEach(([ip, userList]) => {
+        if (ip && userList.length > 1) {
+          const grpId = `dup-ip-${ip.replace(/\./g, '-')}`;
+          const accountIds = userList.map(item => item.id);
+          groups.push({
+            id: grpId,
+            accounts: accountIds,
+            sharedIdentifier: ip,
+            type: 'ip'
+          });
+
+          alerts.push({
+            id: `alert-ip-${ip.replace(/\./g, '-')}`,
+            type: 'IP Match',
+            userId: userList[0].id,
+            userName: userList[0].fullName,
+            userEmail: userList[0].email,
+            fraudScore: 85,
+            timestamp: new Date().toISOString(),
+            status: 'pending',
+            details: `Multiple accounts login on shared IP: (${ip}). Accounts: ${userList.map(item => '@' + item.redditUsername).join(', ')}`,
+            recommendedAction: 'Freeze Accounts'
+          });
+        }
+      });
+
+      Object.entries(fingerprintToUsers).forEach(([fp, userList]) => {
+        if (fp && userList.length > 1) {
+          const grpId = `dup-fp-${fp.substring(0, 10)}`;
+          const accountIds = userList.map(item => item.id);
+          groups.push({
+            id: grpId,
+            accounts: accountIds,
+            sharedIdentifier: fp,
+            type: 'fingerprint'
+          });
+
+          alerts.push({
+            id: `alert-fp-${fp.substring(0, 10)}`,
+            type: 'Fingerprint Match',
+            userId: userList[0].id,
+            userName: userList[0].fullName,
+            userEmail: userList[0].email,
+            fraudScore: 95,
+            timestamp: new Date().toISOString(),
+            status: 'pending',
+            details: `Multiple accounts with identical hardware profile. Accounts: ${userList.map(item => '@' + item.redditUsername).join(', ')}`,
+            recommendedAction: 'Ban Accounts'
+          });
+        }
+      });
+
+      for (const g of groups) {
+        await setDoc(doc(db, 'duplicate_groups', g.id), g);
+      }
+      for (const a of alerts) {
+        await setDoc(doc(db, 'fraud_alerts', a.id), a);
+      }
+    } catch (e) {
+      console.error("Duplicate scanning failed", e);
+    }
   };
 
   const createTicket = async (subject: string, category: SupportTicket['category'], description: string) => {
@@ -2071,7 +2205,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     unclaimTask(taskId, false);
   };
 
-  const extendUserDeadline = async (taskId: string) => {
+  const extendUserDeadline = async (taskId: string, operator: User) => {
     const taskRef = doc(db, 'tasks', taskId);
     const snap = await getDoc(taskRef);
     if (!snap.exists()) return;
@@ -2079,8 +2213,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (t.claim_expires_at) {
       const current = new Date(t.claim_expires_at).getTime();
       const next = new Date(current + 30 * 60 * 1000).toISOString(); // +30 minutes
+      
+      // Update the main tasks collection
       await updateDoc(taskRef, {
         claim_expires_at: next
+      });
+
+      // Synchronize to client_tasks collection if applicable
+      if (taskId.startsWith('client-task-') || taskId.includes('client-task')) {
+        const clientTaskRef = doc(db, 'client_tasks', taskId);
+        const ctSnap = await getDoc(clientTaskRef);
+        if (ctSnap.exists()) {
+          await updateDoc(clientTaskRef, {
+            completionDeadline: next
+          });
+        }
+      }
+
+      // Record this moderator action to secure audit_logs
+      const logId = `log-${Date.now()}`;
+      await setDoc(doc(db, 'audit_logs', logId), {
+        id: logId,
+        action: `Extended task deadline by +30m (Task: ${t.title || 'Untitled Campaign'})`,
+        targetUserId: t.claimed_by || 'unknown',
+        operatorId: operator.id,
+        operatorName: operator.fullName,
+        operatorRole: operator.role,
+        timestamp: new Date().toISOString()
       });
     }
   };

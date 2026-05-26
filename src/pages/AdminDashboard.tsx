@@ -31,7 +31,9 @@ export const AdminDashboard: React.FC = () => {
 
     auditLogs,
     adminPromoteToModerator,
-    adminRemoveModerator
+    adminRemoveModerator,
+    notifications,
+    tickets
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'users' | 'clients' | 'client-tasks' | 'client-payments' | 'client-chats' | 'tasks' | 'submissions' | 'withdrawals' | 'announcements' | 'settings' | 'security' | 'track-data' | 'audit-log'>('users');
@@ -121,6 +123,19 @@ export const AdminDashboard: React.FC = () => {
   const [promoteTargetUser, setPromoteTargetUser] = useState<User | null>(null);
   const [demoteTargetUser, setDemoteTargetUser] = useState<User | null>(null);
 
+  // Task extension custom states
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [disabledExtensionTasks, setDisabledExtensionTasks] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (toastMessage) {
+      const timeout = setTimeout(() => {
+        setToastMessage(null);
+      }, 3000);
+      return () => clearTimeout(timeout);
+    }
+  }, [toastMessage]);
+
   const [adminTaskFilter, setAdminTaskFilter] = useState<'All' | 'Pending' | 'Live' | 'Submitted' | 'Completed' | 'Removed'>('All');
   const [adminTaskAuditReason, setAdminTaskAuditReason] = useState<Record<string, string>>({});
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
@@ -173,6 +188,151 @@ export const AdminDashboard: React.FC = () => {
   const pendingClientTasksCount = (clientTasks || []).filter(t => t.status === 'pending').length;
   const unresolvedChatsCount = (clientChats || []).filter(chat => chat.resolvedStatus === 'unresolved').length;
   const outstandingDuesCount = (clients || []).filter(c => c.payAgencyBalance > 0).length;
+
+  // React-side unread/viewed tracking with local storage fallback for persistence across refresh
+  const [lastViewedTime, setLastViewedTime] = useState<Record<string, number>>(() => {
+    try {
+      const saved = localStorage.getItem('admin_last_viewed_tabs');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  // Keep timestamps dynamically connected for real-time unread bubble triggers
+  const lastTicketTime = tickets.length > 0
+    ? Math.max(...tickets.map(t => new Date(t.createdAt).getTime()))
+    : 0;
+
+  const lastClientMessageTime = clientChats.length > 0
+    ? Math.max(...clientChats.map(c => new Date(c.lastMessageTimestamp).getTime()))
+    : 0;
+
+  const lastSubmissionTimeVal = submissions.length > 0
+    ? Math.max(...submissions.map(s => new Date(s.submittedAt).getTime()))
+    : 0;
+
+  const lastUserJoinTime = users.length > 0
+    ? Math.max(...users.map(u => new Date(u.joinDate).getTime()))
+    : 0;
+
+  const lastClientJoinTime = clients.length > 0
+    ? Math.max(...clients.map(c => new Date(c.registeredAt).getTime()))
+    : 0;
+
+  const lastPaymentTime = clientPaymentProofs.length > 0
+    ? Math.max(...clientPaymentProofs.map(p => new Date(p.submittedAt).getTime()))
+    : 0;
+
+  const lastWithdrawalTime = withdrawals.length > 0
+    ? Math.max(...withdrawals.map(w => new Date(w.requestedAt).getTime()))
+    : 0;
+
+  const lastSecurityAlertTime = (fraudAlerts || []).length > 0
+    ? Math.max(...fraudAlerts.map(a => new Date(a.timestamp).getTime()))
+    : 0;
+
+  const lastAuditLogTime = (auditLogs || []).length > 0
+    ? Math.max(...auditLogs.map(l => new Date(l.timestamp).getTime()))
+    : 0;
+
+  const lastAnnouncementTime = (notifications || []).length > 0
+    ? Math.max(...notifications.filter(n => n.type === 'announcement').map(n => new Date(n.timestamp).getTime()))
+    : 0;
+
+  useEffect(() => {
+    setLastViewedTime(prev => {
+      const next = { ...prev, [activeTab]: Date.now() };
+      localStorage.setItem('admin_last_viewed_tabs', JSON.stringify(next));
+      return next;
+    });
+  }, [
+    activeTab,
+    lastTicketTime,
+    lastClientMessageTime,
+    lastSubmissionTimeVal,
+    lastUserJoinTime,
+    lastClientJoinTime,
+    lastPaymentTime,
+    lastWithdrawalTime,
+    lastSecurityAlertTime,
+    lastAuditLogTime,
+    lastAnnouncementTime
+  ]);
+
+  // Helper for parsing task ID times
+  const getTaskTimestamp = (taskId: string) => {
+    const parts = taskId.split('-');
+    if (parts.length >= 2) {
+      const ts = Number(parts[1]);
+      if (!isNaN(ts)) return ts;
+    }
+    return 0;
+  };
+
+  // Section-by-section dynamic badges logic
+  const usersBadgeCount = users.filter(u => 
+    u.status === 'Pending' || 
+    (new Date(u.joinDate).getTime() > (lastViewedTime['users'] || 0)) ||
+    (u.fraudScore !== undefined && u.fraudScore && u.fraudScore > 50 && u.status === 'Pending')
+  ).length;
+
+  const clientsBadgeCount = (clients || []).filter(c => 
+    c.status === 'pending' || 
+    (new Date(c.registeredAt).getTime() > (lastViewedTime['clients'] || 0))
+  ).length;
+
+  const clientTasksBadgeCount = (clientTasks || []).filter(t => 
+    t.status === 'pending_review' || 
+    t.status === 'pending' ||
+    (t.createdAt && new Date(t.createdAt).getTime() > (lastViewedTime['client-tasks'] || 0))
+  ).length;
+
+  const paymentsBadgeCount = (clientPaymentProofs || []).filter(p => 
+    p.status === 'pending' || 
+    (new Date(p.submittedAt).getTime() > (lastViewedTime['client-payments'] || 0))
+  ).length + (clients || []).filter(c => c.payAgencyBalance > 0).length;
+
+  const clientSupportBadgeCount = 
+    (tickets || []).filter(t => t.status === 'Open').length +
+    (clientChats || []).filter(chat => chat.resolvedStatus === 'unresolved').length +
+    (clientChats || []).filter(c => c.messages.some(m => m.senderId !== 'admin' && (!lastViewedTime['client-chats'] || new Date(m.timestamp).getTime() > lastViewedTime['client-chats']))).length;
+
+  const tasksBadgeCount = tasks.filter(t => {
+    const ts = getTaskTimestamp(t.id);
+    const isNew = ts > (lastViewedTime['tasks'] || 0);
+    return isNew || t.status === 'available';
+  }).length;
+
+  const submissionsBadgeCount = submissions.filter(s => 
+    s.status === 'Pending' || 
+    s.status === 'Under Admin Review' ||
+    (s.submittedAt && new Date(s.submittedAt).getTime() > (lastViewedTime['submissions'] || 0))
+  ).length;
+
+  const withdrawalsBadgeCount = withdrawals.filter(w => 
+    w.status === 'Pending' ||
+    (w.requestedAt && new Date(w.requestedAt).getTime() > (lastViewedTime['withdrawals'] || 0))
+  ).length;
+
+  const trackDataBadgeCount = 
+    (duplicateGroups || []).length +
+    submissions.filter(s => s.isFlagged).length +
+    users.filter(u => u.fraudScore && u.fraudScore > 75 && u.status === 'Pending').length;
+
+  const securityBadgeCount = (fraudAlerts || []).filter(a => 
+    a.status === 'pending' ||
+    (new Date(a.timestamp).getTime() > (lastViewedTime['security'] || 0))
+  ).length;
+
+  const announcementsBadgeCount = (notifications || []).filter(n => 
+    n.type === 'announcement' &&
+    new Date(n.timestamp).getTime() > (lastViewedTime['announcements'] || 0)
+  ).length;
+
+  const auditLogsBadgeCount = (auditLogs || []).filter(log => 
+    new Date(log.timestamp).getTime() > (lastViewedTime['audit-log'] || 0)
+  ).length;
 
   // 1. Submit Create Task
   const handleCreateTask = (e: React.FormEvent) => {
@@ -269,31 +429,31 @@ export const AdminDashboard: React.FC = () => {
         {/* Tab Selection */}
         <div className="flex flex-wrap gap-1 bg-zinc-900 grid-cols-2 p-1.5 rounded-2xl border border-white/5 w-full md:w-auto">
           {[
-            { id: 'users', label: 'Users Map', count: pendingVerificationsCount },
-            { id: 'clients', label: 'Clients Registry', count: pendingClientsCount },
-            { id: 'client-tasks', label: 'Client Approvals', count: pendingClientTasksCount },
-            ...(currentUser?.role === 'admin' ? [{ id: 'client-payments', label: 'Agency Payments', count: outstandingDuesCount }] : []),
-            { id: 'client-chats', label: 'Client Support', count: unresolvedChatsCount },
-            { id: 'tasks', label: 'Tasks Desk', count: null },
-            { id: 'submissions', label: 'Task Submits', count: pendingSubmissionsCount },
-            ...(currentUser?.role === 'admin' ? [{ id: 'withdrawals', label: 'Withdraw Desk', count: pendingWithdrawalsCount }] : []),
-            { id: 'track-data', label: '📊 Track Data', count: null },
-            { id: 'security', label: '🛡️ Security Center', count: (fraudAlerts || []).filter(a => a.status === 'pending').length },
-            { id: 'announcements', label: 'Publish Feed', count: null },
-            { id: 'audit-log', label: '📜 Role Audit Logs', count: null }
+            { id: 'users', label: 'Users Map', count: usersBadgeCount },
+            { id: 'clients', label: 'Clients Registry', count: clientsBadgeCount },
+            { id: 'client-tasks', label: 'Client Approvals', count: clientTasksBadgeCount },
+            ...(currentUser?.role === 'admin' ? [{ id: 'client-payments', label: 'Agency Payments', count: paymentsBadgeCount }] : []),
+            { id: 'client-chats', label: 'Client Support', count: clientSupportBadgeCount },
+            { id: 'tasks', label: 'Tasks Desk', count: tasksBadgeCount },
+            { id: 'submissions', label: 'Task Submits', count: submissionsBadgeCount },
+            ...(currentUser?.role === 'admin' ? [{ id: 'withdrawals', label: 'Withdraw Desk', count: withdrawalsBadgeCount }] : []),
+            { id: 'track-data', label: '📊 Track Data', count: trackDataBadgeCount },
+            { id: 'security', label: '🛡️ Security Center', count: securityBadgeCount },
+            { id: 'announcements', label: 'Publish Feed', count: announcementsBadgeCount },
+            { id: 'audit-log', label: '📜 Role Audit Logs', count: auditLogsBadgeCount }
           ].map(tab => (
             <button
                key={tab.id}
                onClick={() => setActiveTab(tab.id as any)}
-               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                 activeTab === tab.id 
-                   ? 'bg-purple-600 text-white shadow-md' 
-                   : 'text-zinc-400 hover:text-white hover:bg-white/5'
-               }`}
+               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer relative"
+               style={{
+                 color: activeTab === tab.id ? '#ffffff' : '#a1a1aa',
+                 backgroundColor: activeTab === tab.id ? '#9333ea' : 'transparent'
+               }}
             >
                {tab.label}
                {tab.count !== null && tab.count > 0 && (
-                 <span className="px-1.5 py-0.5 bg-red-600 text-[9px] font-black rounded-full text-white animate-pulse">
+                 <span className="px-1.5 py-0.5 bg-red-600 text-[9px] font-black rounded-full text-white animate-pulse shadow-sm">
                    {tab.count}
                  </span>
                )}
@@ -1921,11 +2081,27 @@ export const AdminDashboard: React.FC = () => {
                               )}
                             </td>
                             <td className="py-3 px-1 font-mono text-[10px] select-text">
-                              {isClaimed && t.claim_expires_at ? (
-                                <span className="text-rose-400 font-black">
-                                  {new Date(t.claim_expires_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                              ) : (
+                              {isClaimed && t.claim_expires_at ? (() => {
+                                const expires = new Date(t.claim_expires_at).getTime();
+                                const now = Date.now();
+                                const diff = expires - now;
+                                if (diff <= 0) {
+                                  return <span className="text-red-500 font-extrabold text-[10px]">EXPIRED</span>;
+                                }
+                                const totalSecs = Math.floor(diff / 1000);
+                                const m = Math.floor(totalSecs / 60);
+                                const s = totalSecs % 60;
+                                return (
+                                  <div className="space-y-0.5">
+                                    <p className="text-rose-400 font-black text-xs animate-pulse">
+                                      {m}:{s < 10 ? '0' : ''}{s} mins
+                                    </p>
+                                    <p className="text-[8px] text-zinc-500 font-bold uppercase">
+                                      Ends: {new Date(t.claim_expires_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </p>
+                                  </div>
+                                );
+                              })() : (
                                 <span className="text-zinc-400 text-[10px]">{t.deadline.split(' ')[0]}</span>
                               )}
                             </td>
@@ -1961,14 +2137,33 @@ export const AdminDashboard: React.FC = () => {
                                     Force Unclaim 🔓
                                   </button>
                                   <button 
-                                    onClick={() => {
-                                      extendUserDeadline(t.id);
-                                      alert('Extended user submission window by +30 minutes!');
+                                    onClick={async () => {
+                                      if (!currentUser) return;
+                                      if (disabledExtensionTasks[t.id]) return;
+
+                                      // Temporarily disable button for 2 seconds to prevent spam clicking
+                                      setDisabledExtensionTasks(prev => ({ ...prev, [t.id]: true }));
+                                      setTimeout(() => {
+                                        setDisabledExtensionTasks(prev => ({ ...prev, [t.id]: false }));
+                                      }, 2000);
+
+                                      try {
+                                        await extendUserDeadline(t.id, currentUser);
+                                        setToastMessage("30 minutes added successfully");
+                                      } catch (err) {
+                                        console.error(err);
+                                        alert("Failed to extend task deadline");
+                                      }
                                     }}
-                                    className="px-2 py-0.5 bg-purple-600/20 hover:bg-purple-600 border border-purple-500/25 text-purple-400 hover:text-white text-[9px] font-black rounded cursor-pointer transition-colors"
+                                    disabled={disabledExtensionTasks[t.id]}
+                                    className={`px-2 py-0.5 border text-[9px] font-black rounded transition-colors ${
+                                      disabledExtensionTasks[t.id]
+                                        ? "bg-zinc-800 border-zinc-700 text-zinc-500 cursor-not-allowed opacity-50"
+                                        : "bg-purple-600/20 hover:bg-purple-600 border-purple-500/25 text-purple-400 hover:text-white cursor-pointer"
+                                    }`}
                                     title="Extend 30 Minutes"
                                   >
-                                    +30m ⏰
+                                    {disabledExtensionTasks[t.id] ? "Wait..." : "+30m ⏰"}
                                   </button>
                                 </div>
                               )}
@@ -3001,6 +3196,21 @@ export const AdminDashboard: React.FC = () => {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Floating Animated Toast Feedback Container */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 bg-zinc-950 border border-purple-500/30 text-white rounded-2xl p-4 shadow-2xl flex items-center gap-3.5 animate-slide-up-fade-in font-bold text-xs select-none">
+          <span className="p-2 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-xl font-bold">⏰ +30m</span>
+          <span>{toastMessage}</span>
+          <button 
+            type="button" 
+            onClick={() => setToastMessage(null)}
+            className="text-zinc-500 hover:text-white ml-2 cursor-pointer transition-colors p-1"
+          >
+            ✕
+          </button>
         </div>
       )}
 
