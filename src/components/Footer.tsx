@@ -66,6 +66,11 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                 </button>
               </li>
               <li>
+                <button onClick={() => onNavigate('trust')} className="text-purple-400 hover:text-purple-300 flex items-center gap-1 cursor-pointer transition-colors">
+                  Trust, Audits & Safety
+                </button>
+              </li>
+              <li>
                 <button onClick={() => onNavigate('contact')} className="hover:text-purple-400 cursor-pointer transition-colors">
                   Contact Support
                 </button>

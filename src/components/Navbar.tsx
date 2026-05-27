@@ -116,6 +116,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
             <div className="hidden md:flex items-center gap-6 text-sm text-zinc-300">
               <button onClick={() => onNavigate('home')} className="hover:text-white cursor-pointer">Home</button>
               <button onClick={() => onNavigate('about')} className="hover:text-white cursor-pointer">About Us</button>
+              <button onClick={() => onNavigate('trust')} className="text-purple-400 hover:text-purple-300 font-bold cursor-pointer flex items-center gap-1.5 transition-colors">Trust & Payouts</button>
               <button onClick={() => onNavigate('faq')} className="hover:text-white cursor-pointer">FAQ</button>
               <button onClick={() => onNavigate('contact')} className="hover:text-white cursor-pointer">Contact</button>
               <button onClick={() => onNavigate('client-login')} className="text-indigo-400 hover:text-indigo-300 font-bold cursor-pointer">Client Portal</button>
@@ -356,6 +357,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
             <div className="space-y-2">
               <button onClick={() => { onNavigate('home'); setMobileMenuOpen(false); }} className="block w-full text-left py-2 px-3 bg-zinc-900 rounded-lg text-sm">Home Page</button>
               <button onClick={() => { onNavigate('about'); setMobileMenuOpen(false); }} className="block w-full text-left py-2 px-3 bg-zinc-900 rounded-lg text-sm">About Us</button>
+              <button onClick={() => { onNavigate('trust'); setMobileMenuOpen(false); }} className="block w-full text-left py-2 px-3 bg-purple-950/40 text-purple-300 border border-purple-900/20 rounded-lg text-sm font-semibold">Trust & Payouts</button>
               <button onClick={() => { onNavigate('faq'); setMobileMenuOpen(false); }} className="block w-full text-left py-2 px-3 bg-zinc-900 rounded-lg text-sm">FAQ</button>
               <button onClick={() => { onNavigate('contact'); setMobileMenuOpen(false); }} className="block w-full text-left py-2 px-3 bg-zinc-900 rounded-lg text-sm">Contact Us</button>
               <div className="flex gap-2 pt-2 border-t border-white/5">

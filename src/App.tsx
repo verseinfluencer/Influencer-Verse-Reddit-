@@ -22,6 +22,7 @@ import { ClientDashboard } from './pages/ClientDashboard';
 
 // Informational subviews import
 import { FAQPage, AboutPage, ContactPage, TermsPage, ReferralProgramInfo } from './pages/InformationalPages';
+import { TrustPage } from './pages/TrustPage';
 
 function MainAppContent() {
   const { currentUser } = useApp();
@@ -42,6 +43,8 @@ function MainAppContent() {
       switch (currentPage) {
         case 'about':
           return <AboutPage />;
+        case 'trust':
+          return <TrustPage />;
         case 'faq':
           return <FAQPage />;
         case 'contact':
@@ -71,6 +74,8 @@ function MainAppContent() {
           return <ClientDashboard />;
         case 'about':
           return <AboutPage />;
+        case 'trust':
+          return <TrustPage />;
         case 'faq':
           return <FAQPage />;
         case 'contact':
@@ -98,6 +103,8 @@ function MainAppContent() {
           return <FAQPage />;
         case 'about':
           return <AboutPage />;
+        case 'trust':
+          return <TrustPage />;
         case 'contact':
           return <ContactPage />;
         case 'terms':
@@ -135,6 +142,8 @@ function MainAppContent() {
         return <ReferralProgramInfo />;
       case 'about':
         return <AboutPage />;
+      case 'trust':
+        return <TrustPage />;
       case 'faq':
         return <FAQPage />;
       case 'contact':

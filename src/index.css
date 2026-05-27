@@ -7,13 +7,49 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
   /* Custom bento styling colors */
-  --color-[#050505]: #050505;
+  --color-[#050505]: var(--bg-primary);
   --color-bento-purple: #7C3AED;
   --color-bento-blue: #3B82F6;
 }
 
+/* Base variables setup */
+:root {
+  --bg-primary: #050505;
+  --bg-secondary: #09090b;
+}
+
+/* Subtle premium pulse animation for admin counters */
+@keyframes admin-premium-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.65);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+    transform: scale(1.05);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+    transform: scale(1);
+  }
+}
+
+.animate-premium-glow-pulse {
+  animation: admin-premium-glow 3.2s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
+}
+
+/* Global Transitions */
+* {
+  transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
+              border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
+              color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
+              box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 body {
-  background-color: #050505 !important;
+  background-color: var(--bg-primary) !important;
+  color: #ededed;
   font-family: var(--font-sans);
 }
 
@@ -21,13 +57,13 @@ h1, h2, h3, .font-display {
   font-family: var(--font-display);
 }
 
+/* Bento Styling */
 .bento-card {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 32px;
   padding: 1.75rem;
   backdrop-filter: blur(12px);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .bento-card-gradient {
@@ -36,7 +72,6 @@ h1, h2, h3, .font-display {
   border-radius: 32px;
   padding: 1.75rem;
   backdrop-filter: blur(12px);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .bento-purple-gradient {
@@ -45,7 +80,6 @@ h1, h2, h3, .font-display {
   border-radius: 32px;
   padding: 1.75rem;
   backdrop-filter: blur(12px);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .bento-card:hover, .bento-card-gradient:hover {
@@ -67,3 +101,276 @@ h1, h2, h3, .font-display {
   background-image: linear-gradient(to right, #7C3AED, #3B82F6);
 }
 
+/* ==========================================================================
+   PREMIUM LIGHT MODE CONFIGURATION OVERRIDES
+   ========================================================================== */
+
+html.light {
+  --bg-primary: #f6f6f9;
+  --bg-secondary: #ffffff;
+}
+
+html.light body {
+  background-color: #f6f6f9 !important;
+  color: #1c1c1e !important;
+}
+
+/* 1. Global Background replacements */
+html.light .bg-\[\#050505\],
+html.light .bg-[#050505],
+html.light .bg-zinc-950,
+html.light .bg-neutral-950,
+html.light .bg-black,
+html.light .bg-zinc-950\/80,
+html.light .bg-zinc-950\/40,
+html.light .bg-zinc-950\/30,
+html.light .bg-zinc-950\/20,
+html.light .bg-zinc-950\/60,
+html.light .bg-zinc-900\/20,
+html.light .bg-zinc-900\/10,
+html.light .bg-zinc-900\/30,
+html.light .bg-zinc-900\/40,
+html.light .bg-zinc-950\/50,
+html.light .bg-zinc-900\/50,
+html.light .bg-zinc-900,
+html.light .bg-\[\#09090b\],
+html.light .bg-[#09090b],
+html.light .bg-\[\#09090c\],
+html.light .bg-[#09090c] {
+  background-color: #ffffff !important;
+  background-image: none !important;
+}
+
+/* 2. Bento Card tweaks for light theme */
+html.light .bento-card,
+html.light .bento-card-gradient {
+  background: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.02) !important;
+}
+
+html.light .bento-card:hover,
+html.light .bento-card-gradient:hover {
+  border-color: rgba(0, 0, 0, 0.14) !important;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.08) !important;
+}
+
+html.light .bento-purple-gradient {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.06) 0%, rgba(124, 58, 237, 0.01) 100%) !important;
+  border-color: rgba(124, 58, 237, 0.2) !important;
+}
+
+/* 3. Text & Typography contrast */
+html.light .text-white,
+html.light .text-zinc-100,
+html.light .text-\[\#ededed\],
+html.light .text-[#ededed],
+html.light h1:not(.bg-clip-text),
+html.light h2:not(.bg-clip-text),
+html.light h3:not(.bg-clip-text),
+html.light h4:not(.bg-clip-text),
+html.light h5,
+html.light h6 {
+  color: #0c0c0e !important;
+}
+
+/* Keep gradient text from breaking */
+html.light .text-transparent {
+  color: transparent !important;
+}
+
+html.light .text-zinc-300,
+html.light .text-zinc-400,
+html.light .text-zinc-500 {
+  color: #3a3a3c !important;
+}
+
+html.light .text-zinc-500,
+html.light .text-zinc-550,
+html.light .text-zinc-600 {
+  color: #636366 !important;
+}
+
+html.light .text-zinc-700,
+html.light .text-zinc-800 {
+  color: #1c1c1e !important;
+}
+
+/* Primary/Alternative Colors */
+html.light .text-purple-400 {
+  color: #7c3aed !important;
+}
+html.light .text-indigo-400 {
+  color: #4f46e5 !important;
+}
+html.light .text-emerald-400 {
+  color: #0d9488 !important;
+}
+html.light .text-emerald-450 {
+  color: #059669 !important;
+}
+html.light .text-yellow-450,
+html.light .text-yellow-400 {
+  color: #ca8a04 !important;
+}
+
+/* 4. Border adjustments */
+html.light .border-white\/5,
+html.light .border-white\/10,
+html.light .border-zinc-800,
+html.light .border-zinc-900,
+html.light .border-zinc-700 {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* 5. Inputs, Select boxes and forms */
+html.light input,
+html.light select,
+html.light textarea {
+  background-color: #ffffff !important;
+  color: #09090b !important;
+  border: 1px solid rgba(0, 0, 0, 0.15) !important;
+}
+
+html.light input:focus,
+html.light select:focus,
+html.light textarea:focus {
+  border-color: #7C3AED !important;
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.1) !important;
+}
+
+/* 6. Navigation bar overrides */
+html.light nav,
+html.light .navbar {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+  backdrop-filter: blur(16px) !important;
+}
+
+html.light nav button,
+html.light nav a {
+  color: #27272a !important;
+}
+
+html.light nav button:hover,
+html.light nav a:hover {
+  color: #09090b !important;
+}
+
+/* Keep gradient action buttons text white in light mode */
+html.light button.bg-gradient-to-r,
+html.light button.bg-gradient-to-r *,
+html.light a.bg-gradient-to-r,
+html.light a.bg-gradient-to-r * {
+  color: #ffffff !important;
+}
+
+/* 7. Tables & Lists */
+html.light table {
+  background-color: #ffffff !important;
+}
+
+html.light thead,
+html.light tr.bg-zinc-950,
+html.light table head {
+  background-color: #f4f4f5 !important;
+}
+
+html.light th {
+  color: #27272a !important;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+html.light td {
+  color: #1c1c1e !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+/* 8. Sidebars & Dashboard Elements */
+html.light aside,
+html.light .sidebar,
+html.light .sidebar-container {
+  background-color: #ffffff !important;
+  border-right: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+html.light aside button,
+html.light .sidebar button {
+  color: #27272a !important;
+}
+
+html.light aside button:hover,
+html.light .sidebar button:hover {
+  background-color: #f4f4f5 !important;
+  color: #09090b !important;
+}
+
+html.light aside button.bg-purple-950\/40,
+html.light .sidebar button.bg-purple-950\/40 {
+  background-color: #f5f3ff !important;
+  color: #7c3aed !important;
+}
+
+/* 9. Support system chat containers and details */
+html.light .bg-zinc-800 {
+  background-color: #f4f4f5 !important;
+  color: #1c1c1e !important;
+}
+
+html.light .bg-[#121216] {
+  background-color: #f4f4f5 !important;
+}
+
+html.light .bg-zinc-900\/60,
+html.light .bg-zinc-900\/70,
+html.light .bg-zinc-900\/80 {
+  background-color: #ffffff !important;
+  border-color: rgba(0,0,0,0.06) !important;
+}
+
+/* 10. Dialogues / Modals */
+html.light div[role="dialog"] {
+  background-color: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* Extra support for dark button styling inside Light mode */
+html.light button.bg-zinc-900:not(.bg-gradient-to-r),
+html.light button.bg-zinc-800:not(.bg-gradient-to-r),
+html.light button.bg-zinc-950:not(.bg-gradient-to-r) {
+  background-color: #18181b !important;
+  color: #ffffff !important;
+}
+
+html.light button.bg-zinc-900:not(.bg-gradient-to-r):hover,
+html.light button.bg-zinc-800:not(.bg-gradient-to-r):hover,
+html.light button.bg-zinc-950:not(.bg-gradient-to-r):hover {
+  background-color: #27272a !important;
+}
+
+/* Badges adjustments */
+html.light .bg-purple-500\/10 {
+  background-color: #f5f3ff !important;
+  color: #7c3aed !important;
+  border-color: rgba(124, 58, 237, 0.2) !important;
+}
+
+html.light .bg-indigo-500\/10,
+html.light .bg-indigo-950\/25 {
+  background-color: #e0e7ff !important;
+  color: #4f46e5 !important;
+  border-color: rgba(79, 70, 229, 0.2) !important;
+}
+
+html.light .bg-emerald-500\/10 {
+  background-color: #ecfdf5 !important;
+  color: #059669 !important;
+  border-color: rgba(5, 150, 105, 0.2) !important;
+}
+
+html.light .bg-red-500\/10 {
+  background-color: #fef2f2 !important;
+  color: #dc2626 !important;
+  border-color: rgba(220, 38, 38, 0.2) !important;
+}

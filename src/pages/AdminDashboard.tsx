@@ -38,6 +38,26 @@ export const AdminDashboard: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'users' | 'clients' | 'client-tasks' | 'client-payments' | 'client-chats' | 'tasks' | 'submissions' | 'withdrawals' | 'announcements' | 'settings' | 'security' | 'track-data' | 'audit-log'>('users');
 
+  // Visited tabs tracking for premium pending animation dismissal
+  const [visitedTabs, setVisitedTabs] = useState<Record<string, boolean>>(() => {
+    return { 'users': true };
+  });
+
+  useEffect(() => {
+    if (activeTab) {
+      setVisitedTabs(prev => ({ ...prev, [activeTab]: true }));
+    }
+  }, [activeTab]);
+
+  const shouldPulse = (tabId: string, count: number) => {
+    if (!count || count <= 0) return false;
+    const targetTabs = ['users', 'clients', 'client-tasks', 'submissions', 'withdrawals', 'client-chats'];
+    if (!targetTabs.includes(tabId)) return false;
+    if (activeTab === tabId) return false;
+    if (visitedTabs[tabId]) return false;
+    return true;
+  };
+
   // Relative timer and manual refresh trigger for "Track Data"
   const [lastRefreshedTrigger, setLastRefreshedTrigger] = useState(0);
   const [secondsSinceRefresh, setSecondsSinceRefresh] = useState(0);
@@ -460,7 +480,13 @@ export const AdminDashboard: React.FC = () => {
             >
                {tab.label}
                {tab.count !== null && tab.count > 0 && (
-                 <span className="px-1.5 py-0.5 bg-red-600 text-[9px] font-black rounded-full text-white animate-pulse shadow-sm">
+                 <span 
+                   className={`px-1.5 py-0.5 bg-red-600 text-[9px] font-black rounded-full text-white shadow-sm transition-all duration-300 ${
+                     shouldPulse(tab.id, tab.count) 
+                       ? 'animate-premium-glow-pulse border border-red-500/50' 
+                       : ''
+                   }`}
+                 >
                    {tab.count}
                  </span>
                )}
@@ -1034,8 +1060,13 @@ export const AdminDashboard: React.FC = () => {
                               <span className="text-[10px] text-zinc-300 font-mono">
                                 {proof.transactionId || 'N/A'}
                               </span>
+                              {proof.paymentMethod && (
+                                <span className="text-[9px] text-indigo-400 font-bold block uppercase mt-0.5 font-mono">
+                                  Method: {proof.paymentMethod.replace('_', ' ')}
+                                </span>
+                              )}
                               {proof.notes && (
-                                <span className="text-[9px] text-zinc-500 block italic leading-none truncate mt-0.5">{proof.notes}</span>
+                                <span className="text-[9px] text-zinc-500 block italic leading-none truncate mt-1">{proof.notes}</span>
                               )}
                             </td>
                             <td className="py-4 px-3 text-zinc-400 font-mono text-[10px]">

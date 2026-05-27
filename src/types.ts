@@ -118,6 +118,11 @@ export interface Submission {
   proofLink?: string | null;
   memberPay?: number | null;
   agencyPay?: number | null;
+  billingProcessed?: boolean;
+  approvedAmount?: number;
+  approvalTimestamp?: string;
+  invoiceStatus?: string;
+  clientId?: string;
 }
 
 export interface Withdrawal {
@@ -251,6 +256,7 @@ export interface ClientPaymentProof {
   clientCompany: string;
   amount: number;
   transactionId: string | null;
+  paymentMethod?: string;
   proofImageUrl: string;
   notes: string | null;
   status: 'pending' | 'verified' | 'rejected';

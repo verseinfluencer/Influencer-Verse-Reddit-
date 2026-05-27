@@ -99,6 +99,7 @@ interface AppContextType {
     clientCompany: string;
     amount: number;
     transactionId: string | null;
+    paymentMethod?: string;
     proofImageUrl: string;
     notes: string | null;
   }) => Promise<void>;
@@ -212,7 +213,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [clientPayments, setClientPayments] = useState<ClientPayment[]>([]);
   const [clientPaymentProofs, setClientPaymentProofs] = useState<ClientPaymentProof[]>([]);
   const [clientChats, setClientChats] = useState<ClientChat[]>([]);
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark' || saved === 'light') {
+      return saved;
+    }
+    const systemPrefersDark = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    return systemPrefersDark ? 'dark' : 'light';
+  });
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
   // Anti-cheat mock storage values fallback
@@ -265,6 +273,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // Synchronize and apply theme to documentElement classes
+  useEffect(() => {
+    const rootElement = document.documentElement;
+    if (theme === 'dark') {
+      rootElement.classList.add('dark');
+      rootElement.classList.remove('light');
+    } else {
+      rootElement.classList.add('light');
+      rootElement.classList.remove('dark');
+    }
+    localStorage.setItem('theme', theme);
+
+    if (currentUser?.id) {
+      const userRef = doc(db, 'users', currentUser.id);
+      getDoc(userRef).then(async (snap) => {
+        if (snap.exists() && snap.data().theme !== theme) {
+          try {
+            await updateDoc(userRef, { theme });
+          } catch (e) {
+            console.error("Theme sync fails (optional profile sync):", e);
+          }
+        }
+      });
+    }
+  }, [theme, currentUser?.id]);
+
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
@@ -276,8 +310,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         // Current user setup
         const unsubUser = onSnapshot(doc(db, 'users', firebaseUser.uid), (snap) => {
           if (snap.exists()) {
-            const uData = snap.data() as User;
-            setCurrentUser(uData);
+            const uData = snap.data() as any;
+            setCurrentUser(uData as User);
+            if (uData.theme === 'dark' || uData.theme === 'light') {
+              setTheme(uData.theme);
+            }
           }
         });
         const unsubClientProfile = onSnapshot(doc(db, 'clients', firebaseUser.uid), (snap) => {
@@ -816,6 +853,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const docRef = doc(db, 'client_tasks', taskId);
       const snap = await getDoc(docRef);
       if (!snap.exists()) throw new Error('Campaign task not found.');
+      const clientTask = snap.data() as ClientTask;
       
       const clientName = currentClient?.name || currentClient?.company || 'Client';
 
@@ -826,7 +864,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .find(s => s.status === 'Admin Approved (Waiting for Client Approval)');
 
       if (action === 'Approve') {
-        if (pendingSub) {
+        if (pendingSub && !pendingSub.billingProcessed) {
           const uRef = doc(db, 'users', pendingSub.userId);
           const userSnap = await getDoc(uRef);
           if (userSnap.exists()) {
@@ -862,13 +900,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             await setDoc(doc(db, 'notifications', memberNotif.id), memberNotif);
           }
 
-          // Update the submission with full audit logs
+          // Calculate & Settle Client Billing
+          const clientRef = doc(db, 'clients', clientTask.clientId);
+          const clientSnap = await getDoc(clientRef);
+          if (clientSnap.exists()) {
+            const clientData = clientSnap.data() as Client;
+            await updateDoc(clientRef, {
+              payAgencyBalance: (clientData.payAgencyBalance || 0) + pendingSub.reward
+            });
+          }
+
+          // Update the submission with full audit logs & billing marks
           await updateDoc(doc(db, 'submissions', pendingSub.id), {
             status: 'Client Approved (Payment Released)',
             feedback: feedback || 'Approved & Payment Released by Client',
             clientApprovedAt: new Date().toISOString(),
             paymentReleasedTime: new Date().toISOString(),
-            approvedBy: clientName
+            approvedBy: clientName,
+            billingProcessed: true,
+            approvedAmount: pendingSub.reward,
+            approvalTimestamp: new Date().toISOString(),
+            invoiceStatus: 'Unpaid',
+            clientId: clientTask.clientId
           });
         }
 
@@ -1065,7 +1118,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const pendingSub = subSnap.docs.map(d => d.data() as Submission)
           .find(s => s.status === 'Admin Approved (Waiting for Client Approval)' || s.status === 'Under Admin Review');
 
-        if (pendingSub) {
+        if (pendingSub && !pendingSub.billingProcessed) {
           const uRef = doc(db, 'users', pendingSub.userId);
           const uSnap = await getDoc(uRef);
           if (uSnap.exists()) {
@@ -1089,13 +1142,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             await setDoc(doc(db, 'transactions', tx.id), tx);
           }
 
+          // Calculate & Settle Client Billing
+          const clientRef = doc(db, 'clients', task.clientId);
+          const clientSnap = await getDoc(clientRef);
+          if (clientSnap.exists()) {
+            const clientData = clientSnap.data() as Client;
+            await updateDoc(clientRef, {
+              payAgencyBalance: (clientData.payAgencyBalance || 0) + pendingSub.reward
+            });
+          }
+
           await updateDoc(doc(db, 'submissions', pendingSub.id), {
             status: 'Client Approved (Payment Released)',
             feedback: 'Force completed by Admin',
             adminApprovalTime: pendingSub.adminApprovalTime || new Date().toISOString(),
             clientApprovalTime: new Date().toISOString(),
             paymentReleasedTime: new Date().toISOString(),
-            approvedBy: 'admin'
+            approvedBy: 'admin',
+            billingProcessed: true,
+            approvedAmount: pendingSub.reward,
+            approvalTimestamp: new Date().toISOString(),
+            invoiceStatus: 'Unpaid',
+            clientId: task.clientId
           });
         }
 
@@ -1144,6 +1212,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     clientCompany: string;
     amount: number;
     transactionId: string | null;
+    paymentMethod?: string;
     proofImageUrl: string;
     notes: string | null;
   }) => {
@@ -1164,6 +1233,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         clientCompany: proof.clientCompany,
         amount: Number(proof.amount),
         transactionId: proof.transactionId || null,
+        paymentMethod: proof.paymentMethod || null,
         proofImageUrl: proof.proofImageUrl,
         notes: proof.notes || null,
         status: 'pending',
@@ -1172,6 +1242,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         verifiedBy: null,
         rejectionReason: null
       });
+
+      // Send verification notification to admin
+      const adminNotifId = `notif-payment-proof-${Date.now()}`;
+      const adminNotif: AppNotification = {
+        id: adminNotifId,
+        userId: 'admin-1', // Admin channel identifier
+        type: 'client_update',
+        title: 'New Payment Proof Uploaded',
+        message: `Brand "${proof.clientCompany}" has uploaded a payment proof of $${Number(proof.amount).toFixed(2)} USDT for verification.`,
+        read: false,
+        timestamp: new Date().toISOString()
+      };
+      await setDoc(doc(db, 'notifications', adminNotif.id), adminNotif);
     } catch (error) {
       console.error('Error in clientSubmitPaymentProof:', error);
       throw error;
@@ -1393,7 +1476,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const toggleTheme = () => {
-    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+    setTheme(prev => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('theme', next);
+      return next;
+    });
   };
 
   const blacklistIP = (ip: string) => {
@@ -2081,12 +2168,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         };
         await setDoc(doc(db, 'transactions', tx.id), tx);
 
+        const isClientTask = sub.taskId && sub.taskId.startsWith('client-task-');
+        let bProcessed = false;
+        let cId = null;
+        if (isClientTask && !sub.billingProcessed) {
+          const clientTaskRef = doc(db, 'client_tasks', sub.taskId);
+          const ctSnap = await getDoc(clientTaskRef);
+          if (ctSnap.exists()) {
+            const clientTask = ctSnap.data() as ClientTask;
+            cId = clientTask.clientId;
+            const clientRef = doc(db, 'clients', clientTask.clientId);
+            const clientSnap = await getDoc(clientRef);
+            if (clientSnap.exists()) {
+              const clientData = clientSnap.data() as Client;
+              await updateDoc(clientRef, {
+                payAgencyBalance: (clientData.payAgencyBalance || 0) + sub.reward
+              });
+              bProcessed = true;
+            }
+          }
+        }
+
         await updateDoc(subRef, {
           status: 'Client Approved (Payment Released)',
           feedback: feedback || 'Approved & Payment Released',
           clientApprovalTime: new Date().toISOString(),
           paymentReleasedTime: new Date().toISOString(),
-          approvedBy: `Admin-Client (${adminEmail})`
+          approvedBy: `Admin-Client (${adminEmail})`,
+          ...(bProcessed ? {
+            billingProcessed: true,
+            approvedAmount: sub.reward,
+            approvalTimestamp: new Date().toISOString(),
+            invoiceStatus: 'Unpaid',
+            clientId: cId
+          } : {})
         });
 
         const notif: AppNotification = {

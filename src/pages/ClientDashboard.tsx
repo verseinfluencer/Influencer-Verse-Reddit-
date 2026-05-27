@@ -47,6 +47,7 @@ export const ClientDashboard: React.FC = () => {
   // Client Payment Proof submission form states
   const [proofAmount, setProofAmount] = useState('');
   const [proofTxId, setProofTxId] = useState('');
+  const [proofPaymentMethod, setProofPaymentMethod] = useState('USDT_BEP20');
   const [proofNotes, setProofNotes] = useState('');
   const [proofImage, setProofImage] = useState('');
   const [proofFileName, setProofFileName] = useState('');
@@ -67,6 +68,17 @@ export const ClientDashboard: React.FC = () => {
 
     if (file.size > 2 * 1024 * 1024) {
       setProofErrorMsg('File size exceeds the 2MB limit.');
+      setProofFileName('');
+      setProofImage('');
+      return;
+    }
+
+    // Secure/strict validation of allowed receipt file MIME types (JPG, PNG, WEBP, PDF)
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+      setProofErrorMsg('Invalid file type. Only JPG, PNG, WEBP images and PDF files are allowed.');
+      setProofFileName('');
+      setProofImage('');
       return;
     }
 
@@ -107,13 +119,15 @@ export const ClientDashboard: React.FC = () => {
         clientCompany: clientRecord.company,
         amount: amountFloat,
         transactionId: proofTxId.trim() || null,
+        paymentMethod: proofPaymentMethod,
         proofImageUrl: proofImage,
         notes: proofNotes.trim() || null
       });
 
-      setProofSuccessMsg('Payment proof submitted. Admin will verify within 24 hours.');
+      setProofSuccessMsg('Payment proof submitted successfully. Admin will review and verify your deposit shortly.');
       setProofAmount('');
       setProofTxId('');
+      setProofPaymentMethod('USDT_BEP20');
       setProofNotes('');
       setProofImage('');
       setProofFileName('');
@@ -699,15 +713,32 @@ export const ClientDashboard: React.FC = () => {
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Tx ID / Hash (Optional)</label>
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Tx ID / Hash / UTR *</label>
                       <input 
                         type="text"
+                        required
                         value={proofTxId}
                         onChange={(e) => setProofTxId(e.target.value)}
-                        placeholder="e.g. 0xef..."
+                        placeholder="e.g. 0xef... or UTR reference"
                         className="w-full text-xs text-white bg-zinc-900 border border-white/5 px-3 py-2 rounded-xl focus:border-indigo-500 focus:outline-none"
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Payment Method *</label>
+                    <select
+                      required
+                      value={proofPaymentMethod}
+                      onChange={(e) => setProofPaymentMethod(e.target.value)}
+                      className="w-full text-xs text-white bg-zinc-900 border border-white/5 px-3 py-2 rounded-xl focus:border-indigo-550 focus:outline-none"
+                    >
+                      <option value="USDT_BEP20">USDT (BEP20 - Binance Smart Chain)</option>
+                      <option value="BINANCE_ID">Binance Pay (ID: 1215158504)</option>
+                      <option value="USDT_TRC20">USDT (TRC20 - Tron)</option>
+                      <option value="BANK_TRANSFER">Direct Bank Transfer / Wire</option>
+                      <option value="OTHER">Other / Alternative Wallet</option>
+                    </select>
                   </div>
 
                   <div>
@@ -773,11 +804,12 @@ export const ClientDashboard: React.FC = () => {
                             <th className="py-3 px-4 font-bold text-center">Receipt</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-neutral-850">
+                        <tbody className="divide-y divide-neutral-800">
                           {clientPaymentProofs.filter(p => p.clientId === clientRecord.id).map(proof => (
                             <tr key={proof.id} className="hover:bg-neutral-900/10 transition">
-                              <td className="py-3 px-4 text-neutral-400 font-mono">
-                                {new Date(proof.submittedAt).toLocaleDateString()}
+                              <td className="py-3 px-4 text-neutral-400 font-mono text-[11px]">
+                                <span className="block">{new Date(proof.submittedAt).toLocaleDateString()}</span>
+                                <span className="text-[9px] text-zinc-650 font-sans block">{new Date(proof.submittedAt).toLocaleTimeString()}</span>
                               </td>
                               <td className="py-3 px-4 text-right font-mono font-bold text-white">
                                 ${proof.amount.toFixed(2)}
@@ -785,34 +817,62 @@ export const ClientDashboard: React.FC = () => {
                               <td className="py-3 px-4 text-center">
                                 <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
                                   proof.status === 'verified' 
-                                    ? 'bg-emerald-950 border border-emerald-900 text-emerald-400'
+                                    ? 'bg-emerald-950/80 border border-emerald-900 text-emerald-400'
                                     : proof.status === 'rejected'
-                                    ? 'bg-red-950 border border-red-900 text-red-400'
-                                    : 'bg-amber-950 border border-amber-900 text-amber-400'
+                                    ? 'bg-red-950/80 border border-red-900 text-red-400'
+                                    : 'bg-amber-950/80 border border-amber-900 text-amber-400'
                                 }`}>
-                                  {proof.status === 'pending' ? 'Pending Review' : proof.status}
+                                  {proof.status === 'pending' ? 'Pending Verification' : proof.status === 'verified' ? 'Approved' : 'Rejected'}
                                 </span>
                               </td>
-                              <td className="py-3 px-4 max-w-[180px] break-words">
-                                <p className="text-[10px] text-zinc-300 font-medium font-mono truncate" title={proof.transactionId || 'None'}>
-                                  Tx: {proof.transactionId || 'N/A'}
+                              <td className="py-3 px-4 max-w-[200px] break-words text-left">
+                                <p className="text-[10px] text-zinc-300 font-medium font-mono select-all">
+                                  <strong>Tx/Ref:</strong> {proof.transactionId || 'N/A'}
                                 </p>
+                                {proof.paymentMethod && (
+                                  <p className="text-[9px] text-indigo-400 font-semibold mt-0.5">
+                                    Method: <span className="font-mono bg-indigo-950/50 border border-indigo-900/30 px-1 rounded uppercase">{proof.paymentMethod.replace('_', ' ')}</span>
+                                  </p>
+                                )}
                                 {proof.notes && (
-                                  <p className="text-[9px] text-zinc-500 italic mt-0.5">{proof.notes}</p>
+                                  <p className="text-[9px] text-zinc-500 italic mt-0.5 leading-tight">{proof.notes}</p>
                                 )}
                                 {proof.rejectionReason && (
-                                  <p className="text-[10px] text-red-400 font-semibold mt-1">Rejection Reason: {proof.rejectionReason}</p>
+                                  <div className="text-[10px] text-red-400 font-semibold mt-1.5 p-1.5 bg-red-950/10 border border-red-900/20 rounded">
+                                    <span className="text-[8px] uppercase font-bold text-red-300 block">Rejection Reason:</span>
+                                    {proof.rejectionReason}
+                                  </div>
                                 )}
                               </td>
                               <td className="py-3 px-4 text-center">
-                                <a 
-                                  href={proof.proofImageUrl} 
-                                  target="_blank" 
-                                  rel="noreferrer"
-                                  className="inline-block text-xs text-indigo-400 hover:underline font-bold"
-                                >
-                                  Preview Proof
-                                </a>
+                                {proof.proofImageUrl && (
+                                  <div className="flex flex-col items-center gap-1">
+                                    {proof.proofImageUrl.startsWith('data:image/') || proof.proofImageUrl.match(/\.(jpeg|jpg|gif|png|webp|svg)/i) ? (
+                                      <img 
+                                        src={proof.proofImageUrl} 
+                                        alt="Receipt preview" 
+                                        className="w-10 h-10 object-cover rounded border border-white/10 hover:border-indigo-500 cursor-pointer transition transform hover:scale-105" 
+                                        onClick={() => window.open(proof.proofImageUrl, '_blank')}
+                                      />
+                                    ) : (
+                                      <div 
+                                        onClick={() => window.open(proof.proofImageUrl, '_blank')}
+                                        className="w-10 h-10 bg-indigo-950/40 text-indigo-400 rounded border border-indigo-900/30 flex items-center justify-center font-bold text-[9px] cursor-pointer hover:bg-indigo-900/50 transition transform hover:scale-[1.02]"
+                                        title="PDF Document"
+                                      >
+                                        PDF
+                                      </div>
+                                    )}
+                                    <a 
+                                      href={proof.proofImageUrl} 
+                                      target="_blank" 
+                                      rel="noreferrer"
+                                      className="text-[9px] text-indigo-400 hover:underline font-bold"
+                                    >
+                                      Full View
+                                    </a>
+                                  </div>
+                                )}
                               </td>
                             </tr>
                           ))}
