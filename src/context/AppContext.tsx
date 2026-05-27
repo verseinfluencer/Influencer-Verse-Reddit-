@@ -120,7 +120,7 @@ interface AppContextType {
   adminConfirmClientPayment: (clientId: string, amount: number, referenceNote?: string, receiptUrl?: string) => Promise<void>;
   adminReviewPayout: (requestId: string, status: 'Approved' | 'Rejected') => Promise<void>;
   adminRemoveCompletedTask: (taskId: string) => void;
-  adminDeductMember: (userId: string, taskId: string, taskName: string, amount: number, reason: string) => void;
+  adminDeductMember: (userId: string, taskId: string, taskName: string, amount: number, reason: string) => Promise<void>;
 
   // Chats
   clientSendMessage: (text: string, fileUrl?: string) => Promise<void>;
@@ -1301,6 +1301,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       status: 'Completed'
     };
     await setDoc(doc(db, 'transactions', dedTransaction.id), dedTransaction);
+
+    const notif: AppNotification = {
+      id: `notif-${Date.now()}`,
+      userId,
+      type: 'client_update',
+      title: 'Balance Deducted ❌',
+      message: `❌ $${amount.toFixed(2)} deducted from your wallet. Reason: ${reason}`,
+      read: false,
+      timestamp: new Date().toISOString(),
+      createdAt: new Date().toISOString()
+    };
+    await setDoc(doc(db, 'notifications', notif.id), notif);
   };
 
   const clientSendMessage = async (text: string, fileUrl?: string) => {

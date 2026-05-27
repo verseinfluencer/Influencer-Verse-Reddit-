@@ -123,6 +123,12 @@ export const AdminDashboard: React.FC = () => {
   const [promoteTargetUser, setPromoteTargetUser] = useState<User | null>(null);
   const [demoteTargetUser, setDemoteTargetUser] = useState<User | null>(null);
 
+  // Balance deduction state values
+  const [deductTargetUser, setDeductTargetUser] = useState<User | null>(null);
+  const [deductAmountInput, setDeductAmountInput] = useState<string>('');
+  const [deductReasonInput, setDeductReasonInput] = useState<string>('');
+  const [deductTaskNameInput, setDeductTaskNameInput] = useState<string>('');
+
   // Task extension custom states
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [disabledExtensionTasks, setDisabledExtensionTasks] = useState<Record<string, boolean>>({});
@@ -1761,6 +1767,22 @@ export const AdminDashboard: React.FC = () => {
                             </button>
                           </div>
                         )}
+                        {u.role !== 'admin' && (
+                          <div className="pt-2 flex gap-1.5 justify-end">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDeductTargetUser(u);
+                                setDeductAmountInput('');
+                                setDeductReasonInput('');
+                                setDeductTaskNameInput('');
+                              }}
+                              className="px-2.5 py-1 bg-red-600/15 hover:bg-red-600 border border-red-500/25 text-red-400 hover:text-white text-[10px] font-black rounded cursor-pointer transition-all uppercase tracking-wider inline-flex items-center gap-1"
+                            >
+                              💸 Deduct Balance
+                            </button>
+                          </div>
+                        )}
                         {u.role === 'admin' && (
                           <span className="text-[10px] text-zinc-500 font-extrabold uppercase">Platform Admin Locked</span>
                         )}
@@ -3179,7 +3201,7 @@ export const AdminDashboard: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setDemoteTargetUser(null)}
-                className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-xl text-xs font-black cursor-pointer transition-all"
+                className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-350 hover:text-white rounded-xl text-xs font-black cursor-pointer transition-all"
               >
                 Cancel
               </button>
@@ -3193,6 +3215,121 @@ export const AdminDashboard: React.FC = () => {
                 className="px-4 py-2 bg-amber-600 hover:bg-amber-500 rounded-xl text-xs font-black text-white cursor-pointer transition-all shadow-md shadow-amber-900/20"
               >
                 Confirm Demotion
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Deduct Balance Modal Overlay */}
+      {deductTargetUser && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 select-none animate-fade-in">
+          <div className="bg-zinc-950 border border-red-500/20 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <div>
+              <h3 className="text-lg font-black text-white flex items-center gap-2">
+                💸 Deduct Wallet Balance
+              </h3>
+              <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                You are about to deduct funds from <span className="text-red-400 font-extrabold">{deductTargetUser.fullName} (@{deductTargetUser.redditUsername})</span>. Their current balance is <span className="text-emerald-400 font-bold">${(deductTargetUser.balance || 0).toFixed(2)} USDT</span>.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block">
+                  Amount to Deduct (USDT)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  placeholder="e.g., 5.00"
+                  value={deductAmountInput}
+                  onChange={(e) => setDeductAmountInput(e.target.value)}
+                  className="w-full bg-zinc-900 border border-white/10 text-white text-xs px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-500 font-semibold"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block">
+                  Reason for Deduction (Required)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Incomplete post body in Reddit submission..."
+                  value={deductReasonInput}
+                  onChange={(e) => setDeductReasonInput(e.target.value)}
+                  className="w-full bg-zinc-900 border border-white/10 text-white text-xs px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-500 font-semibold"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block">
+                  Associated Task Name (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Crypto Promo Reddit Post"
+                  value={deductTaskNameInput}
+                  onChange={(e) => setDeductTaskNameInput(e.target.value)}
+                  className="w-full bg-zinc-900 border border-white/10 text-white text-xs px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-500 font-semibold"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2.5 justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setDeductTargetUser(null);
+                  setDeductAmountInput('');
+                  setDeductReasonInput('');
+                  setDeductTaskNameInput('');
+                }}
+                className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-350 hover:text-white rounded-xl text-xs font-black cursor-pointer transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!deductReasonInput.trim() || !deductAmountInput || parseFloat(deductAmountInput) <= 0}
+                onClick={async () => {
+                  const amt = parseFloat(deductAmountInput);
+                  if (isNaN(amt) || amt <= 0) {
+                    alert("Please enter a valid deduction amount.");
+                    return;
+                  }
+                  if (!deductReasonInput.trim()) {
+                    alert("Deduction reason is required.");
+                    return;
+                  }
+
+                  try {
+                    const taskNameVal = deductTaskNameInput.trim() || "Manual deduction";
+                    await adminDeductMember(
+                      deductTargetUser.id,
+                      "manual-ded-task", // taskId
+                      taskNameVal,
+                      amt,
+                      deductReasonInput.trim()
+                    );
+                    setToastMessage(`Successfully deducted $${amt.toFixed(2)} USDT from user.`);
+                    setDeductTargetUser(null);
+                    setDeductAmountInput('');
+                    setDeductReasonInput('');
+                    setDeductTaskNameInput('');
+                  } catch (err: any) {
+                    console.error("Error deducting balance", err);
+                    alert(`Failed to deduct balance: ${err.message || err}`);
+                  }
+                }}
+                className={`px-4 py-2 rounded-xl text-xs font-black text-white cursor-pointer transition-all ${
+                  deductReasonInput.trim() && deductAmountInput && parseFloat(deductAmountInput) > 0
+                    ? 'bg-red-650 hover:bg-red-600 shadow-md shadow-red-900/20'
+                    : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                }`}
+              >
+                Confirm Deduction
               </button>
             </div>
           </div>
