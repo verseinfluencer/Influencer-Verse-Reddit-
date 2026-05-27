@@ -556,35 +556,45 @@ export const Marketplace: React.FC = () => {
                         </div>
                       )}
 
-                      {task.postGuidelines && (
-                        <div className="space-y-1 border-t border-white/5 pt-2">
-                          <div className="flex justify-between items-center">
-                            <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-extrabold">Post Body / Content</span>
-                            <div className="flex gap-1.5">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleCopyText(task.postGuidelines || '', 'Post body copied');
-                                }}
-                                className="text-[9px] text-purple-400 hover:text-purple-300 font-extrabold flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-2 py-0.5 rounded transition-all border border-purple-500/5 cursor-pointer"
-                              >
-                                <Copy className="w-2.5 h-2.5" /> Copy Body
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const formattedAll = `Title: ${task.requiredPostTitle || ''}\n\nBody:\n${task.postGuidelines || ''}`;
-                                  handleCopyText(formattedAll, 'Title & post body copied');
-                                }}
-                                className="text-[9px] text-pink-400 hover:text-pink-300 font-extrabold flex items-center gap-1 bg-pink-500/10 hover:bg-pink-500/20 px-2 py-0.5 rounded transition-all border border-pink-500/5 cursor-pointer"
-                              >
-                                <Copy className="w-2.5 h-2.5" /> Copy All
-                              </button>
-                            </div>
+                      <div className="space-y-1 border-t border-white/5 pt-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-extrabold">Post Body / Content</span>
+                          <div className="flex gap-1.5">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopyText(task.description || '', 'Body copied! ✅');
+                              }}
+                              className="text-[9px] text-purple-400 hover:text-purple-300 font-extrabold flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-2 py-0.5 rounded transition-all border border-purple-500/5 cursor-pointer"
+                            >
+                              <Copy className="w-2.5 h-2.5" /> Copy Body
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const content = 
+                                  `Title: ${task.title || ''}\n\n` +
+                                  `Body: ${task.description || ''}\n\n` +
+                                  `Subreddit: ${task.targetSubreddit || ''}`;
+                                handleCopyText(content, 'All content copied! ✅');
+                              }}
+                              className="text-[9px] text-pink-400 hover:text-pink-300 font-extrabold flex items-center gap-1 bg-pink-500/10 hover:bg-pink-500/20 px-2 py-0.5 rounded transition-all border border-pink-500/5 cursor-pointer"
+                            >
+                              <Copy className="w-2.5 h-2.5" /> Copy All
+                            </button>
                           </div>
-                          <p className="text-zinc-300 font-normal leading-normal select-text break-words line-clamp-2 hover:line-clamp-none transition-all duration-300">
+                        </div>
+                        <p className="text-zinc-300 font-normal leading-normal select-text break-words line-clamp-2 hover:line-clamp-none transition-all duration-300">
+                          {task.description}
+                        </p>
+                      </div>
+
+                      {task.postGuidelines && (
+                        <div className="space-y-1 border-t border-white/5 pt-2 select-text">
+                          <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-extrabold block text-zinc-400">Task Guidelines</span>
+                          <p className="text-zinc-400 font-normal leading-relaxed text-[11px] break-words">
                             {task.postGuidelines}
                           </p>
                         </div>
@@ -856,31 +866,41 @@ export const Marketplace: React.FC = () => {
                         </div>
                       )}
 
+                      <div className="space-y-1 bg-zinc-900 border border-white/5 p-2.5 rounded-xl">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-extrabold">Post Body / Content</span>
+                          <div className="flex gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleCopyText(selectedTask.description || '', 'Body copied! ✅')}
+                              className="text-[9px] text-purple-400 hover:text-purple-300 font-extrabold flex items-center gap-1 bg-purple-500/15 px-2 py-0.5 rounded cursor-pointer transition-all border border-purple-500/10"
+                            >
+                              <Copy className="w-2.5 h-2.5" /> Copy Body
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const content = 
+                                  `Title: ${selectedTask.title || ''}\n\n` +
+                                  `Body: ${selectedTask.description || ''}\n\n` +
+                                  `Subreddit: ${selectedTask.targetSubreddit || ''}`;
+                                handleCopyText(content, 'All content copied! ✅');
+                              }}
+                              className="text-[9px] text-pink-400 hover:text-pink-300 font-extrabold flex items-center gap-1 bg-pink-500/15 px-2 py-0.5 rounded cursor-pointer transition-all border border-pink-500/10"
+                            >
+                              <Copy className="w-2.5 h-2.5" /> Copy All
+                            </button>
+                          </div>
+                        </div>
+                        <p className="text-zinc-300 font-normal text-[11px] select-text break-words whitespace-pre-wrap leading-relaxed">
+                          {selectedTask.description}
+                        </p>
+                      </div>
+
                       {selectedTask.postGuidelines && (
                         <div className="space-y-1 bg-zinc-900 border border-white/5 p-2.5 rounded-xl">
-                          <div className="flex justify-between items-center">
-                            <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-extrabold">Post Body / Content</span>
-                            <div className="flex gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => handleCopyText(selectedTask.postGuidelines || '', 'Post body copied')}
-                                className="text-[9px] text-purple-400 hover:text-purple-300 font-extrabold flex items-center gap-1 bg-purple-500/15 px-2 py-0.5 rounded cursor-pointer transition-all border border-purple-500/10"
-                              >
-                                <Copy className="w-2.5 h-2.5" /> Copy Body
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const formattedAll = `Title: ${selectedTask.requiredPostTitle || ''}\n\nBody:\n${selectedTask.postGuidelines || ''}`;
-                                  handleCopyText(formattedAll, 'Title & post body copied');
-                                }}
-                                className="text-[9px] text-pink-400 hover:text-pink-300 font-extrabold flex items-center gap-1 bg-pink-500/15 px-2 py-0.5 rounded cursor-pointer transition-all border border-pink-500/10"
-                              >
-                                <Copy className="w-2.5 h-2.5" /> Copy All
-                              </button>
-                            </div>
-                          </div>
-                          <p className="text-zinc-300 font-normal text-[11px] select-text break-words whitespace-pre-wrap leading-relaxed">
+                          <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-extrabold block text-zinc-400">Task Guidelines</span>
+                          <p className="text-zinc-400 font-normal text-[11px] select-text break-words whitespace-pre-wrap leading-relaxed">
                             {selectedTask.postGuidelines}
                           </p>
                         </div>
