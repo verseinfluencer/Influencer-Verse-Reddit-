@@ -691,16 +691,13 @@ export const AdminDashboard: React.FC = () => {
                                 <div className="flex gap-1.5 justify-end">
                                   <button
                                     onClick={() => {
-                                      if (!c.gmailVerified) {
-                                        alert("❌ Client's Gmail is not verified! Unverified email accounts cannot be approved.");
-                                        return;
+                                      if (!(c.gmailVerified || c.emailVerified)) {
+                                        const proceed = window.confirm("⚠️ Email not verified yet");
+                                        if (!proceed) return;
                                       }
                                       adminReviewClient(c.id, 'approved');
                                     }}
-                                    disabled={!c.gmailVerified}
-                                    className={`px-2.5 py-1 text-[10px] font-black rounded text-white cursor-pointer ${
-                                      c.gmailVerified ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-emerald-950/40 text-zinc-500 cursor-not-allowed border border-white/5'
-                                    }`}
+                                    className="px-2.5 py-1 text-[10px] font-black rounded text-white cursor-pointer bg-emerald-600 hover:bg-emerald-500"
                                   >
                                     Approve
                                   </button>
@@ -748,16 +745,13 @@ export const AdminDashboard: React.FC = () => {
                             {c.status === 'suspended' && (
                               <button
                                 onClick={() => {
-                                  if (!c.gmailVerified) {
-                                    alert("❌ Client's Gmail is not verified! Unverified email accounts cannot be activated.");
-                                    return;
+                                  if (!(c.gmailVerified || c.emailVerified)) {
+                                    const proceed = window.confirm("⚠️ Email not verified yet");
+                                    if (!proceed) return;
                                   }
                                   adminReviewClient(c.id, 'approved');
                                 }}
-                                disabled={!c.gmailVerified}
-                                className={`px-2.5 py-1.5 text-[10px] font-black rounded text-white cursor-pointer ${
-                                  c.gmailVerified ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-indigo-950/40 text-zinc-500 cursor-not-allowed border border-white/5'
-                                }`}
+                                className="px-2.5 py-1.5 text-[10px] font-black rounded text-white cursor-pointer bg-indigo-600 hover:bg-indigo-500"
                               >
                                 Activate Profile
                               </button>
@@ -1785,6 +1779,13 @@ export const AdminDashboard: React.FC = () => {
                               )}
                             </div>
                             <p className="text-zinc-500 font-mono font-bold text-[10px]">{u.email}</p>
+                            <div className="flex items-center gap-1 text-[10px] text-zinc-400 font-bold mt-1">
+                              {(u.emailVerified || u.gmailVerified || u.email?.toLowerCase() === 'kalloldeyprivate20@gmail.com') ? (
+                                <span className="text-emerald-450">📧 Email: ✅ Verified</span>
+                              ) : (
+                                <span className="text-rose-450">📧 Email: ❌ Not Verified</span>
+                              )}
+                            </div>
                             {/* Display private gender field strictly to admin */}
                             <p className="text-[10px] text-zinc-400 font-semibold flex items-center gap-1.5">
                               <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">Private Gender:</span>

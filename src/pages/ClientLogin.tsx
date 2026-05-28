@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Mail, Lock, AlertCircle, ArrowRight, CheckCircle, Clock } from 'lucide-react';
 import { auth, db } from '../utils/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
+import { sendEmailVerification } from 'firebase/auth';
 
 interface ClientLoginProps {
   onNavigate: (page: string) => void;
@@ -21,6 +22,40 @@ export const ClientLogin: React.FC<ClientLoginProps> = ({ onNavigate }) => {
 
   const [isCheckingGmail, setIsCheckingGmail] = useState(false);
   const [gmailVerifiedStatus, setGmailVerifiedStatus] = useState(false);
+
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendCount, setResendCount] = useState(0);
+  const [resendMessage, setResendMessage] = useState('');
+
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
+
+  const handleResendEmail = async () => {
+    if (resendCount >= 3) {
+      setResendMessage('❌ Maximum 3 resends reached.');
+      return;
+    }
+    if (resendCooldown > 0) return;
+
+    try {
+      const user = auth.currentUser;
+      if (user) {
+        await sendEmailVerification(user);
+        setResendCount(prev => prev + 1);
+        setResendCooldown(60);
+        setResendMessage('📧 Verification email sent successfully!');
+      } else {
+        setResendMessage('❌ No active session. Please try registering or signing in.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      setResendMessage('❌ Please wait before resending.');
+    }
+  };
 
   const handleCheckGmailVerification = async () => {
     setIsCheckingGmail(true);
@@ -82,7 +117,7 @@ export const ClientLogin: React.FC<ClientLoginProps> = ({ onNavigate }) => {
   // 1. Pending view
   if (lockedStatus === 'pending') {
     return (
-      <div id="pending_review_box" className="max-w-md mx-auto my-16 p-8 bg-neutral-900 border border-neutral-800 rounded-3xl text-center text-white">
+      <div id="pending_review_box" className="max-w-md mx-auto my-16 p-8 bg-neutral-900 border border-neutral-800 rounded-3xl text-center text-white select-none">
         <Clock className="w-16 h-16 text-amber-500 mx-auto mb-6" />
         <h1 className="text-2xl font-bold font-sans tracking-tight mb-3 text-amber-400">Account Under Review</h1>
         
@@ -90,8 +125,8 @@ export const ClientLogin: React.FC<ClientLoginProps> = ({ onNavigate }) => {
           <p className="font-bold text-center text-xs text-white">
             📧 Verification Sent
           </p>
-          <p className="text-center">
-            A verification link was dispatched to your email. Please check your spam folder if you haven't received it yet.
+          <p className="text-center font-semibold text-zinc-300">
+            📧 Verification email sent to <span className="text-purple-400 font-bold break-all">{auth.currentUser?.email || email || 'your email'}</span>. Please check your inbox and spam folder. Click the verification link to continue.
           </p>
         </div>
 
@@ -100,13 +135,34 @@ export const ClientLogin: React.FC<ClientLoginProps> = ({ onNavigate }) => {
           We'll contact you via WhatsApp/Gmail soon.
         </p>
 
+        {/* Resend verification email block */}
+        <div className="mb-4">
+          <button
+            type="button"
+            onClick={handleResendEmail}
+            disabled={resendCooldown > 0 || resendCount >= 3}
+            className="px-4 py-2 bg-neutral-850 hover:bg-neutral-800 disabled:opacity-40 disabled:hover:bg-neutral-850 text-[11px] text-zinc-300 font-bold border border-white/5 rounded-xl transition duration-150 w-full"
+          >
+            {resendCooldown > 0 
+              ? `Resend in ${resendCooldown}s` 
+              : `📧 Resend Verification Email`
+            }
+          </button>
+          
+          {resendMessage && (
+            <p className="text-[11px] text-zinc-400 font-bold mt-2 text-center">
+              {resendMessage}
+            </p>
+          )}
+        </div>
+
         <button
           type="button"
           onClick={handleCheckGmailVerification}
-          disabled={isCheckingGmail || gmailVerifiedStatus}
+          disabled={isCheckingGmail}
           className="px-6 py-2.5 bg-indigo-650 hover:bg-indigo-600 disabled:opacity-40 text-xs font-extrabold rounded-xl transition font-sans w-full cursor-pointer mb-3 flex items-center justify-center gap-2"
         >
-          {isCheckingGmail ? 'Syncing...' : '🔄 Check Email Verification'}
+          {isCheckingGmail ? 'Syncing...' : "I've verified my email"}
         </button>
 
         <button 

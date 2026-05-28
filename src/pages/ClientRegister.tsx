@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ALL_COUNTRIES } from '../utils/countries';
 import { auth, db } from '../utils/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
+import { sendEmailVerification } from 'firebase/auth';
 
 interface ClientRegisterProps {
   onNavigate: (page: string) => void;
@@ -48,6 +49,40 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
 
   const [isCheckingGmail, setIsCheckingGmail] = useState(false);
   const [gmailVerifiedStatus, setGmailVerifiedStatus] = useState(false);
+
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendCount, setResendCount] = useState(0);
+  const [resendMessage, setResendMessage] = useState('');
+
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
+
+  const handleResendEmail = async () => {
+    if (resendCount >= 3) {
+      setResendMessage('❌ Maximum 3 resends reached.');
+      return;
+    }
+    if (resendCooldown > 0) return;
+
+    try {
+      const user = auth.currentUser;
+      if (user) {
+        await sendEmailVerification(user);
+        setResendCount(prev => prev + 1);
+        setResendCooldown(60);
+        setResendMessage('📧 Verification email sent successfully!');
+      } else {
+        setResendMessage('❌ No active session. Please register again or login.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      setResendMessage('❌ Please wait before resending.');
+    }
+  };
 
   // Search & Filter Logic
   const filteredCountries = ALL_COUNTRIES.filter(c => 
@@ -223,6 +258,27 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
           </div>
         </div>
 
+        {/* Resend verification email block */}
+        <div className="mb-4">
+          <button
+            type="button"
+            onClick={handleResendEmail}
+            disabled={resendCooldown > 0 || resendCount >= 3}
+            className="px-4 py-2 bg-neutral-850 hover:bg-neutral-800 disabled:opacity-40 disabled:hover:bg-neutral-850 text-[11px] text-zinc-300 font-bold border border-white/5 rounded-xl transition duration-150 w-full"
+          >
+            {resendCooldown > 0 
+              ? `Resend in ${resendCooldown}s` 
+              : `📧 Resend Verification Email`
+            }
+          </button>
+          
+          {resendMessage && (
+            <p className="text-[11px] text-zinc-400 font-bold mt-2 text-center">
+              {resendMessage}
+            </p>
+          )}
+        </div>
+
         <div className="space-y-3">
           <button
             type="button"
@@ -230,7 +286,7 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
             disabled={isCheckingGmail || gmailVerifiedStatus}
             className="px-6 py-3 bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold rounded-xl transition font-sans w-full cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40"
           >
-            {isCheckingGmail ? 'Syncing status...' : 'Check Verification Status'}
+            {isCheckingGmail ? 'Syncing status...' : "I've verified my email"}
           </button>
 
           <button 

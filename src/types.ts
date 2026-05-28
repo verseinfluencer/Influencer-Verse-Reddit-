@@ -19,6 +19,8 @@ export interface User {
   avatarUrl?: string | null;
   role: 'user' | 'member' | 'moderator' | 'admin' | 'client';
   gender?: 'Male' | 'Female' | 'Non-binary' | 'Prefer not to say' | null;
+  emailVerified?: boolean;
+  gmailVerified?: boolean;
   
   // Karma fields (Private to public users - only admins and self can see)
   karma: number;
@@ -192,6 +194,7 @@ export interface Client {
   whatsapp: string;
   gmail: string;
   gmailVerified: boolean;
+  emailVerified?: boolean;
   phoneNumber?: string;
   phoneVerified?: boolean;
   phoneVerifiedAt?: string;

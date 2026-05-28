@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { AlertTriangle, Clock, RotateCw, ExternalLink, HelpCircle, ShieldCheck } from 'lucide-react';
+import { auth } from '../utils/firebase';
+import { sendEmailVerification } from 'firebase/auth';
 
 interface PendingVerificationProps {
   onNavigate: (page: string) => void;
@@ -8,6 +10,66 @@ interface PendingVerificationProps {
 
 export const PendingVerification: React.FC<PendingVerificationProps> = ({ onNavigate }) => {
   const { currentUser } = useApp();
+
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendCount, setResendCount] = useState(0);
+  const [resendMessage, setResendMessage] = useState('');
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
+
+  const handleResendEmail = async () => {
+    if (resendCount >= 3) {
+      setResendMessage('❌ Maximum 3 resends reached.');
+      return;
+    }
+    if (resendCooldown > 0) return;
+
+    try {
+      const user = auth.currentUser;
+      if (user) {
+        await sendEmailVerification(user);
+        setResendCount(prev => prev + 1);
+        setResendCooldown(60);
+        setResendMessage('📧 Verification email sent successfully!');
+      } else {
+        setResendMessage('❌ No active session found.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      setResendMessage('❌ Please wait before resending.');
+    }
+  };
+
+  const handleSyncVerification = async () => {
+    setIsSyncing(true);
+    try {
+      const user = auth.currentUser;
+      if (user) {
+        await user.reload();
+        if (user.emailVerified) {
+          const db = (await import('../utils/firebase')).db;
+          const { doc, updateDoc } = await import('firebase/firestore');
+          await updateDoc(doc(db, 'users', user.uid), { emailVerified: true, gmailVerified: true });
+          alert("✅ Email verified successfully! Admin can now approve your profile.");
+          window.location.reload();
+        } else {
+          alert("❌ Email is not verified yet. Please check your inbox and click the verification link.");
+        }
+      } else {
+        alert("Session is untraceable. Try logging in again.");
+      }
+    } catch (err: any) {
+      alert("Error checking email status: " + err.message);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   return (
     <div className="w-full max-w-2xl mx-auto px-4 py-16 text-center select-none" id="pending-verification-view">
@@ -56,12 +118,55 @@ export const PendingVerification: React.FC<PendingVerificationProps> = ({ onNavi
               </a>
             </div>
 
+            <div className="flex justify-between items-center text-xs border-t border-white/5 pt-1.5">
+              <span className="text-zinc-400 font-semibold">📧 Email Status:</span>
+              {(currentUser.emailVerified || currentUser.gmailVerified || auth.currentUser?.emailVerified) ? (
+                <span className="px-2.5 py-0.5 bg-emerald-500/10 text-emerald-500 rounded-full font-bold text-[10px]">
+                  ✅ Verified
+                </span>
+              ) : (
+                <span className="px-2.5 py-0.5 bg-rose-500/10 text-rose-500 rounded-full font-bold text-[10px] animate-pulse">
+                  ❌ Unverified
+                </span>
+              )}
+            </div>
+
             <div className="flex justify-between items-center text-xs pt-1">
               <span className="text-zinc-400 font-semibold">Account Status:</span>
               <span className="px-2.5 py-0.5 bg-yellow-500/10 text-yellow-500 rounded-full font-bold text-[10px]">
                 Pending Verification
               </span>
             </div>
+          </div>
+        )}
+
+        {/* Resend and check email verification block */}
+        {currentUser && !(currentUser.emailVerified || currentUser.gmailVerified || auth.currentUser?.emailVerified) && (
+          <div className="max-w-md mx-auto mb-8 bg-zinc-950 border border-white/5 p-4 rounded-2xl text-center space-y-3">
+            <p className="text-xs text-zinc-300 font-semibold leading-relaxed">
+              📧 Verification email sent to <strong className="text-purple-400 font-bold break-all">{currentUser.email || auth.currentUser?.email || 'your email'}</strong>. Please check your inbox and spam folder. Click the verification link to continue.
+            </p>
+            
+            <div className="flex flex-col sm:flex-row gap-2 justify-center">
+              <button
+                onClick={handleResendEmail}
+                disabled={resendCooldown > 0 || resendCount >= 3}
+                className="px-4 py-2 bg-neutral-900 border border-white/5 text-[11px] font-bold text-zinc-300 hover:text-zinc-100 rounded-xl disabled:opacity-40 cursor-pointer transition-all"
+              >
+                {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : '📧 Resend Email'}
+              </button>
+              
+              <button
+                onClick={handleSyncVerification}
+                disabled={isSyncing}
+                className="px-4 py-2 bg-indigo-650 hover:bg-indigo-600 font-bold text-white text-[11px] rounded-xl cursor-pointer transition-all"
+              >
+                {isSyncing ? 'Syncing...' : "I've verified my email"}
+              </button>
+            </div>
+            {resendMessage && (
+              <p className="text-[10px] text-zinc-400 font-bold">{resendMessage}</p>
+            )}
           </div>
         )}
 

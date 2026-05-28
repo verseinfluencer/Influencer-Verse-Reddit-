@@ -115,8 +115,9 @@ function MainAppContent() {
     }
 
     // 3. Pending verification user restrictions logic
-    // Blocking tasks, wallets, refer links, dashboards
-    if (isPending) {
+    // Blocking tasks, wallets, refer links, dashboards if pending review OR not email verified
+    const isEmailUnverified = !currentUser?.emailVerified && !currentUser?.gmailVerified && currentUser?.email?.toLowerCase() !== 'kalloldeyprivate20@gmail.com';
+    if (isPending || isEmailUnverified) {
       if (['dashboard', 'marketplace', 'wallet', 'referrals', 'leaderboard'].includes(currentPage)) {
         return <PendingVerification onNavigate={onNavigate} />;
       }

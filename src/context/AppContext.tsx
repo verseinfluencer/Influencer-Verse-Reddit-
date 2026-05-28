@@ -524,6 +524,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const creds = await createUserWithEmailAndPassword(auth, trimmedEmail, userData.password || 'password123');
       const uid = creds.user.uid;
+
+      // Automatically send verification email on signup
+      try {
+        await sendEmailVerification(creds.user);
+      } catch (verificationErr) {
+        console.error("Error sending email verification immediately upon signup:", verificationErr);
+      }
+
       const uarray = new Uint8Array(6);
       crypto.getRandomValues(uarray);
       const referralCodeSeed = Array.from(uarray)
@@ -567,6 +575,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         karmaYesterday: initialKarma ?? 450,
         karmaBadge: 'Bronze',
         karmaLastSynced: new Date().toISOString() || null,
+        emailVerified: false,
+        gmailVerified: false,
         ipHistory: [{ ip: currentSimulatedIP || null, timestamp: new Date().toISOString() || null, location: country || null }],
         deviceFingerprints: [generateDeviceFingerprint() || null],
         loginHistory: [{ ip: currentSimulatedIP || null, country: country || null, timestamp: new Date().toISOString() || null }],
@@ -691,6 +701,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         whatsapp: clientData.whatsapp,
         gmail: trimmedGmail,
         gmailVerified: false, // Must be verified by clicking the email link
+        emailVerified: false,
         phoneNumber: clientData.phoneNumber || '',
         phoneVerified: clientData.phoneVerified || false,
         phoneVerifiedAt: clientData.phoneVerifiedAt || '',
@@ -728,6 +739,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         lastLoginDate: null,
         avatarUrl: null,
         gender: null,
+        emailVerified: false,
+        gmailVerified: false,
         last_claimed_at: null,
         cooldown_expires_at: null,
         active_task_id: null,
