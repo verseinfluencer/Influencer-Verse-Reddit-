@@ -10,7 +10,7 @@ interface ClientLoginProps {
 }
 
 export const ClientLogin: React.FC<ClientLoginProps> = ({ onNavigate }) => {
-  const { clientLogin } = useApp();
+  const { clientLogin, completeClientRegistration } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -64,10 +64,39 @@ export const ClientLogin: React.FC<ClientLoginProps> = ({ onNavigate }) => {
       if (user) {
         await user.reload();
         if (user.emailVerified) {
-          await updateDoc(doc(db, 'clients', user.uid), { gmailVerified: true });
-          await updateDoc(doc(db, 'users', user.uid), { gmailVerified: true });
+          const freshEmail = (user.email || email || '').trim().toLowerCase();
+          const draftStr = localStorage.getItem('pending_client_reg_' + freshEmail);
+          
+          if (draftStr) {
+            const draftObj = JSON.parse(draftStr);
+            await completeClientRegistration(draftObj);
+          } else {
+            // Lazy fallback creation in Firestore
+            const fallbackClient = {
+              id: user.uid,
+              name: freshEmail.split('@')[0],
+              company: freshEmail.split('@')[0] + ' Brand',
+              country: 'US',
+              whatsapp: 'N/A',
+              gmail: freshEmail,
+              gmailVerified: true,
+              emailVerified: true,
+              phoneNumber: '',
+              phoneVerified: false,
+              phoneVerifiedAt: '',
+              paymentMethod: 'Crypto' as const,
+              budget: '$500+',
+              paymentNotes: '',
+              status: 'pending' as const,
+              taskUploadEnabled: true,
+              registeredAt: new Date().toISOString(),
+              payAgencyBalance: 0,
+              payAgencyHistory: []
+            };
+            await completeClientRegistration(fallbackClient);
+          }
           setGmailVerifiedStatus(true);
-          alert("✅ Email verified successfully! Admin can now approve your profile.");
+          alert("✅ Email verified successfully! Your account is now in review status and admin can approve your profile.");
         } else {
           alert("❌ Email is not verified yet. Please check your inbox and click the verification link.");
         }
@@ -108,7 +137,11 @@ export const ClientLogin: React.FC<ClientLoginProps> = ({ onNavigate }) => {
         onNavigate('client-dashboard');
       }
     } catch (err: any) {
-      setError(err?.message || 'Login failed. Please check credentials.');
+      if (err.message === 'email_not_verified') {
+        setLockedStatus('pending');
+      } else {
+        setError(err?.message || 'Login failed. Please check credentials.');
+      }
     } finally {
       setLoading(false);
     }

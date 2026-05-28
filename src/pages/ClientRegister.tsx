@@ -15,7 +15,7 @@ interface ClientRegisterProps {
 }
 
 export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) => {
-  const { clientRegister } = useApp();
+  const { clientRegister, completeClientRegistration } = useApp();
 
   const [fullName, setFullName] = useState('');
   const [company, setCompany] = useState('');
@@ -145,11 +145,37 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
       if (user) {
         await user.reload();
         if (user.emailVerified) {
-          // Update Firestore status records immediately
-          await updateDoc(doc(db, 'clients', user.uid), { gmailVerified: true });
-          await updateDoc(doc(db, 'users', user.uid), { gmailVerified: true });
+          const draftStr = localStorage.getItem('pending_client_reg_' + gmail.trim().toLowerCase());
+          if (draftStr) {
+            const draftObj = JSON.parse(draftStr);
+            await completeClientRegistration(draftObj);
+          } else {
+            // Safe fallback creation
+            const fallbackClient = {
+              id: user.uid,
+              name: fullName.trim() || 'Brand Partner',
+              company: company.trim() || 'Brand Sponsor',
+              country: country || 'US',
+              whatsapp: `${dialCode} ${whatsAppNum.trim()}`,
+              gmail: gmail.trim().toLowerCase(),
+              gmailVerified: true,
+              emailVerified: true,
+              phoneNumber: verifiedPhone || '',
+              phoneVerified: phoneVerified,
+              phoneVerifiedAt: phoneVerified ? new Date().toISOString() : '',
+              paymentMethod,
+              budget: budget.trim() || '$500+',
+              paymentNotes: paymentNotes.trim() || '',
+              status: 'pending' as const,
+              taskUploadEnabled: true,
+              registeredAt: new Date().toISOString(),
+              payAgencyBalance: 0,
+              payAgencyHistory: []
+            };
+            await completeClientRegistration(fallbackClient);
+          }
           setGmailVerifiedStatus(true);
-          alert("✅ Email verified successfully! Admin can now approve your profile.");
+          alert("✅ Email verified successfully! Your profile is now pending admin approval.");
         } else {
           alert("❌ Email is not verified yet. Please check your inbox and click the verification link.");
         }
@@ -197,7 +223,7 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
 
     try {
       setLoading(true);
-      await clientRegister({
+      const draft = await clientRegister({
         name: fullName.trim(),
         company: company.trim(),
         country,
@@ -211,6 +237,9 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
         paymentNotes: paymentNotes.trim(),
         password
       });
+
+      // Save draft profile to localStorage using email as key
+      localStorage.setItem('pending_client_reg_' + gmail.trim().toLowerCase(), JSON.stringify(draft));
       setSuccess(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: any) {
@@ -223,8 +252,8 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
   if (success) {
     return (
       <div id="registration_pending_page" className="max-w-xl mx-auto my-16 p-8 bg-neutral-900 border border-neutral-800 rounded-3xl text-center text-white">
-        <Clock className="w-16 h-16 text-amber-500 mx-auto mb-6" />
-        <h1 className="text-3xl font-bold font-sans tracking-tight mb-3">Pending Admin Review</h1>
+        <Mail className="w-16 h-16 text-indigo-500 mx-auto mb-6" />
+        <h1 className="text-3xl font-bold font-sans tracking-tight mb-3">Verify Your Email</h1>
         
         <div className="bg-indigo-950/45 p-5 rounded-2xl border border-indigo-500/25 text-left text-xs text-indigo-200 leading-relaxed font-sans space-y-2 mb-6 shadow-inner">
           <p className="font-bold text-center text-sm mb-1 text-white flex items-center justify-center gap-1.5">
@@ -286,7 +315,7 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
             disabled={isCheckingGmail || gmailVerifiedStatus}
             className="px-6 py-3 bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold rounded-xl transition font-sans w-full cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40"
           >
-            {isCheckingGmail ? 'Syncing status...' : "I've verified my email"}
+            {isCheckingGmail ? 'Syncing status...' : "✅ I've Verified My Email"}
           </button>
 
           <button 
@@ -296,6 +325,23 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
           >
             <span>Go to Client Login</span>
             <ArrowRight className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={async () => {
+              try {
+                const u = auth.currentUser;
+                if (u) {
+                  await u.delete();
+                }
+                setSuccess(false);
+              } catch (err) {
+                setSuccess(false);
+              }
+            }}
+            className="text-zinc-500 hover:text-zinc-300 text-sm underline transition duration-200 mt-6 block mx-auto cursor-pointer"
+          >
+            Wrong email? Go back
           </button>
         </div>
       </div>

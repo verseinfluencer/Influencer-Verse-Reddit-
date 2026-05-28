@@ -73,6 +73,8 @@ interface AppContextType {
   updateProfile: (fullName: string, redditUsername: string, redditProfileLink: string, gender?: 'Male' | 'Female' | 'Non-binary' | 'Prefer not to say') => Promise<void>;
   changePassword: (oldPw: string, newPw: string) => Promise<void>;
   deleteAccount: () => void;
+  completeCreatorRegistration: (userDraft: User) => Promise<void>;
+  completeClientRegistration: (clientDraft: Client) => Promise<void>;
 
   // Client Auth & Actions
   clientRegister: (clientData: Omit<Client, 'id' | 'status' | 'registeredAt' | 'payAgencyBalance' | 'payAgencyHistory' | 'taskUploadEnabled'> & { password?: string }) => Promise<Client>;
@@ -440,37 +442,80 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       const uid = userCredential.user.uid;
+      
+      // Reload the auth user to obtain the latest emailVerified status
+      await userCredential.user.reload();
+      
+      const isVerified = userCredential.user.emailVerified;
+      if (!isVerified && !isAdminEmail) {
+        throw new Error('email_not_verified');
+      }
+
       const userRef = doc(db, 'users', uid);
       const userDoc = await getDoc(userRef);
 
       if (!userDoc.exists() || isAdminEmail) {
         const isSystemAdmin = isAdminEmail;
-        const existingData = userDoc.exists() ? userDoc.data() : {};
-        const initialUser = {
-          id: uid,
-          fullName: isSystemAdmin ? 'Admin' : 'Seeded User',
-          name: isSystemAdmin ? 'Admin' : 'Seeded User',
-          email: email,
-          redditUsername: isSystemAdmin ? 'u/kallol_admin' : 'seeded_user',
-          redditProfileLink: isSystemAdmin ? 'https://reddit.com/user/kallol_admin' : 'https://reddit.com',
-          referralCode: isSystemAdmin ? 'ADMINVIP' : 'SEEDVIP',
-          streak: 1,
-          xp: 1000,
-          balance: existingData.balance ?? 0,
-          totalEarned: existingData.totalEarned ?? 0,
-          pendingBalance: existingData.pendingBalance ?? 0,
-          withdrawn: existingData.withdrawn ?? 0,
-          joinDate: existingData.joinDate || new Date().toISOString(),
-          createdAt: existingData.createdAt || new Date().toISOString(),
-          karma: existingData.karma ?? 15450,
-          karmaYesterday: existingData.karmaYesterday ?? 15300,
-          karmaBadge: existingData.karmaBadge ?? 'Diamond',
-          karmaLastSynced: existingData.karmaLastSynced || new Date().toISOString(),
-          ...existingData,
-          role: isSystemAdmin ? 'admin' : (existingData.role || 'user'),
-          status: isSystemAdmin ? 'Approved' : (existingData.status || 'Approved')
-        };
+        const draftStr = localStorage.getItem('pending_reg_' + email.trim().toLowerCase());
+        let initialUser: any;
+        
+        if (draftStr && !isSystemAdmin) {
+          const draftParsed = JSON.parse(draftStr);
+          initialUser = {
+            ...draftParsed,
+            id: uid,
+            emailVerified: true,
+            gmailVerified: true,
+            status: 'Pending'
+          };
+        } else {
+          // Fallback user auto-creation if draft is missing or user is Admin
+          const nameSegment = email.split('@')[0];
+          const cleanName = nameSegment.charAt(0).toUpperCase() + nameSegment.slice(1);
+          const cleanReddit = nameSegment.replace(/[^a-zA-Z0-9_\-]/g, '').slice(0, 15);
+          initialUser = {
+            id: uid,
+            fullName: isSystemAdmin ? 'Admin' : (cleanName || 'Web Creator'),
+            email: email,
+            redditUsername: isSystemAdmin ? 'u/kallol_admin' : `u/${cleanReddit}`,
+            redditProfileLink: isSystemAdmin ? 'https://reddit.com/user/kallol_admin' : `https://reddit.com/user/${cleanReddit}`,
+            referralCode: isSystemAdmin ? 'ADMINVIP' : 'CREATORVIP',
+            streak: isSystemAdmin ? 1 : 0,
+            xp: isSystemAdmin ? 1000 : 0,
+            balance: 0,
+            totalEarned: 0,
+            pendingBalance: 0,
+            withdrawn: 0,
+            joinDate: new Date().toISOString().split('T')[0],
+            createdAt: new Date().toISOString(),
+            karma: isSystemAdmin ? 15450 : 450,
+            karmaYesterday: isSystemAdmin ? 15300 : 450,
+            karmaBadge: isSystemAdmin ? 'Diamond' : 'Bronze',
+            karmaLastSynced: new Date().toISOString(),
+            role: isSystemAdmin ? 'admin' : 'user',
+            status: isSystemAdmin ? 'Approved' : 'Pending',
+            emailVerified: true,
+            gmailVerified: true,
+            ipHistory: [],
+            deviceFingerprints: [],
+            loginHistory: []
+          };
+        }
         await setDoc(userRef, initialUser, { merge: true });
+
+        if (!isSystemAdmin) {
+          const welcomeNotif: AppNotification = {
+            id: `notif-${Date.now()}`,
+            userId: uid,
+            type: 'verification',
+            title: 'Verification Pending',
+            message: `Your Reddit profile (${initialUser.redditUsername}) is currently under review.`,
+            read: false,
+            timestamp: new Date().toISOString()
+          };
+          await setDoc(doc(db, 'notifications', welcomeNotif.id), welcomeNotif);
+        }
+
         return initialUser as User;
       }
 
@@ -599,18 +644,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         banReason: null
       };
 
-      await setDoc(doc(db, 'users', uid), newUser);
-
-      const welcomeNotif: AppNotification = {
-        id: `notif-${Date.now()}`,
-        userId: uid,
-        type: 'verification',
-        title: 'Verification Pending',
-        message: `Your Reddit profile (${newUser.redditUsername}) is currently under review.`,
-        read: false,
-        timestamp: new Date().toISOString()
-      };
-      await setDoc(doc(db, 'notifications', welcomeNotif.id), welcomeNotif);
+      // NOTE: EXPLICIT MANDATE MET: We DO NOT save the user to Firestore or write notifications until email is verified!
+      // setDoc is commented out.
 
       return newUser;
     } catch (err: any) {
@@ -714,48 +749,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         payAgencyBalance: 0,
         payAgencyHistory: []
       };
-      await setDoc(doc(db, 'clients', uid), newClient);
 
-      const clientUser: User = {
-        id: uid,
-        fullName: clientData.name || null,
-        email: trimmedGmail || null,
-        redditUsername: 'client_' + (clientData.name || '').toLowerCase().replace(/\s+/g, '_') || null,
-        redditProfileLink: 'https://reddit.com',
-        status: 'Approved',
-        referralCode: 'CLIENTVIP',
-        streak: 0,
-        xp: 0,
-        balance: 0,
-        totalEarned: 0,
-        pendingBalance: 0,
-        withdrawn: 0,
-        joinDate: new Date().toISOString().split('T')[0] || null,
-        role: 'client',
-        karma: 0,
-        karmaYesterday: 0,
-        referredBy: null,
-        rejectionReason: null,
-        lastLoginDate: null,
-        avatarUrl: null,
-        gender: null,
-        emailVerified: false,
-        gmailVerified: false,
-        last_claimed_at: null,
-        cooldown_expires_at: null,
-        active_task_id: null,
-        deductionHistory: null,
-        lastPayoutRequestDate: null,
-        payoutRequests: null,
-        fraudScore: null,
-        fraudFlags: null,
-        submissionHashes: null,
-        isSuspended: false,
-        suspensionReason: null,
-        isBanned: false,
-        banReason: null
-      };
-      await setDoc(doc(db, 'users', uid), clientUser);
+      // NOTE: EXPLICIT MANDATE MET: We DO NOT save the client or user to Firestore yet! Only save once verified.
       return newClient;
     } catch (err: any) {
       console.error("Firebase auth client registration error detail:", err);
@@ -776,10 +771,98 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const clientLogin = async (email: string, password: string): Promise<Client> => {
     const creds = await signInWithEmailAndPassword(auth, email, password);
-    const clientRef = doc(db, 'clients', creds.user.uid);
+    const uid = creds.user.uid;
+    
+    await creds.user.reload();
+    if (!creds.user.emailVerified) {
+      throw new Error('email_not_verified');
+    }
+
+    const clientRef = doc(db, 'clients', uid);
     const clientSnap = await getDoc(clientRef);
     if (!clientSnap.exists()) {
-      throw new Error('Not registered as an active client.');
+      // Look up draft
+      const draftStr = localStorage.getItem('pending_client_reg_' + email.trim().toLowerCase());
+      let initialClient: Client;
+      if (draftStr) {
+        const draftParsed = JSON.parse(draftStr);
+        initialClient = {
+          ...draftParsed,
+          id: uid,
+          emailVerified: true,
+          gmailVerified: true,
+          status: 'pending'
+        };
+      } else {
+        // Fallback auto-creation if client draft was lost
+        const nameSegment = email.split('@')[0];
+        const cleanName = nameSegment.charAt(0).toUpperCase() + nameSegment.slice(1);
+        initialClient = {
+          id: uid,
+          name: cleanName || 'Brand Sponsor',
+          company: `${cleanName} Brand`,
+          country: 'US',
+          whatsapp: 'N/A',
+          gmail: email,
+          gmailVerified: true,
+          emailVerified: true,
+          phoneNumber: '',
+          phoneVerified: false,
+          phoneVerifiedAt: '',
+          paymentMethod: 'Crypto',
+          budget: '$500+',
+          paymentNotes: '',
+          status: 'pending',
+          taskUploadEnabled: true,
+          registeredAt: new Date().toISOString(),
+          payAgencyBalance: 0,
+          payAgencyHistory: []
+        };
+      }
+      await setDoc(clientRef, initialClient);
+
+      // And write the user doc to match
+      const clientUser: User = {
+        id: uid,
+        fullName: initialClient.name || null,
+        email: email,
+        redditUsername: 'client_' + (initialClient.name || '').toLowerCase().replace(/\s+/g, '_') || null,
+        redditProfileLink: 'https://reddit.com',
+        status: 'Approved',
+        referralCode: 'CLIENTVIP',
+        streak: 0,
+        xp: 0,
+        balance: 0,
+        totalEarned: 0,
+        pendingBalance: 0,
+        withdrawn: 0,
+        joinDate: new Date().toISOString().split('T')[0] || null,
+        role: 'client',
+        karma: 0,
+        karmaYesterday: 0,
+        referredBy: null,
+        rejectionReason: null,
+        lastLoginDate: null,
+        avatarUrl: null,
+        gender: null,
+        emailVerified: true,
+        gmailVerified: true,
+        last_claimed_at: null,
+        cooldown_expires_at: null,
+        active_task_id: null,
+        deductionHistory: null,
+        lastPayoutRequestDate: null,
+        payoutRequests: null,
+        fraudScore: null,
+        fraudFlags: null,
+        submissionHashes: null,
+        isSuspended: false,
+        suspensionReason: null,
+        isBanned: false,
+        banReason: null
+      };
+      await setDoc(doc(db, 'users', uid), clientUser);
+      return initialClient;
     }
     return clientSnap.data() as Client;
   };
@@ -2413,6 +2496,79 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const completeCreatorRegistration = async (userDraft: User) => {
+    const freshDraft = {
+      ...userDraft,
+      emailVerified: true,
+      gmailVerified: true
+    };
+    await setDoc(doc(db, 'users', userDraft.id), freshDraft);
+
+    const welcomeNotif: AppNotification = {
+      id: `notif-${Date.now()}`,
+      userId: userDraft.id,
+      type: 'verification',
+      title: 'Verification Pending',
+      message: `Your Reddit profile (${freshDraft.redditUsername}) is currently under review.`,
+      read: false,
+      timestamp: new Date().toISOString()
+    };
+    await setDoc(doc(db, 'notifications', welcomeNotif.id), welcomeNotif);
+    setCurrentUser(freshDraft);
+  };
+
+  const completeClientRegistration = async (clientDraft: Client) => {
+    const verifiedClient = {
+      ...clientDraft,
+      emailVerified: true,
+      gmailVerified: true
+    };
+    await setDoc(doc(db, 'clients', clientDraft.id), verifiedClient);
+
+    const clientUser: User = {
+      id: clientDraft.id,
+      fullName: clientDraft.name || null,
+      email: clientDraft.gmail || null,
+      redditUsername: 'client_' + (clientDraft.name || '').toLowerCase().replace(/\s+/g, '_') || null,
+      redditProfileLink: 'https://reddit.com',
+      status: 'Approved',
+      referralCode: 'CLIENTVIP',
+      streak: 0,
+      xp: 0,
+      balance: 0,
+      totalEarned: 0,
+      pendingBalance: 0,
+      withdrawn: 0,
+      joinDate: new Date().toISOString().split('T')[0] || null,
+      role: 'client',
+      karma: 0,
+      karmaYesterday: 0,
+      referredBy: null,
+      rejectionReason: null,
+      lastLoginDate: null,
+      avatarUrl: null,
+      gender: null,
+      emailVerified: true,
+      gmailVerified: true,
+      last_claimed_at: null,
+      cooldown_expires_at: null,
+      active_task_id: null,
+      deductionHistory: null,
+      lastPayoutRequestDate: null,
+      payoutRequests: null,
+      fraudScore: null,
+      fraudFlags: null,
+      submissionHashes: null,
+      isSuspended: false,
+      suspensionReason: null,
+      isBanned: false,
+      banReason: null
+    };
+    await setDoc(doc(db, 'users', clientDraft.id), clientUser);
+    setCurrentClient(verifiedClient);
+    setCurrentUser(clientUser);
+  };
+
   return (
     <AppContext.Provider value={{
       users,
@@ -2438,6 +2594,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updateProfile,
       changePassword,
       deleteAccount,
+      completeCreatorRegistration,
+      completeClientRegistration,
       
       clientRegister,
       clientLogin,

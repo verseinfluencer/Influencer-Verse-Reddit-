@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { ShieldCheck, User as UserIcon, Mail, Lock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { ShieldCheck, User as UserIcon, Mail, Lock, CheckCircle2, XCircle, AlertCircle, Clock, Send, Loader2 } from 'lucide-react';
 import { Logo } from '../components/Logo';
+import { auth } from '../utils/firebase';
+import { sendEmailVerification } from 'firebase/auth';
 
 interface SignupProps {
   onNavigate: (page: string) => void;
 }
 
 export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
-  const { signup } = useApp();
+  const { signup, completeCreatorRegistration } = useApp();
   
   // Fields
   const [fullName, setFullName] = useState('');
@@ -24,6 +26,94 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
   // States
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Email verification tracking
+  const [isEmailVerificationPending, setIsEmailVerificationPending] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendCount, setResendCount] = useState(0);
+  const [resendMessage, setResendMessage] = useState('');
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+  const [userDraft, setUserDraft] = useState<any>(null);
+
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
+
+  const handleResendEmail = async () => {
+    if (resendCount >= 3) {
+      setResendMessage('❌ Maximum 3 resends reached.');
+      return;
+    }
+    if (resendCooldown > 0) return;
+
+    try {
+      const user = auth.currentUser;
+      if (user) {
+        await sendEmailVerification(user);
+        setResendCount(prev => prev + 1);
+        setResendCooldown(60);
+        setResendMessage('📧 Verification email sent successfully!');
+      } else {
+        setResendMessage('❌ No active session found.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      setResendMessage('❌ Please wait before resending.');
+    }
+  };
+
+  const handleCheckEmailVerification = async () => {
+    setIsCheckingEmail(true);
+    try {
+      const user = auth.currentUser;
+      if (user) {
+        await user.reload();
+        if (user.emailVerified) {
+          let draft = userDraft;
+          if (!draft) {
+            const draftStr = localStorage.getItem('pending_reg_' + email.trim().toLowerCase());
+            if (draftStr) {
+              draft = JSON.parse(draftStr);
+            }
+          }
+          if (draft) {
+            await completeCreatorRegistration(draft);
+            setIsEmailVerificationPending(false);
+            onNavigate('profile');
+          } else {
+            alert("❌ Registration details draft went missing. Fallback user profile activated.");
+            setIsEmailVerificationPending(false);
+            onNavigate('profile');
+          }
+        } else {
+          alert("❌ Email is not verified yet. Please check your inbox and click the verification link.");
+        }
+      } else {
+        alert("Session is untraceable. Try logging in again.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert("Error checking status: " + err.message);
+    } finally {
+      setIsCheckingEmail(false);
+    }
+  };
+
+  const handleGoBackWrongEmail = async () => {
+    try {
+      const user = auth.currentUser;
+      if (user) {
+        await user.delete();
+      }
+      setIsEmailVerificationPending(false);
+    } catch (err: any) {
+      console.error("Error deleting unverified user session:", err);
+      setIsEmailVerificationPending(false);
+    }
+  };
 
   // Reddit Validator States
   const [linkValid, setLinkValid] = useState<boolean | null>(null);
@@ -101,9 +191,8 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
 
     setLoading(true);
     try {
-      // clean username for saving
       const canonicalUsername = trimmedRedditUsername.startsWith('u/') ? trimmedRedditUsername : `u/${trimmedRedditUsername}`;
-      await signup({
+      const draft = await signup({
         fullName: trimmedFullName,
         email: trimmedEmail,
         password: password,
@@ -112,13 +201,88 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
         referralCode: referralCode.trim() || undefined,
         honeypotFilled: !!websiteUrl
       });
+      
+      // Save draft user object in localStorage and userDraft state
+      localStorage.setItem('pending_reg_' + trimmedEmail.trim().toLowerCase(), JSON.stringify(draft));
+      setUserDraft(draft);
+      
       setLoading(false);
-      onNavigate('profile'); // Send directly to profile (locks page down as Verification Pending)
+      setIsEmailVerificationPending(true);
     } catch (err: any) {
       setLoading(false);
       setErrorMsg(err.message || 'Signup failed.');
     }
   };
+
+  if (isEmailVerificationPending) {
+    return (
+      <div className="w-full min-h-[90vh] flex items-center justify-center bg-zinc-950 py-12 px-4 select-none" id="verification-panel">
+        <div className="w-full max-w-md bg-zinc-900/40 border border-white/10 rounded-3xl p-8 backdrop-blur-md shadow-2xl relative overflow-hidden flex flex-col items-center text-center">
+          <div className="absolute top-0 left-0 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl"></div>
+          
+          <div className="w-16 h-16 bg-purple-500/10 border border-purple-500/20 rounded-full flex items-center justify-center text-purple-400 mb-6">
+            <Mail className="w-8 h-8" />
+          </div>
+
+          <h2 className="text-2.5xl font-black text-white mb-2">Verify Your Email</h2>
+          <p className="text-zinc-400 text-sm mb-6">
+            We sent a verification link to:<br />
+            <span className="font-semibold text-purple-300 break-all">{email}</span>
+          </p>
+
+          <p className="text-zinc-400 text-xs leading-relaxed mb-6">
+            Please check your inbox and spam folder. Click the link in the email to complete your registration.
+          </p>
+
+          <button
+            onClick={handleCheckEmailVerification}
+            disabled={isCheckingEmail}
+            className="w-full h-12 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl transition duration-300 flex items-center justify-center gap-2 mb-4 font-sans disabled:opacity-50"
+          >
+            {isCheckingEmail ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Checking...</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="w-5 h-5" />
+                <span>✅ I've Verified My Email</span>
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={handleResendEmail}
+            disabled={resendCooldown > 0 || resendCount >= 3}
+            className="w-full h-11 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold rounded-xl text-sm transition duration-300 mb-6 disabled:opacity-40"
+          >
+            {resendCooldown > 0 ? (
+              <span className="flex items-center justify-center gap-2 text-zinc-400 font-mono">
+                <Clock className="w-4 h-4 animate-spin text-purple-400" />
+                Resend in {resendCooldown}s
+              </span>
+            ) : (
+              <span>📧 Resend Email</span>
+            )}
+          </button>
+
+          {resendMessage && (
+            <p className={`text-xs font-semibold mb-6 ${resendMessage.includes('❌') ? 'text-red-400' : 'text-emerald-400'}`}>
+              {resendMessage}
+            </p>
+          )}
+
+          <button
+            onClick={handleGoBackWrongEmail}
+            className="text-zinc-500 hover:text-zinc-300 text-sm underline transition duration-200"
+          >
+            Wrong email? Go back
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full min-h-[90vh] flex items-center justify-center bg-zinc-950 py-12 px-4 select-none" id="signup-panel">

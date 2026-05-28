@@ -124,48 +124,80 @@ export const Login: React.FC<LoginProps> = ({ onNavigate }) => {
   if (isEmailVerificationPending) {
     return (
       <div className="w-full min-h-[80vh] flex items-center justify-center bg-zinc-950 px-4 select-none" id="login-verification-panel">
-        <div className="w-full max-w-md bg-zinc-900/40 border border-white/10 rounded-3xl p-8 backdrop-blur-md shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl"></div>
+        <div className="w-full max-w-md bg-zinc-900/40 border border-white/10 rounded-3xl p-8 backdrop-blur-md shadow-2xl relative overflow-hidden flex flex-col items-center text-center">
+          <div className="absolute top-0 left-0 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl"></div>
           
-          <div className="text-center space-y-4 mb-6 flex flex-col items-center">
-            <Clock className="w-16 h-16 text-amber-500 mx-auto mb-2 animate-pulse" />
-            <div>
-              <h2 className="text-xl font-bold font-sans tracking-tight text-white">Email Verification Required</h2>
-              <p className="text-zinc-400 text-xs mt-1">Please verify your email before entering your workspace.</p>
-            </div>
+          <div className="w-16 h-16 bg-purple-500/10 border border-purple-500/20 rounded-full flex items-center justify-center text-purple-400 mb-6">
+            <Mail className="w-8 h-8" />
           </div>
 
-          <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs rounded-xl p-4 leading-relaxed mb-6 font-semibold animate-pulse">
-            📧 Please verify your email first. Check your inbox for verification link.
-          </div>
+          <h2 className="text-2.5xl font-black text-white mb-2">Verify Your Email</h2>
+          <p className="text-zinc-400 text-sm mb-6">
+            We sent a verification link to:<br />
+            <span className="font-semibold text-purple-300 break-all">{auth.currentUser?.email || email}</span>
+          </p>
 
-          <div className="space-y-4 mb-6">
-            <button
-              onClick={handleResendEmail}
-              disabled={resendCooldown > 0 || resendCount >= 3}
-              className="w-full py-2.5 bg-zinc-950 hover:bg-zinc-900 text-xs font-bold rounded-xl text-zinc-300 hover:text-white border border-white/5 disabled:opacity-45 transition-all flex items-center justify-center gap-2"
-            >
-              {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : '📧 Resend Verification Email'}
-            </button>
-
-            {resendMessage && (
-              <p className="text-[10px] font-bold text-zinc-400 text-center">{resendMessage}</p>
-            )}
-          </div>
+          <p className="text-zinc-400 text-xs leading-relaxed mb-6">
+            Please check your inbox and spam folder. Click the link in the email to complete your registration.
+          </p>
 
           <button
             onClick={handleCheckEmailVerification}
             disabled={isCheckingEmail}
-            className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-500 text-xs font-bold rounded-xl text-white hover:opacity-95 shadow-lg flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-40"
+            className="w-full h-12 bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-50 hover:to-blue-400 text-white font-bold rounded-xl transition duration-300 flex items-center justify-center gap-2 mb-4 font-sans disabled:opacity-50 cursor-pointer"
           >
-            {isCheckingEmail ? 'Syncing...' : "I've verified my email"}
+            {isCheckingEmail ? (
+              <>
+                <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                <span>Checking...</span>
+              </>
+            ) : (
+              <>
+                <ShieldCheck className="w-5 h-5 animate-pulse" />
+                <span>✅ I've Verified My Email</span>
+              </>
+            )}
           </button>
 
           <button
-            onClick={() => setIsEmailVerificationPending(false)}
-            className="w-full py-2.5 mt-3 bg-zinc-850 hover:bg-zinc-700 text-xs font-bold rounded-xl text-zinc-350 hover:text-white transition-all cursor-pointer"
+            onClick={handleResendEmail}
+            disabled={resendCooldown > 0 || resendCount >= 3}
+            className="w-full h-11 bg-zinc-850 hover:bg-zinc-850/85 text-zinc-300 font-semibold rounded-xl text-sm transition duration-300 mb-6 disabled:opacity-40 cursor-pointer"
           >
-            Back to Login
+            {resendCooldown > 0 ? (
+              <span className="flex items-center justify-center gap-2 text-zinc-400 font-mono">
+                <Clock className="w-4 h-4 animate-spin text-purple-400" />
+                Resend in {resendCooldown}s
+              </span>
+            ) : (
+              <span>📧 Resend Email</span>
+            )}
+          </button>
+
+          {resendMessage && (
+            <p className={`text-xs font-semibold mb-6 ${resendMessage.includes('❌') ? 'text-red-400' : 'text-emerald-400'}`}>
+              {resendMessage}
+            </p>
+          )}
+
+          <button
+            onClick={async () => {
+              try {
+                const u = auth.currentUser;
+                if (u) {
+                  await u.delete();
+                }
+                setIsEmailVerificationPending(false);
+              } catch (err) {
+                setIsEmailVerificationPending(false);
+              }
+            }}
+            className="text-zinc-500 hover:text-zinc-300 text-sm underline transition duration-200 cursor-pointer"
+          >
+            Wrong email? Go back
           </button>
         </div>
       </div>
