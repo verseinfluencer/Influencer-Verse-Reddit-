@@ -19,7 +19,6 @@ export const SettingsPage: React.FC = () => {
   const [pwError, setPwError] = useState<string | null>(null);
 
   // Toggles
-  const { theme, toggleTheme } = useApp();
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [newCampaignAlerts, setNewCampaignAlerts] = useState(true);
 
@@ -218,19 +217,6 @@ export const SettingsPage: React.FC = () => {
             </h2>
 
             <div className="space-y-4 text-xs font-semibold">
-              <div className="flex justify-between items-center py-2 border-b border-white/5">
-                <div>
-                  <span className="text-white block">Visual Theme Toggle</span>
-                  <span className="text-[10px] text-zinc-500 font-bold uppercase">Dynamic dark vs light configuration</span>
-                </div>
-                <button 
-                  onClick={toggleTheme}
-                  className="px-4 py-1.5 bg-zinc-950 border border-white/5 rounded-lg text-[10px] font-black uppercase text-purple-400 hover:text-purple-300 cursor-pointer"
-                >
-                  Switch {theme === 'dark' ? 'Light Theme' : 'Dark Theme'}
-                </button>
-              </div>
-
               <div className="flex justify-between items-center py-2 border-b border-white/5">
                 <div>
                   <span className="text-white block">Email Transaction Alerts</span>

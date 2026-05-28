@@ -71,5 +71,10 @@ service cloud.firestore {
     match /tickets/{ticketId} {
       allow read, write: if isAuthenticated();
     }
+
+    // Deleted tasks collection
+    match /deleted_tasks/{taskId} {
+      allow read, write: if isAuthenticated();
+    }
   }
 }

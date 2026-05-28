@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Bell, Sun, Moon, LogOut, User as UserIcon, Settings, BarChart, FileText, Gift, Award, Menu, X, Wallet, ShieldAlert, HeartHandshake } from 'lucide-react';
+import { Bell, LogOut, User as UserIcon, Settings, BarChart, FileText, Gift, Award, Menu, X, Wallet, ShieldAlert, HeartHandshake } from 'lucide-react';
 import { AppNotification } from '../types';
 import { Logo } from './Logo';
 
@@ -10,7 +10,7 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
-  const { currentUser, logout, theme, toggleTheme, notifications, markNotificationRead, clearAllNotifications } = useApp();
+  const { currentUser, logout, notifications, markNotificationRead, clearAllNotifications } = useApp();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -125,15 +125,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
 
           {/* Right Controls */}
           <div className="flex items-center gap-3">
-            {/* Theme Toggle */}
-            <button 
-              onClick={toggleTheme} 
-              className="p-2 rounded-xl border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
-              title="Toggle theme"
-            >
-              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            </button>
-
             {currentUser ? (
               <>
                 {/* Balance display for approved user */}

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Task, Submission, Withdrawal, User, TaskType, Client, ClientTask, ClientPayment, ClientPaymentProof, ChatMessage, ClientChat } from '../types';
 import { getKarmaTier } from '../utils/tierHelper';
+import { db } from '../utils/firebase';
+import { collection, doc, deleteDoc, setDoc, getDocs, onSnapshot, query, orderBy, where } from 'firebase/firestore';
 import { 
   Users, FileText, CheckCircle, Wallet, Sparkles, 
   Trash2, Edit, CheckCircle2, XCircle, AlertCircle, Send, Plus, 
@@ -36,7 +38,46 @@ export const AdminDashboard: React.FC = () => {
     tickets
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'users' | 'clients' | 'client-tasks' | 'client-payments' | 'client-chats' | 'tasks' | 'submissions' | 'withdrawals' | 'announcements' | 'settings' | 'security' | 'track-data' | 'audit-log'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'clients' | 'client-tasks' | 'client-payments' | 'client-chats' | 'tasks' | 'submissions' | 'withdrawals' | 'announcements' | 'settings' | 'security' | 'track-data' | 'audit-log' | 'deleted-tasks'>('users');
+
+  // Deleted tasks list & filter states
+  const [deletedTasks, setDeletedTasks] = useState<any[]>([]);
+  const [deletedFilterClient, setDeletedFilterClient] = useState('');
+  const [deletedFilterDate, setDeletedFilterDate] = useState('');
+
+  // Permanent task deletion confirmation modal state
+  const [taskToDelete, setTaskToDelete] = useState<any | null>(null);
+  const [deletionReason, setDeletionReason] = useState('');
+
+  // Real-time listener for permanently deleted tasks
+  useEffect(() => {
+    const q = query(collection(db, 'deleted_tasks'), orderBy('deletedAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const list: any[] = [];
+      snap.forEach((doc) => {
+        list.push({ id: doc.id, ...doc.data() });
+      });
+      setDeletedTasks(list);
+    }, (error) => {
+      console.error("Error reading deleted tasks snapshot:", error);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleClearDeletedHistory = async () => {
+    if (confirm("Are you sure you want to CLEAR ALL permanently deleted task records from the history? This cannot be undone.")) {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'deleted_tasks'));
+        for (const docItem of querySnapshot.docs) {
+          await deleteDoc(doc(db, 'deleted_tasks', docItem.id));
+        }
+        alert("Deleted task history has been successfully cleared!");
+      } catch (e) {
+        console.error("Error clearing deleted tasks history:", e);
+        alert("Error: " + e);
+      }
+    }
+  };
 
   // Visited tabs tracking for premium pending animation dismissal
   const [visitedTabs, setVisitedTabs] = useState<Record<string, boolean>>(() => {
@@ -166,6 +207,18 @@ export const AdminDashboard: React.FC = () => {
   const [adminTaskFilter, setAdminTaskFilter] = useState<'All' | 'Pending' | 'Live' | 'Submitted' | 'Completed' | 'Removed'>('All');
   const [adminTaskAuditReason, setAdminTaskAuditReason] = useState<Record<string, string>>({});
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
+
+  // Bulk selection and batch deletion to the REMOVED tab
+  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
+  const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
+  const [batchDeletionReason, setBatchDeletionReason] = useState('');
+
+  // Clear selections when tab or filter changes
+  useEffect(() => {
+    setSelectedTaskIds([]);
+  }, [adminTaskFilter, activeTab]);
+
+  const visibleRemovedTasks = (clientTasks || []).filter(t => (t.status || '').toLowerCase() === 'removed');
 
   const filteredUsersForAdmin = users.filter(u => {
     // 1. Status filter
@@ -467,7 +520,8 @@ export const AdminDashboard: React.FC = () => {
             { id: 'track-data', label: '📊 Track Data', count: trackDataBadgeCount },
             { id: 'security', label: '🛡️ Security Center', count: securityBadgeCount },
             { id: 'announcements', label: 'Publish Feed', count: announcementsBadgeCount },
-            { id: 'audit-log', label: '📜 Role Audit Logs', count: auditLogsBadgeCount }
+            { id: 'audit-log', label: '📜 Role Audit Logs', count: auditLogsBadgeCount },
+            { id: 'deleted-tasks', label: '🗑️ Deleted Tasks', count: 0 }
           ].map(tab => (
             <button
                key={tab.id}
@@ -715,7 +769,7 @@ export const AdminDashboard: React.FC = () => {
                     if (f === 'Submitted') return s === 'submitted';
                     if (f === 'Completed') return s === 'completed';
                     if (f === 'Removed') return s === 'removed';
-                    return true;
+                    return s !== 'removed' && s !== 'deleted';
                   }).length;
 
                   return (
@@ -734,7 +788,14 @@ export const AdminDashboard: React.FC = () => {
                   );
                 })}
               </div>
-              <span className="text-[10px] font-mono text-zinc-500 mr-2 uppercase">Real-Time Sync active</span>
+              <span className="text-[10px] font-mono text-zinc-500 mr-2 uppercase flex items-center gap-2">
+                {adminTaskFilter === 'Removed' && selectedTaskIds.length > 0 && (
+                  <span className="bg-purple-500/10 border border-purple-500/20 text-purple-400 font-extrabold normal-case px-2.5 py-1 rounded inline-flex items-center gap-1 animate-pulse select-none">
+                    💜 {selectedTaskIds.length} {selectedTaskIds.length === 1 ? 'task' : 'tasks'} selected
+                  </span>
+                )}
+                <span>Real-Time Sync active</span>
+              </span>
             </div>
 
             {/* Campaigns Ledger Table */}
@@ -742,6 +803,22 @@ export const AdminDashboard: React.FC = () => {
               <table className="w-full text-left border-collapse text-xs min-w-[1100px]">
                 <thead>
                   <tr className="border-b border-white/5 text-[10px] font-bold text-zinc-500 uppercase tracking-widest bg-zinc-950/40">
+                    {adminTaskFilter === 'Removed' && (
+                      <th className="py-4 px-4 w-12 text-center select-none">
+                        <input
+                          type="checkbox"
+                          checked={visibleRemovedTasks.length > 0 && visibleRemovedTasks.every(t => selectedTaskIds.includes(t.id))}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedTaskIds(visibleRemovedTasks.map(t => t.id));
+                            } else {
+                              setSelectedTaskIds([]);
+                            }
+                          }}
+                          className="w-4 h-4 rounded border-white/10 bg-zinc-900 text-indigo-650 focus:ring-indigo-500 cursor-pointer accent-indigo-500"
+                        />
+                      </th>
+                    )}
                     <th className="py-4 px-4">Campaign & Client</th>
                     <th className="py-4 px-4">Type</th>
                     <th className="py-4 px-4 text-right">Proposed Agency Pay</th>
@@ -759,10 +836,10 @@ export const AdminDashboard: React.FC = () => {
                     if (adminTaskFilter === 'Submitted') return s === 'submitted';
                     if (adminTaskFilter === 'Completed') return s === 'completed';
                     if (adminTaskFilter === 'Removed') return s === 'removed';
-                    return true;
+                    return s !== 'removed' && s !== 'deleted';
                   }).length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-12 text-center text-zinc-500 italic font-medium">
+                      <td colSpan={adminTaskFilter === 'Removed' ? 8 : 7} className="py-12 text-center text-zinc-500 italic font-medium">
                         No campaign tasks match the "{adminTaskFilter}" filter criteria.
                       </td>
                     </tr>
@@ -774,16 +851,37 @@ export const AdminDashboard: React.FC = () => {
                       if (adminTaskFilter === 'Submitted') return s === 'submitted';
                       if (adminTaskFilter === 'Completed') return s === 'completed';
                       if (adminTaskFilter === 'Removed') return s === 'removed';
-                      return true;
+                      return s !== 'removed' && s !== 'deleted';
                     }).map((t) => {
                       const s = (t.status || '').toLowerCase();
                       const rate = clientTaskRates[t.id] ?? (t.memberPay || t.agencyPay * 0.70);
                       const isDisputed = t.disputeRaised;
                       const hasSub = t.proofLink;
+                      const isSelected = selectedTaskIds.includes(t.id);
 
                       return (
                         <React.Fragment key={t.id}>
-                          <tr className="hover:bg-white/[0.01] transition-colors">
+                          <tr className={`transition-colors border-l border-transparent ${
+                            adminTaskFilter === 'Removed' && isSelected
+                              ? 'bg-purple-950/25 hover:bg-purple-900/25 border-l-purple-500'
+                              : 'hover:bg-white/[0.01]'
+                          }`}>
+                            {adminTaskFilter === 'Removed' && (
+                              <td className="py-4 px-4 text-center select-none w-12">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedTaskIds(prev => [...prev, t.id]);
+                                    } else {
+                                      setSelectedTaskIds(prev => prev.filter(id => id !== t.id));
+                                    }
+                                  }}
+                                  className="w-4 h-4 rounded border-white/10 bg-zinc-900 text-indigo-650 focus:ring-indigo-500 cursor-pointer accent-indigo-500"
+                                />
+                              </td>
+                            )}
                             <td className="py-4 px-4 select-text max-w-xs">
                               <div className="font-extrabold text-white text-sm truncate" title={t.title}>{t.title}</div>
                               <div className="flex gap-2 items-center text-[10px] text-zinc-400 mt-1">
@@ -909,6 +1007,24 @@ export const AdminDashboard: React.FC = () => {
                                 )}
 
                                 {/* Action: Audit & Remove for active tasks */}
+                                {s === 'removed' && (
+                                  <button
+                                    onClick={() => {
+                                      setTaskToDelete({
+                                        id: t.id,
+                                        title: t.title,
+                                        clientName: t.clientName || 'Unlabeled',
+                                        type: t.type,
+                                        agencyPay: t.agencyPay || 0,
+                                        memberPay: t.memberPay || rate || 0
+                                      });
+                                      setDeletionReason('');
+                                    }}
+                                    className="px-2.5 py-1 bg-red-600 hover:bg-red-500 text-white font-bold text-[10px] rounded cursor-pointer transition uppercase flex items-center gap-1"
+                                  >
+                                    <Trash2 className="w-3 h-3 text-white" /> Delete Permanently
+                                  </button>
+                                )}
                                 {s !== 'removed' && (
                                   <button
                                     onClick={async () => {
@@ -930,7 +1046,7 @@ export const AdminDashboard: React.FC = () => {
                           {/* Expanded detail specifications */}
                           {expandedTaskId === t.id && (
                             <tr className="bg-zinc-950/40">
-                              <td colSpan={7} className="p-4 px-6 border-l-2 border-indigo-500 text-xs text-zinc-300 leading-relaxed font-normal">
+                              <td colSpan={adminTaskFilter === 'Removed' ? 8 : 7} className="p-4 px-6 border-l-2 border-indigo-500 text-xs text-zinc-300 leading-relaxed font-normal">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 select-text">
                                   <div className="space-y-2">
                                     <h4 className="font-bold text-white uppercase tracking-wider text-[10px] text-indigo-400">Campaign Guidelines & Description</h4>
@@ -3057,7 +3173,135 @@ export const AdminDashboard: React.FC = () => {
           </div>
         )}
 
+        {/* ================= DELETED TASKS REGISTER ================= */}
+        {activeTab === 'deleted-tasks' && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-white/5">
+              <div className="space-y-1">
+                <h2 className="text-base font-black flex items-center gap-2 text-red-400">
+                  <Trash2 className="w-5 h-5 text-red-500" /> Permanently Deleted Campaigns Registry
+                </h2>
+                <p className="text-xs text-zinc-500 font-semibold uppercase">
+                  Historical permanent deletion logs and administrative audit trail
+                </p>
+              </div>
 
+              {deletedTasks.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearDeletedHistory}
+                  className="px-3.5 py-1.5 bg-red-650/10 hover:bg-red-650/35 text-red-400 hover:text-white border border-red-500/20 text-xs font-black rounded-lg cursor-pointer transition uppercase"
+                >
+                  Clear History
+                </button>
+              )}
+            </div>
+
+            {/* Filters Bar */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-zinc-950/60 rounded-xl border border-white/5">
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
+                  Filter by Client Name
+                </label>
+                <input
+                  type="text"
+                  value={deletedFilterClient}
+                  onChange={(e) => setDeletedFilterClient(e.target.value)}
+                  placeholder="e.g., Brand Client Co..."
+                  className="w-full text-xs text-white bg-zinc-900 border border-white/5 px-3 py-2.5 rounded-xl focus:border-red-500 outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
+                  Filter by Deletion Date
+                </label>
+                <input
+                  type="date"
+                  value={deletedFilterDate}
+                  onChange={(e) => setDeletedFilterDate(e.target.value)}
+                  className="w-full text-xs text-white bg-zinc-900 border border-white/5 px-3 py-2.5 rounded-xl focus:border-red-500 outline-none cursor-pointer"
+                />
+              </div>
+            </div>
+
+            {/* Results Table */}
+            <div className="p-6 bg-zinc-950/60 rounded-2xl border border-white/5">
+              {deletedTasks.length === 0 ? (
+                <div className="text-center py-12 text-zinc-500 space-y-2">
+                  <p className="font-bold text-sm">🗑️ No permanently deleted tasks recorded</p>
+                  <p className="text-xs">Any campaign that is permanently deleted from the Removed tab will show up in this register.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs min-w-[1000px]">
+                    <thead>
+                      <tr className="border-b border-white/5 text-[10px] font-bold text-zinc-500 uppercase tracking-widest bg-zinc-950/40">
+                        <th className="py-4 px-3">Task / ID</th>
+                        <th className="py-4 px-3">Client Name</th>
+                        <th className="py-4 px-3">Type</th>
+                        <th className="py-4 px-3 text-right">Agency Pay</th>
+                        <th className="py-4 px-3 text-right">Member Pay</th>
+                        <th className="py-4 px-3">Deleted Date</th>
+                        <th className="py-4 px-3">Deleted By</th>
+                        <th className="py-4 px-3">Reason / Log Note</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {deletedTasks
+                        .filter(item => {
+                          if (deletedFilterClient) {
+                            const cn = (item.clientName || '').toLowerCase();
+                            if (!cn.includes(deletedFilterClient.toLowerCase())) return false;
+                          }
+                          if (deletedFilterDate) {
+                            const dPart = (item.deletedAt || '').substring(0, 10);
+                            if (dPart !== deletedFilterDate) return false;
+                          }
+                          return true;
+                        })
+                        .map(item => (
+                          <tr key={item.id} className="hover:bg-white/[0.01]">
+                            <td className="py-4 px-3 select-text max-w-xs">
+                              <div className="font-extrabold text-white text-sm truncate" title={item.title}>{item.title}</div>
+                              <div className="text-[10px] text-zinc-500 font-mono mt-1">ID: {item.id}</div>
+                            </td>
+                            <td className="py-4 px-3">
+                              <span className="text-zinc-300 font-bold bg-zinc-900 border border-zinc-850 px-1.5 py-0.5 rounded">
+                                {item.clientName || 'N/A'}
+                              </span>
+                            </td>
+                            <td className="py-4 px-3">
+                              <span className="px-1.5 py-0.5 bg-zinc-900 border border-zinc-550 text-[10px] rounded text-zinc-400 font-extrabold uppercase tracking-wider font-mono">
+                                {item.type}
+                              </span>
+                            </td>
+                            <td className="py-4 px-3 text-right font-mono font-bold text-white">
+                              ${Number(item.agencyPay || 0).toFixed(2)}
+                            </td>
+                            <td className="py-4 px-3 text-right font-mono font-bold text-emerald-400">
+                              ${Number(item.memberPay || 0).toFixed(2)}
+                            </td>
+                            <td className="py-4 px-3 text-zinc-400 font-semibold font-mono">
+                              {item.deletedAt ? new Date(item.deletedAt).toLocaleDateString() : 'N/A'}
+                              <span className="text-zinc-600 block text-[9px] mt-0.5 select-none">
+                                {item.deletedAt ? new Date(item.deletedAt).toLocaleTimeString() : ''}
+                              </span>
+                            </td>
+                            <td className="py-4 px-3 text-zinc-300 font-bold">
+                              {item.deletedBy || 'Admin'}
+                            </td>
+                            <td className="py-4 px-3 text-left max-w-xs break-words text-zinc-400 font-semibold italic">
+                              "{item.reason || 'No reason specified'}"
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
       </div>
 
@@ -3475,6 +3719,184 @@ export const AdminDashboard: React.FC = () => {
           </div>
         );
       })()}
+
+      {/* Permanent Deletion Confirmation Modal Overlay */}
+      {taskToDelete && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-950 border border-white/10 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-fade-in text-white font-sans">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-6 h-6 text-red-500 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <h3 className="text-base font-black text-white">Permanently delete this campaign?</h3>
+                <p className="text-xs text-zinc-400">
+                  This will completely remove <span className="font-bold text-white">"{taskToDelete.title}"</span> from the Firestore database. This action cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block font-sans">
+                Reason for deletion (optional)
+              </label>
+              <textarea
+                value={deletionReason}
+                onChange={(e) => setDeletionReason(e.target.value)}
+                placeholder="Enter a removal audit note or explanation..."
+                className="w-full text-xs text-white bg-zinc-900 border border-white/10 p-2.5 px-3 rounded-xl focus:border-red-500 outline-none h-20 placeholder:text-zinc-605 font-sans"
+              />
+            </div>
+
+            <div className="flex gap-2 justify-end pt-2">
+              <button
+                onClick={() => setTaskToDelete(null)}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-zinc-900 hover:bg-zinc-850 hover:text-white transition text-zinc-400 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    // Save to deleted_tasks collection
+                    const record = {
+                      id: taskToDelete.id,
+                      title: taskToDelete.title,
+                      clientName: taskToDelete.clientName,
+                      type: taskToDelete.type,
+                      agencyPay: Number(taskToDelete.agencyPay),
+                      memberPay: Number(taskToDelete.memberPay),
+                      deletedAt: new Date().toISOString(),
+                      deletedBy: currentUser?.fullName || currentUser?.email || 'admin',
+                      reason: deletionReason.trim() || 'No reason specified'
+                    };
+                    await setDoc(doc(db, 'deleted_tasks', taskToDelete.id), record);
+
+                    // Delete from tasks
+                    await deleteDoc(doc(db, 'tasks', taskToDelete.id));
+
+                    // Delete from client_tasks
+                    await deleteDoc(doc(db, 'client_tasks', taskToDelete.id));
+
+                    alert('Campaign was permanently deleted and logged!');
+                    setTaskToDelete(null);
+                  } catch (e) {
+                    console.error("Deletion failed:", e);
+                    alert("Failed to delete: " + e);
+                  }
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-500 transition text-white flex items-center gap-1.5 cursor-pointer"
+              >
+                Confirm Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= BATCH PERMANENT DELETION CONFIRMATION MODAL ================= */}
+      {bulkDeleteModalOpen && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-950 border border-white/10 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl text-white font-sans">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-6 h-6 text-red-500 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <h3 className="text-base font-black text-white">Permanently delete {selectedTaskIds.length} tasks?</h3>
+                <p className="text-xs text-zinc-400">
+                  This will completely remove all <span className="font-bold text-white">{selectedTaskIds.length} select campaigns</span> from the Firestore database. This action cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block font-sans">
+                Reason for deletion (optional)
+              </label>
+              <textarea
+                value={batchDeletionReason}
+                onChange={(e) => setBatchDeletionReason(e.target.value)}
+                placeholder="Reason for deletion (applies to all selected tasks)"
+                className="w-full text-xs text-white bg-zinc-900 border border-white/10 p-2.5 px-3 rounded-xl focus:border-red-500 outline-none h-20 placeholder:text-zinc-650 font-sans shadow-inner"
+              />
+            </div>
+
+            <div className="flex gap-2 justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setBulkDeleteModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-zinc-900 override-bg hover:bg-zinc-850 hover:text-white transition text-zinc-400 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    const promises = selectedTaskIds.map(async (taskId) => {
+                      const t = (clientTasks || []).find(item => item.id === taskId);
+                      if (!t) return;
+                      const record = {
+                        id: t.id,
+                        title: t.title,
+                        clientName: t.clientName || 'Unlabeled',
+                        type: t.type,
+                        agencyPay: Number(t.agencyPay || 0),
+                        memberPay: Number(t.memberPay || t.agencyPay * 0.70),
+                        deletedAt: new Date().toISOString(),
+                        deletedBy: currentUser?.fullName || currentUser?.email || 'admin',
+                        reason: batchDeletionReason.trim() || 'No reason specified'
+                      };
+                      await setDoc(doc(db, 'deleted_tasks', t.id), record);
+                      await deleteDoc(doc(db, 'tasks', t.id));
+                      await deleteDoc(doc(db, 'client_tasks', t.id));
+                    });
+
+                    await Promise.all(promises);
+                    setToastMessage(`✅ ${selectedTaskIds.length} tasks permanently deleted`);
+                    setSelectedTaskIds([]);
+                    setBulkDeleteModalOpen(false);
+                  } catch (e) {
+                    console.error("Batch deletion failed:", e);
+                    alert("Batch deletion failed: " + e);
+                  }
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-red-650 hover:bg-red-600 transition text-white flex items-center gap-1.5 cursor-pointer shadow-lg shadow-red-950/40"
+              >
+                Confirm Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= FLOATING BULK ACTION BAR ================= */}
+      {adminTaskFilter === 'Removed' && selectedTaskIds.length > 0 && !bulkDeleteModalOpen && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-zinc-950/95 backdrop-blur-md border border-red-500/30 text-white rounded-2xl p-4 px-6 shadow-2xl flex items-center gap-6 font-sans min-w-[320px] md:min-w-[450px] justify-between">
+          <div className="flex items-center gap-2.5 select-none">
+            <span className="w-2.5 h-2.5 bg-red-600 rounded-full animate-pulse shrink-0" />
+            <span className="text-xs sm:text-sm font-black text-white uppercase tracking-wider">
+              {selectedTaskIds.length} {selectedTaskIds.length === 1 ? 'task' : 'tasks'} selected
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedTaskIds([])}
+              className="px-3.5 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white font-bold text-xs rounded-xl transition cursor-pointer select-none uppercase tracking-wider border border-white/5"
+            >
+              Clear Selection
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setBatchDeletionReason('');
+                setBulkDeleteModalOpen(true);
+              }}
+              className="px-4 py-2 bg-red-650 hover:bg-red-650 text-white font-bold text-xs rounded-xl shadow-lg shadow-red-950/30 transition cursor-pointer flex items-center gap-1.5 uppercase tracking-wider"
+            >
+              <Trash2 className="w-3.5 h-3.5" /> Delete Selected
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Floating Animated Toast Feedback Container */}
       {toastMessage && (

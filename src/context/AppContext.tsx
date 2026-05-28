@@ -49,8 +49,6 @@ interface AppContextType {
   tickets: SupportTicket[];
   notifications: AppNotification[];
   settings: SystemSettings;
-  theme: 'dark' | 'light';
-  toggleTheme: () => void;
   
   // Client States
   clients: Client[];
@@ -213,14 +211,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [clientPayments, setClientPayments] = useState<ClientPayment[]>([]);
   const [clientPaymentProofs, setClientPaymentProofs] = useState<ClientPaymentProof[]>([]);
   const [clientChats, setClientChats] = useState<ClientChat[]>([]);
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    const saved = localStorage.getItem('theme');
-    if (saved === 'dark' || saved === 'light') {
-      return saved;
-    }
-    const systemPrefersDark = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    return systemPrefersDark ? 'dark' : 'light';
-  });
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
   // Anti-cheat mock storage values fallback
@@ -273,31 +263,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Synchronize and apply theme to documentElement classes
+  // Ensure platform is permanently in dark mode
   useEffect(() => {
+    localStorage.removeItem('theme');
     const rootElement = document.documentElement;
-    if (theme === 'dark') {
-      rootElement.classList.add('dark');
-      rootElement.classList.remove('light');
-    } else {
-      rootElement.classList.add('light');
-      rootElement.classList.remove('dark');
-    }
-    localStorage.setItem('theme', theme);
-
-    if (currentUser?.id) {
-      const userRef = doc(db, 'users', currentUser.id);
-      getDoc(userRef).then(async (snap) => {
-        if (snap.exists() && snap.data().theme !== theme) {
-          try {
-            await updateDoc(userRef, { theme });
-          } catch (e) {
-            console.error("Theme sync fails (optional profile sync):", e);
-          }
-        }
-      });
-    }
-  }, [theme, currentUser?.id]);
+    rootElement.classList.add('dark');
+    rootElement.classList.remove('light');
+  }, []);
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
@@ -312,9 +284,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (snap.exists()) {
             const uData = snap.data() as any;
             setCurrentUser(uData as User);
-            if (uData.theme === 'dark' || uData.theme === 'light') {
-              setTheme(uData.theme);
-            }
           }
         });
         const unsubClientProfile = onSnapshot(doc(db, 'clients', firebaseUser.uid), (snap) => {
@@ -1475,14 +1444,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  const toggleTheme = () => {
-    setTheme(prev => {
-      const next = prev === 'dark' ? 'light' : 'dark';
-      localStorage.setItem('theme', next);
-      return next;
-    });
-  };
-
   const blacklistIP = (ip: string) => {
     setBlacklistedIPs(prev => Array.from(new Set([...prev, ip])));
   };
@@ -2438,8 +2399,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       tickets,
       notifications,
       settings,
-      theme,
-      toggleTheme,
       
       clients,
       currentClient,

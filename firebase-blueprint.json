@@ -180,6 +180,23 @@
         "timestamp": { "type": "string" }
       },
       "required": ["id", "userId", "type", "title", "message", "read", "timestamp"]
+    },
+    "DeletedTask": {
+      "title": "Deleted Task",
+      "description": "Audit record of permanently deleted campaigns.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "clientName": { "type": "string" },
+        "type": { "type": "string" },
+        "agencyPay": { "type": "number" },
+        "memberPay": { "type": "number" },
+        "deletedAt": { "type": "string" },
+        "deletedBy": { "type": "string" },
+        "reason": { "type": "string" }
+      },
+      "required": ["id", "title", "clientName", "type", "agencyPay", "memberPay", "deletedAt", "deletedBy"]
     }
   },
   "firestore": {
@@ -214,6 +231,10 @@
     "tickets": {
       "schema": "SupportTicket",
       "description": "Support tickets where messages are updated."
+    },
+    "deleted_tasks": {
+      "schema": "DeletedTask",
+      "description": "Permanently deleted campaign records with reason notes."
     }
   }
 }
