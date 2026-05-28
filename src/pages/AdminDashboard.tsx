@@ -630,18 +630,32 @@ export const AdminDashboard: React.FC = () => {
                                 href={`https://wa.me/${c.whatsapp.replace(/\D/g, '')}`} 
                                 target="_blank" 
                                 rel="noreferrer" 
-                                className="text-[9px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded font-black uppercase border border-emerald-500/20"
+                                className="text-[9px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded font-black uppercase border border-emerald-500/20 block w-max"
                               >
                                 Ping WhatsApp
                               </a>
                             </div>
                             <div className="text-[10px] text-zinc-500 flex items-center gap-1 font-mono">
                               <span>{c.gmail}</span>
-                              {c.gmailVerified ? (
-                                <span className="text-[8px] bg-purple-500/20 text-purple-400 font-black px-1 rounded">Verified</span>
-                              ) : (
-                                <span className="text-[8px] bg-zinc-800 text-zinc-500 font-black px-1 rounded">Unverified</span>
-                              )}
+                            </div>
+                            {/* Explicit Email/Phone verification flags requested */}
+                            <div className="space-y-1 mt-1 font-sans text-[11px] font-bold">
+                              <div className="flex items-center gap-1">
+                                <span>📧 Email:</span>
+                                {c.gmailVerified ? (
+                                  <span className="text-emerald-450 text-xs">✅ Email Verified</span>
+                                ) : (
+                                  <span className="text-rose-450 text-xs">❌ Email Not Verified</span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span>📱 Phone:</span>
+                                {c.phoneVerified ? (
+                                  <span className="text-emerald-450 text-xs">✅ Phone Verified ({c.phoneNumber || 'N/A'})</span>
+                                ) : (
+                                  <span className="text-rose-450 text-xs">❌ Phone Not Verified</span>
+                                )}
+                              </div>
                             </div>
                           </td>
                           <td className="py-4 px-2 space-y-1">
@@ -677,8 +691,17 @@ export const AdminDashboard: React.FC = () => {
                               <div className="space-y-1.5">
                                 <div className="flex gap-1.5 justify-end">
                                   <button
-                                    onClick={() => adminReviewClient(c.id, 'approved')}
-                                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-[10px] font-black rounded text-white cursor-pointer"
+                                    onClick={() => {
+                                      if (!c.gmailVerified) {
+                                        alert("❌ Client's Gmail is not verified! Unverified email accounts cannot be approved.");
+                                        return;
+                                      }
+                                      adminReviewClient(c.id, 'approved');
+                                    }}
+                                    disabled={!c.gmailVerified}
+                                    className={`px-2.5 py-1 text-[10px] font-black rounded text-white cursor-pointer ${
+                                      c.gmailVerified ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-emerald-950/40 text-zinc-500 cursor-not-allowed border border-white/5'
+                                    }`}
                                   >
                                     Approve
                                   </button>
@@ -725,8 +748,17 @@ export const AdminDashboard: React.FC = () => {
 
                             {c.status === 'suspended' && (
                               <button
-                                onClick={() => adminReviewClient(c.id, 'approved')}
-                                className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-[10px] font-black rounded text-white cursor-pointer"
+                                onClick={() => {
+                                  if (!c.gmailVerified) {
+                                    alert("❌ Client's Gmail is not verified! Unverified email accounts cannot be activated.");
+                                    return;
+                                  }
+                                  adminReviewClient(c.id, 'approved');
+                                }}
+                                disabled={!c.gmailVerified}
+                                className={`px-2.5 py-1.5 text-[10px] font-black rounded text-white cursor-pointer ${
+                                  c.gmailVerified ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-indigo-950/40 text-zinc-500 cursor-not-allowed border border-white/5'
+                                }`}
                               >
                                 Activate Profile
                               </button>

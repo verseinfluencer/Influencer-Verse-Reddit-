@@ -6,6 +6,9 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ALL_COUNTRIES } from '../utils/countries';
+import { auth, db } from '../utils/firebase';
+import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
+import { doc, updateDoc } from 'firebase/firestore';
 
 interface ClientRegisterProps {
   onNavigate: (page: string) => void;
@@ -22,10 +25,24 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
   const [countrySearch, setCountrySearch] = useState('');
   const [isCountryOpen, setIsCountryOpen] = useState(false);
 
-  // Custom Dial Code States
+  // Custom Dial Code States (Section 6: WhatsApp selector)
   const [dialCode, setDialCode] = useState('+1');
   const [dialSearch, setDialSearch] = useState('');
   const [isDialOpen, setIsDialOpen] = useState(false);
+
+  // New Phone + OTP verification States (Section 5: Phone Number)
+  const [phoneNum, setPhoneNum] = useState('');
+  const [phoneDialCode, setPhoneDialCode] = useState('+1');
+  const [isPhoneDialOpen, setIsPhoneDialOpen] = useState(false);
+  const [phoneDialSearch, setPhoneDialSearch] = useState('');
+  const [otp, setOtp] = useState('');
+  const [isPhoneVerificationSent, setIsPhoneVerificationSent] = useState(false);
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
+  const [confirmationResult, setConfirmationResult] = useState<any>(null);
+  const [phoneError, setPhoneError] = useState('');
+  const [phoneSuccess, setPhoneSuccess] = useState('');
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
 
   const [whatsAppNum, setWhatsAppNum] = useState('');
   const [gmail, setGmail] = useState('');
@@ -40,6 +57,9 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const [isCheckingGmail, setIsCheckingGmail] = useState(false);
+  const [gmailVerifiedStatus, setGmailVerifiedStatus] = useState(false);
+
   // Search & Filter Logic
   const filteredCountries = ALL_COUNTRIES.filter(c => 
     c.name.toLowerCase().includes(countrySearch.toLowerCase())
@@ -48,6 +68,11 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
   const filteredDialCodes = ALL_COUNTRIES.filter(c => 
     c.name.toLowerCase().includes(dialSearch.toLowerCase()) || 
     c.code.includes(dialSearch)
+  );
+
+  const filteredPhoneDialCodes = ALL_COUNTRIES.filter(c => 
+    c.name.toLowerCase().includes(phoneDialSearch.toLowerCase()) || 
+    c.code.includes(phoneDialSearch)
   );
 
   const handleSelectCountry = (countryName: string) => {
@@ -59,6 +84,96 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
     const found = ALL_COUNTRIES.find(c => c.name === countryName);
     if (found) {
       setDialCode(found.code);
+      setPhoneDialCode(found.code); // Sync phone OTP code automatically
+    }
+  };
+
+  // ─── Firebase SMS Auth Handlers ───
+  const handleSendOtp = async () => {
+    setPhoneError('');
+    setPhoneSuccess('');
+    if (!phoneNum.trim()) {
+      setPhoneError('Please enter your phone digits.');
+      return;
+    }
+
+    setIsSendingOtp(true);
+    try {
+      // Invisible Recaptcha structure
+      if (!(window as any).recaptchaVerifier) {
+        (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+          size: 'invisible',
+          callback: () => {
+            console.log("Invisible captcha validated correctly");
+          }
+        });
+      }
+
+      const appVerifier = (window as any).recaptchaVerifier;
+      const fullPhone = `${phoneDialCode}${phoneNum.trim()}`;
+
+      // Call Firebase Auth
+      const confirmationResult = await signInWithPhoneNumber(auth, fullPhone, appVerifier);
+      setConfirmationResult(confirmationResult);
+      setIsPhoneVerificationSent(true);
+      setPhoneSuccess('OTP verification code sent via SMS successfully!');
+    } catch (err: any) {
+      console.error("SMS Sending failures:", err);
+      setPhoneError(err?.message || 'Error executing Firebase SMS dispatcher. Turn on Phone authentication in your Console settings.');
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    setPhoneError('');
+    setPhoneSuccess('');
+    if (!otp.trim() || otp.trim().length !== 6) {
+      setPhoneError('Specify a valid 6-digit numeric OTP code.');
+      return;
+    }
+    if (!confirmationResult) {
+      setPhoneError('Verify SMS session is stale. Press send OTP again.');
+      return;
+    }
+
+    setIsVerifyingOtp(true);
+    try {
+      await confirmationResult.confirm(otp.trim());
+      setIsPhoneVerified(true);
+      setPhoneSuccess('✅ Phone verified successfully!');
+    } catch (err: any) {
+      console.error("SMS confirmation failure:", err);
+      setPhoneError(err?.message || 'Verification of code failed. Try again.');
+    } finally {
+      setIsVerifyingOtp(false);
+    }
+  };
+
+  // ─── Verification Sync check on successful registrations ───
+  const handleCheckGmailVerification = async () => {
+    setIsCheckingGmail(true);
+    try {
+      const user = auth.currentUser;
+      if (user) {
+        await user.reload();
+        if (user.emailVerified) {
+          // Update Firestore status records immediately
+          await updateDoc(doc(db, 'clients', user.uid), { gmailVerified: true });
+          await updateDoc(doc(db, 'users', user.uid), { gmailVerified: true });
+          setGmailVerifiedStatus(true);
+          alert("✅ Email verified successfully! Admin can now approve your profile.");
+        } else {
+          alert("❌ Email is not verified yet. Please check your inbox and click the verification link.");
+        }
+      } else {
+        alert("Session is untraceable. Go to login page to verify your credentials manually.");
+      }
+    } catch (err: any) {
+      console.error("Email verification status sync failed:", err);
+      alert("Verification query rejected: " + err.message);
+    } finally {
+      setIsCheckingGmail(false);
     }
   };
 
@@ -83,6 +198,11 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
       return;
     }
 
+    if (!isPhoneVerified) {
+      setError('Please verify your phone number via SMS OTP code before submitting.');
+      return;
+    }
+
     if (!agreeTerms) {
       setError('You must agree to the Terms of Service to onboard.');
       return;
@@ -96,7 +216,9 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
         country,
         whatsapp: `${dialCode} ${whatsAppNum.trim()}`,
         gmail: gmail.trim().toLowerCase(),
-        gmailVerified: true, // Auto marked validated since verification is visual/administrative now
+        phoneNumber: `${phoneDialCode} ${phoneNum.trim()}`,
+        phoneVerified: true,
+        phoneVerifiedAt: new Date().toISOString(),
         paymentMethod,
         budget: budget.trim(),
         paymentNotes: paymentNotes.trim(),
@@ -116,10 +238,21 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
       <div id="registration_pending_page" className="max-w-xl mx-auto my-16 p-8 bg-neutral-900 border border-neutral-800 rounded-3xl text-center text-white">
         <Clock className="w-16 h-16 text-amber-500 mx-auto mb-6" />
         <h1 className="text-3xl font-bold font-sans tracking-tight mb-3">Pending Admin Review</h1>
-        <p className="text-neutral-400 mb-6 font-sans">
+        
+        <div className="bg-indigo-950/45 p-5 rounded-2xl border border-indigo-500/25 text-left text-xs text-indigo-200 leading-relaxed font-sans space-y-2 mb-6 shadow-inner">
+          <p className="font-bold text-center text-sm mb-1 text-white flex items-center justify-center gap-1.5">
+            📧 Verification Sent
+          </p>
+          <p className="text-center">
+            Verification email sent to <strong className="text-white font-black">{gmail}</strong>. Please verify your email to complete registration.
+          </p>
+        </div>
+
+        <p className="text-neutral-400 mb-6 font-sans text-xs">
           Your client account is under review. <br />
           We'll contact you via WhatsApp/Gmail soon.
         </p>
+
         <div className="bg-neutral-950 p-4 rounded-xl border border-neutral-800 text-left text-sm text-neutral-300 space-y-2 mb-8">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse"></span>
@@ -128,15 +261,35 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
           <p className="text-neutral-500 text-xs text-justify leading-relaxed">
             Review processes generally take under 4 hours. Authenticated brand advisors will verify your profile manually, checking your entered WhatsApp and Gmail handle before enabling live campaigns.
           </p>
+          <div className="flex justify-between items-center pt-2.5 border-t border-neutral-800/85 mt-2">
+            <span className="text-[10px] text-neutral-500 font-bold uppercase">Email status:</span>
+            {gmailVerifiedStatus ? (
+              <span className="text-xs text-emerald-400 font-bold">✅ Verified in system</span>
+            ) : (
+              <span className="text-xs text-rose-400 font-bold animate-pulse">❌ Pending link activation</span>
+            )}
+          </div>
         </div>
-        <button 
-          id="pending_back_btn"
-          onClick={() => onNavigate('client-login')} 
-          className="px-6 py-3 bg-white text-black font-semibold rounded-xl hover:bg-neutral-200 transition font-sans w-full cursor-pointer flex items-center justify-center gap-2"
-        >
-          <span>Go to Client Login</span>
-          <ArrowRight className="w-4 h-4" />
-        </button>
+
+        <div className="space-y-3">
+          <button
+            type="button"
+            onClick={handleCheckGmailVerification}
+            disabled={isCheckingGmail || gmailVerifiedStatus}
+            className="px-6 py-3 bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold rounded-xl transition font-sans w-full cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40"
+          >
+            {isCheckingGmail ? 'Syncing status...' : 'Check Verification Status'}
+          </button>
+
+          <button 
+            id="pending_back_btn"
+            onClick={() => onNavigate('client-login')} 
+            className="px-6 py-3 bg-zinc-800 text-zinc-300 font-semibold rounded-xl hover:bg-zinc-700 hover:text-white transition font-sans w-full cursor-pointer flex items-center justify-center gap-2"
+          >
+            <span>Go to Client Login</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     );
   }
@@ -175,7 +328,7 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
               {/* 1. Client Full Name */}
-              <div>
+              <div className="md:col-span-1">
                 <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
                   Client Full Name
                 </label>
@@ -193,7 +346,7 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
               </div>
 
               {/* 2. Client Company/Brand Name */}
-              <div>
+              <div className="md:col-span-1">
                 <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
                   Company / Brand Name
                 </label>
@@ -210,8 +363,8 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
                 </div>
               </div>
 
-              {/* 3. Client Country (searchable dropdown) */}
-              <div className="relative">
+              {/* 3. Client Country (all 195 countries) */}
+              <div className="md:col-span-2 relative">
                 <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
                   Client Country
                 </label>
@@ -226,6 +379,7 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
                     onClick={() => {
                       setIsCountryOpen(!isCountryOpen);
                       setIsDialOpen(false);
+                      setIsPhoneDialOpen(false);
                     }}
                     className="w-full pl-11 pr-10 py-3 bg-neutral-950 text-white rounded-xl border border-neutral-800 focus:outline-none focus:border-indigo-550 text-sm font-sans text-left flex items-center justify-between cursor-pointer transition"
                   >
@@ -274,7 +428,7 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
                           )}
                         </div>
 
-                        <div className="max-h-60 overflow-y-auto divide-y divide-neutral-900 scrollbar-thin">
+                        <div className="max-h-60 overflow-y-auto divide-y divide-neutral-900 scrollbar-thin text-left">
                           {filteredCountries.length === 0 ? (
                             <div className="p-3 text-center text-xs text-neutral-500 italic">
                               No countries found matching your search.
@@ -301,10 +455,229 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
                 </div>
               </div>
 
-              {/* 4. Client WhatsApp Number (dial code + display input) */}
-              <div className="relative">
+              {/* 4. Client Gmail Address & Security Password combined */}
+              <div className="md:col-span-1">
                 <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
-                  Client WhatsApp Number
+                  Client Gmail Address (Ends in @gmail.com)
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-3.5 text-neutral-500 w-4 h-4" />
+                  <input 
+                    type="email" 
+                    value={gmail}
+                    onChange={(e) => setGmail(e.target.value)}
+                    placeholder="brand.manager@gmail.com"
+                    required
+                    className="w-full pl-11 pr-4 py-3 bg-neutral-950 text-white rounded-xl border border-neutral-800 focus:outline-none focus:border-indigo-550 text-sm font-sans"
+                  />
+                </div>
+                <p className="text-[10px] text-zinc-500 mt-1">Verification link will be dispatched automatically upon draft profile execution.</p>
+              </div>
+
+              <div className="md:col-span-1">
+                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
+                  Portal Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-3.5 w-4 h-4 text-neutral-500" />
+                  <input 
+                    type="password" 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    className="w-full pl-11 pr-4 py-3 bg-neutral-950 text-white rounded-xl border border-neutral-800 focus:outline-none focus:border-indigo-550 text-sm font-sans"
+                  />
+                </div>
+                <p className="text-[10px] text-zinc-500 mt-1">Create a secure client portal logging password.</p>
+              </div>
+
+              {/* 5. Phone Number + OTP Verification */}
+              <div className="md:col-span-2 bg-neutral-950 p-6 rounded-2xl border border-neutral-800/80 space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-2">
+                    📱 Client Phone Number (With SMS OTP Verification)
+                  </label>
+                  
+                  {isPhoneDialOpen && (
+                    <div className="fixed inset-0 z-10" onClick={() => setIsPhoneDialOpen(false)} />
+                  )}
+
+                  <div className="flex gap-2 relative">
+                    {/* Dial Selector Block */}
+                    <div className="relative z-20 w-36 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsPhoneDialOpen(!isPhoneDialOpen);
+                          setIsCountryOpen(false);
+                          setIsDialOpen(false);
+                        }}
+                        disabled={isPhoneVerified}
+                        className="w-full h-full px-3 py-3 bg-neutral-900 text-white rounded-xl border border-neutral-800 disabled:opacity-50 text-xs font-mono flex items-center justify-between cursor-pointer transition"
+                      >
+                        {(() => {
+                          const matched = ALL_COUNTRIES.find(c => c.code === phoneDialCode);
+                          return (
+                            <span className="flex items-center gap-1.5 truncate">
+                              <span className="text-base leading-none">{matched?.flag || '🌐'}</span>
+                              <span>{phoneDialCode}</span>
+                            </span>
+                          );
+                        })()}
+                        <ChevronDown className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
+                      </button>
+
+                      <AnimatePresence>
+                        {isPhoneDialOpen && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 4 }}
+                            className="absolute left-0 mt-2 w-56 bg-neutral-950 border border-neutral-800 rounded-2xl shadow-2xl overflow-hidden z-35"
+                          >
+                            <div className="p-2 border-b border-neutral-800 bg-neutral-900 flex items-center gap-2">
+                              <Search className="w-3.5 h-3.5 text-neutral-500 shrink-0 ml-1" />
+                              <input
+                                type="text"
+                                value={phoneDialSearch}
+                                onChange={(e) => setPhoneDialSearch(e.target.value)}
+                                placeholder="Search dial code..."
+                                className="w-full text-xs bg-transparent text-white focus:outline-none placeholder-neutral-500 py-1"
+                                autoFocus
+                              />
+                              {phoneDialSearch && (
+                                <button
+                                  type="button"
+                                  onClick={() => setPhoneDialSearch('')}
+                                  className="text-neutral-500 hover:text-white shrink-0"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
+
+                            <div className="max-h-52 overflow-y-auto divide-y divide-neutral-900 scrollbar-thin text-left">
+                              {filteredPhoneDialCodes.length === 0 ? (
+                                <div className="p-3 text-center text-xs text-neutral-500 italic">
+                                  No code matches.
+                                </div>
+                              ) : (
+                                filteredPhoneDialCodes.map((c) => (
+                                  <button
+                                    key={`phone-${c.name}-${c.code}`}
+                                    type="button"
+                                    onClick={() => {
+                                      setPhoneDialCode(c.code);
+                                      setIsPhoneDialOpen(false);
+                                      setPhoneDialSearch('');
+                                    }}
+                                    className={`w-full text-left px-3 py-2.5 hover:bg-indigo-600/20 text-xs text-neutral-300 transition-colors flex items-center justify-between ${
+                                      phoneDialCode === c.code ? 'bg-indigo-600/10 font-bold text-indigo-400' : ''
+                                    }`}
+                                  >
+                                    <span className="flex items-center gap-1.5 truncate">
+                                      <span className="text-sm shrink-0">{c.flag}</span>
+                                      <span className="truncate text-[10px] text-neutral-400">{c.name}</span>
+                                    </span>
+                                    <span className="font-mono text-[10px] text-indigo-400 shrink-0 font-bold">{c.code}</span>
+                                  </button>
+                                ))
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+
+                    {/* Digits Input */}
+                    <div className="relative flex-1">
+                      <Phone className="absolute left-3.5 top-3.5 w-4 h-4 text-neutral-500" />
+                      <input 
+                        type="tel" 
+                        value={phoneNum}
+                        onChange={(e) => setPhoneNum(e.target.value.replace(/\D/g, '').substring(0, 15))}
+                        placeholder="e.g. 9876543210 (digits only)"
+                        disabled={isPhoneVerified}
+                        className="w-full pl-11 pr-4 py-3 bg-neutral-900 text-white rounded-xl border border-neutral-800 focus:outline-none focus:border-indigo-550 text-sm font-sans disabled:opacity-50"
+                      />
+                    </div>
+
+                    {/* SMS Send Trigger */}
+                    <button
+                      type="button"
+                      onClick={handleSendOtp}
+                      disabled={isPhoneVerified || isSendingOtp || !phoneNum.trim()}
+                      className="px-4 bg-indigo-650 hover:bg-indigo-600 disabled:opacity-40 text-white font-extrabold text-xs rounded-xl transition whitespace-nowrap cursor-pointer flex items-center justify-center border border-indigo-500/10"
+                    >
+                      {isSendingOtp ? 'Sending...' : isPhoneVerificationSent ? 'Resend OTP' : 'Send OTP'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* OTP Input Block (Rendered after OTP is sent) */}
+                {isPhoneVerificationSent && !isPhoneVerified && (
+                  <div className="bg-neutral-900/60 p-4 rounded-xl border border-neutral-800 space-y-3">
+                    <label className="block text-xs font-semibold text-neutral-300 uppercase tracking-wider">
+                      Enter 6-Digit OTP Code
+                    </label>
+                    <div className="flex gap-2">
+                      <input 
+                        type="text"
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').substring(0, 6))}
+                        placeholder="e.g. 123456"
+                        maxLength={6}
+                        className="flex-1 px-4 py-2.5 bg-neutral-950 text-white rounded-xl border border-neutral-800 focus:outline-none focus:border-indigo-550 text-sm font-mono tracking-widest text-center"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleVerifyOtp}
+                        disabled={isVerifyingOtp || otp.length !== 6}
+                        className="px-6 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-extrabold text-xs rounded-xl transition cursor-pointer"
+                      >
+                        {isVerifyingOtp ? 'Verifying...' : 'Verify OTP'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Inline Phone Messages */}
+                {phoneError && (
+                  <p className="text-[11px] text-red-400 font-bold leading-normal flex items-start gap-1">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <span>{phoneError}</span>
+                  </p>
+                )}
+                {phoneSuccess && (
+                  <p className="text-[11px] text-emerald-400 font-bold leading-normal flex items-start gap-1">
+                    <CheckCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <span>{phoneSuccess}</span>
+                  </p>
+                )}
+
+                {/* Note details */}
+                <div className="flex justify-between items-center bg-neutral-900/40 p-2.5 rounded-xl border border-neutral-800/50">
+                  <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider">Phone Verification Status:</span>
+                  {isPhoneVerified ? (
+                    <span className="text-xs bg-emerald-950/40 text-emerald-400 border border-emerald-500/10 px-2.5 py-1 rounded-lg font-black uppercase tracking-wider flex items-center gap-1">
+                      ✅ Phone Verified
+                    </span>
+                  ) : (
+                    <span className="text-xs bg-amber-950/20 text-amber-500 border border-amber-500/10 px-2.5 py-1 rounded-lg font-black uppercase tracking-wider animate-pulse">
+                      Pending verification
+                    </span>
+                  )}
+                </div>
+
+                {/* Invisible reCAPTCHA container as required */}
+                <div id="recaptcha-container"></div>
+              </div>
+
+              {/* 6. WhatsApp Number (no verification required) */}
+              <div className="md:col-span-2 relative">
+                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
+                  Client WhatsApp Number (No verification required / country code selector only)
                 </label>
 
                 {isDialOpen && (
@@ -319,6 +692,7 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
                       onClick={() => {
                         setIsDialOpen(!isDialOpen);
                         setIsCountryOpen(false);
+                        setIsPhoneDialOpen(false);
                       }}
                       className="w-full h-full px-3 py-3 bg-neutral-950 text-white rounded-xl border border-neutral-800 focus:outline-none focus:border-indigo-550 text-xs font-mono flex items-center justify-between cursor-pointer transition"
                     >
@@ -363,10 +737,10 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
                             )}
                           </div>
 
-                          <div className="max-h-52 overflow-y-auto divide-y divide-neutral-900 scrollbar-thin">
+                          <div className="max-h-52 overflow-y-auto divide-y divide-neutral-900 scrollbar-thin text-left">
                             {filteredDialCodes.length === 0 ? (
                               <div className="p-3 text-center text-xs text-neutral-500 italic">
-                                No code is matched.
+                                No matches.
                               </div>
                             ) : (
                               filteredDialCodes.map((c) => (
@@ -403,81 +777,27 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
                       type="tel" 
                       value={whatsAppNum}
                       onChange={(e) => setWhatsAppNum(e.target.value.replace(/\D/g, '').substring(0, 15))}
-                      placeholder="e.g. 9876543210"
+                      placeholder="e.g. 9876543210 (digits only)"
                       required
                       className="w-full pl-11 pr-4 py-3 bg-neutral-950 text-white rounded-xl border border-neutral-800 focus:outline-none focus:border-indigo-550 text-sm font-sans"
                     />
                   </div>
                 </div>
 
-                <div className="mt-2 space-y-1.5 select-text">
+                <div className="mt-2 space-y-1 select-text">
                   <div className="flex items-center gap-2 bg-neutral-950/40 border border-neutral-800/40 px-3 py-1.5 rounded-xl">
                     <span className="text-[9px] font-black uppercase text-neutral-500 tracking-wider">Your WhatsApp Preview:</span>
                     <span className="text-xs text-indigo-400 font-mono font-black">
                       {dialCode} {whatsAppNum || '—'}
                     </span>
                   </div>
-                  <p className="text-[11px] text-amber-500 font-medium leading-normal flex items-start gap-1">
-                    <AlertCircle className="w-3.5 h-3.5 text-amber-550 shrink-0 mt-0.5" />
-                    <span>the number will be verified before approving the account by influencer verse team</span>
-                  </p>
                 </div>
               </div>
 
             </div>
           </div>
 
-          {/* Section 2: Onboarding Credentials & Security */}
-          <div>
-            <h2 className="text-xl font-bold tracking-tight text-neutral-200 mb-5 flex items-center gap-2 border-b border-neutral-800 pb-3 select-none">
-              <ShieldCheck className="w-5 h-5 text-indigo-400" />
-              <span>Login Security Setup</span>
-            </h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              
-              {/* 5. Client Gmail Address */}
-              <div>
-                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
-                  Client Gmail Address (Ends in @gmail.com)
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3.5 top-3.5 text-neutral-500 w-4 h-4" />
-                  <input 
-                    type="email" 
-                    value={gmail}
-                    onChange={(e) => setGmail(e.target.value)}
-                    placeholder="e.g. brand.manager@gmail.com"
-                    required
-                    className="w-full pl-11 pr-4 py-3 bg-neutral-950 text-white rounded-xl border border-neutral-800 focus:outline-none focus:border-indigo-550 text-sm font-sans"
-                  />
-                </div>
-                <p className="text-[11px] text-neutral-500 mt-1.5">No mock codes required. Basic validation tests for official @gmail.com.</p>
-              </div>
-
-              {/* Secure Password Field */}
-              <div>
-                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
-                  Portal Password
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3.5 top-3.5 w-4 h-4 text-neutral-500" />
-                  <input 
-                    type="password" 
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    required
-                    className="w-full pl-11 pr-4 py-3 bg-neutral-950 text-white rounded-xl border border-neutral-800 focus:outline-none focus:border-indigo-550 text-sm font-sans"
-                  />
-                </div>
-                <p className="text-[11px] text-neutral-500 mt-1.5">Create a strong password for recurring campaign tracking audits.</p>
-              </div>
-
-            </div>
-          </div>
-
-          {/* Section 3: About Payment */}
+          {/* Section 7: About Payment */}
           <div>
             <h2 className="text-xl font-bold tracking-tight text-neutral-200 mb-5 flex items-center gap-2 border-b border-neutral-800 pb-3 select-none">
               <Coins className="w-5 h-5 text-indigo-400" />
@@ -537,7 +857,7 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
             </div>
           </div>
 
-          {/* Section 4: Agree to Terms Checkbox */}
+          {/* Section 8: Agree to Terms Checkbox */}
           <div className="mt-8 pt-4 border-t border-neutral-800">
             <label className="flex items-start gap-3 cursor-pointer select-none">
               <input 
@@ -552,7 +872,7 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
             </label>
           </div>
 
-          {/* Submit for Review Button block */}
+          {/* Section 9: Submit for Review Button block */}
           <div className="flex gap-4 pt-4 border-t border-neutral-800">
             <button
               id="submit_client_register"

@@ -192,6 +192,9 @@ export interface Client {
   whatsapp: string;
   gmail: string;
   gmailVerified: boolean;
+  phoneNumber?: string;
+  phoneVerified?: boolean;
+  phoneVerifiedAt?: string;
   paymentMethod: 'Crypto' | 'Bank Transfer' | 'Other';
   budget: string;
   paymentNotes?: string;

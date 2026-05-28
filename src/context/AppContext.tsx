@@ -23,7 +23,8 @@ import {
   createUserWithEmailAndPassword, 
   signOut, 
   onAuthStateChanged,
-  updatePassword
+  updatePassword,
+  sendEmailVerification
 } from 'firebase/auth';
 import { 
   collection, 
@@ -674,6 +675,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const trimmedGmail = (clientData.gmail || '').trim().toLowerCase();
       const creds = await createUserWithEmailAndPassword(auth, trimmedGmail, clientData.password || 'client123');
       const uid = creds.user.uid;
+      
+      // Automatically send Firebase email verification to their Gmail
+      try {
+        await sendEmailVerification(creds.user);
+      } catch (verificationErr) {
+        console.error("Error sending email verification immediately upon signup:", verificationErr);
+      }
+
       const newClient: Client = {
         id: uid,
         name: clientData.name,
@@ -681,7 +690,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         country: clientData.country,
         whatsapp: clientData.whatsapp,
         gmail: trimmedGmail,
-        gmailVerified: true,
+        gmailVerified: false, // Must be verified by clicking the email link
+        phoneNumber: clientData.phoneNumber || '',
+        phoneVerified: clientData.phoneVerified || false,
+        phoneVerifiedAt: clientData.phoneVerifiedAt || '',
         paymentMethod: clientData.paymentMethod,
         budget: clientData.budget,
         paymentNotes: clientData.paymentNotes || '',

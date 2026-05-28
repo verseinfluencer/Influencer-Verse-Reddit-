@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Mail, Lock, AlertCircle, ArrowRight, CheckCircle, Clock } from 'lucide-react';
+import { auth, db } from '../utils/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 
 interface ClientLoginProps {
   onNavigate: (page: string) => void;
@@ -16,6 +18,34 @@ export const ClientLogin: React.FC<ClientLoginProps> = ({ onNavigate }) => {
   // Locked Status rendering (in case they have logged in but represent another state)
   const [lockedStatus, setLockedStatus] = useState<'pending' | 'rejected' | 'suspended' | null>(null);
   const [lockedReason, setLockedReason] = useState('');
+
+  const [isCheckingGmail, setIsCheckingGmail] = useState(false);
+  const [gmailVerifiedStatus, setGmailVerifiedStatus] = useState(false);
+
+  const handleCheckGmailVerification = async () => {
+    setIsCheckingGmail(true);
+    try {
+      const user = auth.currentUser;
+      if (user) {
+        await user.reload();
+        if (user.emailVerified) {
+          await updateDoc(doc(db, 'clients', user.uid), { gmailVerified: true });
+          await updateDoc(doc(db, 'users', user.uid), { gmailVerified: true });
+          setGmailVerifiedStatus(true);
+          alert("✅ Email verified successfully! Admin can now approve your profile.");
+        } else {
+          alert("❌ Email is not verified yet. Please check your inbox and click the verification link.");
+        }
+      } else {
+        alert("Session is untraceable. Try logging in again.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert("Error checking email status: " + err.message);
+    } finally {
+      setIsCheckingGmail(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,13 +85,33 @@ export const ClientLogin: React.FC<ClientLoginProps> = ({ onNavigate }) => {
       <div id="pending_review_box" className="max-w-md mx-auto my-16 p-8 bg-neutral-900 border border-neutral-800 rounded-3xl text-center text-white">
         <Clock className="w-16 h-16 text-amber-500 mx-auto mb-6" />
         <h1 className="text-2xl font-bold font-sans tracking-tight mb-3 text-amber-400">Account Under Review</h1>
-        <p className="text-neutral-300 mb-6 font-sans text-sm">
+        
+        <div className="bg-indigo-950/45 p-4 rounded-xl border border-indigo-550/20 text-left text-xs text-indigo-200 leading-relaxed font-sans space-y-1.5 mb-6">
+          <p className="font-bold text-center text-xs text-white">
+            📧 Verification Sent
+          </p>
+          <p className="text-center">
+            A verification link was dispatched to your email. Please check your spam folder if you haven't received it yet.
+          </p>
+        </div>
+
+        <p className="text-neutral-300 mb-6 font-sans text-xs">
           Your client account is under review. <br />
           We'll contact you via WhatsApp/Gmail soon.
         </p>
+
+        <button
+          type="button"
+          onClick={handleCheckGmailVerification}
+          disabled={isCheckingGmail || gmailVerifiedStatus}
+          className="px-6 py-2.5 bg-indigo-650 hover:bg-indigo-600 disabled:opacity-40 text-xs font-extrabold rounded-xl transition font-sans w-full cursor-pointer mb-3 flex items-center justify-center gap-2"
+        >
+          {isCheckingGmail ? 'Syncing...' : '🔄 Check Email Verification'}
+        </button>
+
         <button 
           onClick={() => setLockedStatus(null)} 
-          className="px-6 py-2.5 bg-white text-black font-semibold rounded-xl hover:bg-neutral-200 transition font-sans w-full"
+          className="px-6 py-2.5 bg-neutral-800 text-neutral-300 font-semibold rounded-xl hover:bg-neutral-700 transition font-sans w-full"
         >
           Back to Login
         </button>
