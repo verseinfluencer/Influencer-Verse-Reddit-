@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
   Building, User, Mail, Lock, Phone, Globe, Coins, FileText, 
@@ -7,7 +7,6 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { ALL_COUNTRIES } from '../utils/countries';
 import { auth, db } from '../utils/firebase';
-import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
 
 interface ClientRegisterProps {
@@ -30,19 +29,9 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
   const [dialSearch, setDialSearch] = useState('');
   const [isDialOpen, setIsDialOpen] = useState(false);
 
-  // New Phone + OTP verification States (Section 5: Phone Number)
-  const [phoneNum, setPhoneNum] = useState('');
-  const [phoneDialCode, setPhoneDialCode] = useState('+1');
-  const [isPhoneDialOpen, setIsPhoneDialOpen] = useState(false);
-  const [phoneDialSearch, setPhoneDialSearch] = useState('');
-  const [otp, setOtp] = useState('');
-  const [isPhoneVerificationSent, setIsPhoneVerificationSent] = useState(false);
-  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
-  const [confirmationResult, setConfirmationResult] = useState<any>(null);
-  const [phoneError, setPhoneError] = useState('');
-  const [phoneSuccess, setPhoneSuccess] = useState('');
-  const [isSendingOtp, setIsSendingOtp] = useState(false);
-  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  // Phone.Email Verification States
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [verifiedPhone, setVerifiedPhone] = useState('');
 
   const [whatsAppNum, setWhatsAppNum] = useState('');
   const [gmail, setGmail] = useState('');
@@ -70,11 +59,6 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
     c.code.includes(dialSearch)
   );
 
-  const filteredPhoneDialCodes = ALL_COUNTRIES.filter(c => 
-    c.name.toLowerCase().includes(phoneDialSearch.toLowerCase()) || 
-    c.code.includes(phoneDialSearch)
-  );
-
   const handleSelectCountry = (countryName: string) => {
     setCountry(countryName);
     setIsCountryOpen(false);
@@ -84,71 +68,39 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
     const found = ALL_COUNTRIES.find(c => c.name === countryName);
     if (found) {
       setDialCode(found.code);
-      setPhoneDialCode(found.code); // Sync phone OTP code automatically
     }
   };
 
-  // ─── Firebase SMS Auth Handlers ───
-  const handleSendOtp = async () => {
-    setPhoneError('');
-    setPhoneSuccess('');
-    if (!phoneNum.trim()) {
-      setPhoneError('Please enter your phone digits.');
-      return;
-    }
+  // Load Phone.Email script and global listener
+  useEffect(() => {
+    // Load Phone.Email script
+    const script = document.createElement('script');
+    script.src = 'https://www.phone.email/sign_in_button_v1.js';
+    script.async = true;
+    document.body.appendChild(script);
 
-    setIsSendingOtp(true);
-    try {
-      // Invisible Recaptcha structure
-      if (!(window as any).recaptchaVerifier) {
-        (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-          size: 'invisible',
-          callback: () => {
-            console.log("Invisible captcha validated correctly");
-          }
-        });
+    // Global callback
+    (window as any).phoneEmailListener = async (userObj: any) => {
+      try {
+        const response = await fetch(
+          userObj.user_json_url
+        );
+        const data = await response.json();
+        setVerifiedPhone(data.user_phone_number);
+        setPhoneVerified(true);
+      } catch (err) {
+        console.error('Phone verification failed', err);
       }
+    };
 
-      const appVerifier = (window as any).recaptchaVerifier;
-      const fullPhone = `${phoneDialCode}${phoneNum.trim()}`;
-
-      // Call Firebase Auth
-      const confirmationResult = await signInWithPhoneNumber(auth, fullPhone, appVerifier);
-      setConfirmationResult(confirmationResult);
-      setIsPhoneVerificationSent(true);
-      setPhoneSuccess('OTP verification code sent via SMS successfully!');
-    } catch (err: any) {
-      console.error("SMS Sending failures:", err);
-      setPhoneError(err?.message || 'Error executing Firebase SMS dispatcher. Turn on Phone authentication in your Console settings.');
-    } finally {
-      setIsSendingOtp(false);
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    setPhoneError('');
-    setPhoneSuccess('');
-    if (!otp.trim() || otp.trim().length !== 6) {
-      setPhoneError('Specify a valid 6-digit numeric OTP code.');
-      return;
-    }
-    if (!confirmationResult) {
-      setPhoneError('Verify SMS session is stale. Press send OTP again.');
-      return;
-    }
-
-    setIsVerifyingOtp(true);
-    try {
-      await confirmationResult.confirm(otp.trim());
-      setIsPhoneVerified(true);
-      setPhoneSuccess('✅ Phone verified successfully!');
-    } catch (err: any) {
-      console.error("SMS confirmation failure:", err);
-      setPhoneError(err?.message || 'Verification of code failed. Try again.');
-    } finally {
-      setIsVerifyingOtp(false);
-    }
-  };
+    return () => {
+      try {
+        document.body.removeChild(script);
+      } catch (e) {
+        // Safe check
+      }
+    };
+  }, []);
 
   // ─── Verification Sync check on successful registrations ───
   const handleCheckGmailVerification = async () => {
@@ -198,9 +150,9 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
       return;
     }
 
-    if (!isPhoneVerified) {
-      setError('Please verify your phone number via SMS OTP code before submitting.');
-      return;
+    if (!phoneVerified) {
+      setError('Please verify your phone number first');
+      throw new Error("Please verify your phone number first");
     }
 
     if (!agreeTerms) {
@@ -216,9 +168,9 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
         country,
         whatsapp: `${dialCode} ${whatsAppNum.trim()}`,
         gmail: gmail.trim().toLowerCase(),
-        phoneNumber: `${phoneDialCode} ${phoneNum.trim()}`,
-        phoneVerified: true,
-        phoneVerifiedAt: new Date().toISOString(),
+        phoneNumber: verifiedPhone || null,
+        phoneVerified: phoneVerified,
+        phoneVerifiedAt: phoneVerified ? new Date().toISOString() : null,
         paymentMethod,
         budget: budget.trim(),
         paymentNotes: paymentNotes.trim(),
@@ -379,7 +331,6 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
                     onClick={() => {
                       setIsCountryOpen(!isCountryOpen);
                       setIsDialOpen(false);
-                      setIsPhoneDialOpen(false);
                     }}
                     className="w-full pl-11 pr-10 py-3 bg-neutral-950 text-white rounded-xl border border-neutral-800 focus:outline-none focus:border-indigo-550 text-sm font-sans text-left flex items-center justify-between cursor-pointer transition"
                   >
@@ -492,186 +443,27 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
                 <p className="text-[10px] text-zinc-500 mt-1">Create a secure client portal logging password.</p>
               </div>
 
-              {/* 5. Phone Number + OTP Verification */}
+              {/* 5. Phone Number + OTP Verification using Phone.Email */}
               <div className="md:col-span-2 bg-neutral-950 p-6 rounded-2xl border border-neutral-800/80 space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-2">
-                    📱 Client Phone Number (With SMS OTP Verification)
-                  </label>
-                  
-                  {isPhoneDialOpen && (
-                    <div className="fixed inset-0 z-10" onClick={() => setIsPhoneDialOpen(false)} />
-                  )}
-
-                  <div className="flex gap-2 relative">
-                    {/* Dial Selector Block */}
-                    <div className="relative z-20 w-36 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsPhoneDialOpen(!isPhoneDialOpen);
-                          setIsCountryOpen(false);
-                          setIsDialOpen(false);
-                        }}
-                        disabled={isPhoneVerified}
-                        className="w-full h-full px-3 py-3 bg-neutral-900 text-white rounded-xl border border-neutral-800 disabled:opacity-50 text-xs font-mono flex items-center justify-between cursor-pointer transition"
-                      >
-                        {(() => {
-                          const matched = ALL_COUNTRIES.find(c => c.code === phoneDialCode);
-                          return (
-                            <span className="flex items-center gap-1.5 truncate">
-                              <span className="text-base leading-none">{matched?.flag || '🌐'}</span>
-                              <span>{phoneDialCode}</span>
-                            </span>
-                          );
-                        })()}
-                        <ChevronDown className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
-                      </button>
-
-                      <AnimatePresence>
-                        {isPhoneDialOpen && (
-                          <motion.div
-                            initial={{ opacity: 0, y: 4 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 4 }}
-                            className="absolute left-0 mt-2 w-56 bg-neutral-950 border border-neutral-800 rounded-2xl shadow-2xl overflow-hidden z-35"
-                          >
-                            <div className="p-2 border-b border-neutral-800 bg-neutral-900 flex items-center gap-2">
-                              <Search className="w-3.5 h-3.5 text-neutral-500 shrink-0 ml-1" />
-                              <input
-                                type="text"
-                                value={phoneDialSearch}
-                                onChange={(e) => setPhoneDialSearch(e.target.value)}
-                                placeholder="Search dial code..."
-                                className="w-full text-xs bg-transparent text-white focus:outline-none placeholder-neutral-500 py-1"
-                                autoFocus
-                              />
-                              {phoneDialSearch && (
-                                <button
-                                  type="button"
-                                  onClick={() => setPhoneDialSearch('')}
-                                  className="text-neutral-500 hover:text-white shrink-0"
-                                >
-                                  <X className="w-3 h-3" />
-                                </button>
-                              )}
-                            </div>
-
-                            <div className="max-h-52 overflow-y-auto divide-y divide-neutral-900 scrollbar-thin text-left">
-                              {filteredPhoneDialCodes.length === 0 ? (
-                                <div className="p-3 text-center text-xs text-neutral-500 italic">
-                                  No code matches.
-                                </div>
-                              ) : (
-                                filteredPhoneDialCodes.map((c) => (
-                                  <button
-                                    key={`phone-${c.name}-${c.code}`}
-                                    type="button"
-                                    onClick={() => {
-                                      setPhoneDialCode(c.code);
-                                      setIsPhoneDialOpen(false);
-                                      setPhoneDialSearch('');
-                                    }}
-                                    className={`w-full text-left px-3 py-2.5 hover:bg-indigo-600/20 text-xs text-neutral-300 transition-colors flex items-center justify-between ${
-                                      phoneDialCode === c.code ? 'bg-indigo-600/10 font-bold text-indigo-400' : ''
-                                    }`}
-                                  >
-                                    <span className="flex items-center gap-1.5 truncate">
-                                      <span className="text-sm shrink-0">{c.flag}</span>
-                                      <span className="truncate text-[10px] text-neutral-400">{c.name}</span>
-                                    </span>
-                                    <span className="font-mono text-[10px] text-indigo-400 shrink-0 font-bold">{c.code}</span>
-                                  </button>
-                                ))
-                              )}
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-
-                    {/* Digits Input */}
-                    <div className="relative flex-1">
-                      <Phone className="absolute left-3.5 top-3.5 w-4 h-4 text-neutral-500" />
-                      <input 
-                        type="tel" 
-                        value={phoneNum}
-                        onChange={(e) => setPhoneNum(e.target.value.replace(/\D/g, '').substring(0, 15))}
-                        placeholder="e.g. 9876543210 (digits only)"
-                        disabled={isPhoneVerified}
-                        className="w-full pl-11 pr-4 py-3 bg-neutral-900 text-white rounded-xl border border-neutral-800 focus:outline-none focus:border-indigo-550 text-sm font-sans disabled:opacity-50"
-                      />
-                    </div>
-
-                    {/* SMS Send Trigger */}
-                    <button
-                      type="button"
-                      onClick={handleSendOtp}
-                      disabled={isPhoneVerified || isSendingOtp || !phoneNum.trim()}
-                      className="px-4 bg-indigo-650 hover:bg-indigo-600 disabled:opacity-40 text-white font-extrabold text-xs rounded-xl transition whitespace-nowrap cursor-pointer flex items-center justify-center border border-indigo-500/10"
-                    >
-                      {isSendingOtp ? 'Sending...' : isPhoneVerificationSent ? 'Resend OTP' : 'Send OTP'}
-                    </button>
-                  </div>
-                </div>
-
-                {/* OTP Input Block (Rendered after OTP is sent) */}
-                {isPhoneVerificationSent && !isPhoneVerified && (
-                  <div className="bg-neutral-900/60 p-4 rounded-xl border border-neutral-800 space-y-3">
-                    <label className="block text-xs font-semibold text-neutral-300 uppercase tracking-wider">
-                      Enter 6-Digit OTP Code
+                {!phoneVerified ? (
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-widest mb-3">
+                      PHONE NUMBER VERIFICATION
                     </label>
-                    <div className="flex gap-2">
-                      <input 
-                        type="text"
-                        value={otp}
-                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').substring(0, 6))}
-                        placeholder="e.g. 123456"
-                        maxLength={6}
-                        className="flex-1 px-4 py-2.5 bg-neutral-950 text-white rounded-xl border border-neutral-800 focus:outline-none focus:border-indigo-550 text-sm font-mono tracking-widest text-center"
+                    <div className="mb-4 bg-neutral-900/50 p-4 rounded-xl border border-neutral-800 inline-block">
+                      <div
+                        className="pe_signin_button"
+                        data-client-id="11325233774487345919"
                       />
-                      <button
-                        type="button"
-                        onClick={handleVerifyOtp}
-                        disabled={isVerifyingOtp || otp.length !== 6}
-                        className="px-6 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-extrabold text-xs rounded-xl transition cursor-pointer"
-                      >
-                        {isVerifyingOtp ? 'Verifying...' : 'Verify OTP'}
-                      </button>
                     </div>
+                    <p className="text-xs text-neutral-400">Click above to verify your phone number</p>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 bg-emerald-950/40 text-emerald-400 border border-emerald-500/20 px-4 py-3 rounded-xl">
+                    <CheckCircle className="w-5 h-5 text-emerald-450 shrink-0" />
+                    <span className="text-sm font-bold">✅ Phone Verified: {verifiedPhone}</span>
                   </div>
                 )}
-
-                {/* Inline Phone Messages */}
-                {phoneError && (
-                  <p className="text-[11px] text-red-400 font-bold leading-normal flex items-start gap-1">
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                    <span>{phoneError}</span>
-                  </p>
-                )}
-                {phoneSuccess && (
-                  <p className="text-[11px] text-emerald-400 font-bold leading-normal flex items-start gap-1">
-                    <CheckCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                    <span>{phoneSuccess}</span>
-                  </p>
-                )}
-
-                {/* Note details */}
-                <div className="flex justify-between items-center bg-neutral-900/40 p-2.5 rounded-xl border border-neutral-800/50">
-                  <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider">Phone Verification Status:</span>
-                  {isPhoneVerified ? (
-                    <span className="text-xs bg-emerald-950/40 text-emerald-400 border border-emerald-500/10 px-2.5 py-1 rounded-lg font-black uppercase tracking-wider flex items-center gap-1">
-                      ✅ Phone Verified
-                    </span>
-                  ) : (
-                    <span className="text-xs bg-amber-950/20 text-amber-500 border border-amber-500/10 px-2.5 py-1 rounded-lg font-black uppercase tracking-wider animate-pulse">
-                      Pending verification
-                    </span>
-                  )}
-                </div>
-
-                {/* Invisible reCAPTCHA container as required */}
-                <div id="recaptcha-container"></div>
               </div>
 
               {/* 6. WhatsApp Number (no verification required) */}
@@ -692,7 +484,6 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
                       onClick={() => {
                         setIsDialOpen(!isDialOpen);
                         setIsCountryOpen(false);
-                        setIsPhoneDialOpen(false);
                       }}
                       className="w-full h-full px-3 py-3 bg-neutral-950 text-white rounded-xl border border-neutral-800 focus:outline-none focus:border-indigo-550 text-xs font-mono flex items-center justify-between cursor-pointer transition"
                     >

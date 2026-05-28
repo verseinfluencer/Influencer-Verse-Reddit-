@@ -649,11 +649,10 @@ export const AdminDashboard: React.FC = () => {
                                 )}
                               </div>
                               <div className="flex items-center gap-1">
-                                <span>📱 Phone:</span>
                                 {c.phoneVerified ? (
-                                  <span className="text-emerald-450 text-xs">✅ Phone Verified ({c.phoneNumber || 'N/A'})</span>
+                                  <span className="text-emerald-450 text-xs">📱 Phone Verified: ✅ {c.phoneNumber || 'N/A'}</span>
                                 ) : (
-                                  <span className="text-rose-450 text-xs">❌ Phone Not Verified</span>
+                                  <span className="text-rose-450 text-xs">📱 Phone Verified: ❌ Not verified</span>
                                 )}
                               </div>
                             </div>
