@@ -55,7 +55,7 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
         await sendEmailVerification(user);
         setResendCount(prev => prev + 1);
         setResendCooldown(60);
-        setResendMessage('📧 Verification email sent successfully!');
+        setResendMessage('Verification email resent successfully. Please check Inbox and Spam folder.');
       } else {
         setResendMessage('❌ No active session found.');
       }
@@ -233,6 +233,13 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
           <p className="text-zinc-400 text-xs leading-relaxed mb-6">
             Please check your inbox and spam folder. Click the link in the email to complete your registration.
           </p>
+
+          <div className="w-full bg-zinc-950/60 border border-white/5 rounded-2xl p-4 text-left mb-6">
+            <h4 className="text-white text-xs font-semibold mb-1">Didn't receive the email?</h4>
+            <p className="text-zinc-400 text-[11px] leading-relaxed">
+              Please check your Spam, Junk, or Promotions folder. Verification emails may sometimes be filtered there. If you still can't find it, wait a few minutes and try resending.
+            </p>
+          </div>
 
           <button
             onClick={handleCheckEmailVerification}

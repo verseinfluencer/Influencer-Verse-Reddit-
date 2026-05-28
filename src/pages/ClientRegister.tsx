@@ -74,7 +74,7 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
         await sendEmailVerification(user);
         setResendCount(prev => prev + 1);
         setResendCooldown(60);
-        setResendMessage('📧 Verification email sent successfully!');
+        setResendMessage('Verification email resent successfully. Please check Inbox and Spam folder.');
       } else {
         setResendMessage('❌ No active session. Please register again or login.');
       }
@@ -261,6 +261,13 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
           </p>
           <p className="text-center">
             Verification email sent to <strong className="text-white font-black">{gmail}</strong>. Please verify your email to complete registration.
+          </p>
+        </div>
+
+        <div className="w-full bg-neutral-950/65 border border-neutral-800 rounded-2xl p-4 text-left mb-6">
+          <h4 className="text-white text-xs font-semibold mb-1">Didn't receive the email?</h4>
+          <p className="text-neutral-400 text-[11px] leading-relaxed text-justify">
+            Please check your Spam, Junk, or Promotions folder. Verification emails may sometimes be filtered there. If you still can't find it, wait a few minutes and try resending.
           </p>
         </div>
 
