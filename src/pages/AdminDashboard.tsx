@@ -40,6 +40,7 @@ export const AdminDashboard: React.FC = () => {
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'users' | 'clients' | 'client-tasks' | 'client-payments' | 'client-chats' | 'tasks' | 'submissions' | 'withdrawals' | 'announcements' | 'settings' | 'security' | 'track-data' | 'audit-log' | 'deleted-tasks'>('users');
+  const [showPermissionRestrictedModal, setShowPermissionRestrictedModal] = useState<string | null>(null);
 
   // Deleted tasks list & filter states
   const [deletedTasks, setDeletedTasks] = useState<any[]>([]);
@@ -565,11 +566,11 @@ export const AdminDashboard: React.FC = () => {
             { id: 'users', label: 'Users Map', count: usersBadgeCount },
             { id: 'clients', label: 'Clients Registry', count: clientsBadgeCount },
             { id: 'client-tasks', label: 'Client Approvals', count: clientTasksBadgeCount },
-            ...(currentUser?.role === 'admin' ? [{ id: 'client-payments', label: 'Agency Payments', count: paymentsBadgeCount }] : []),
+            { id: 'client-payments', label: 'Agency Payments', count: paymentsBadgeCount },
             { id: 'client-chats', label: 'Client Support', count: clientSupportBadgeCount },
             { id: 'tasks', label: 'Tasks Desk', count: tasksBadgeCount },
             { id: 'submissions', label: 'Task Submits', count: submissionsBadgeCount },
-            ...(currentUser?.role === 'admin' ? [{ id: 'withdrawals', label: 'Withdraw Desk', count: withdrawalsBadgeCount }] : []),
+            { id: 'withdrawals', label: 'Withdraw Desk', count: withdrawalsBadgeCount },
             { id: 'track-data', label: '📊 Track Data', count: trackDataBadgeCount },
             { id: 'security', label: '🛡️ Security Center', count: securityBadgeCount },
             { id: 'announcements', label: 'Publish Feed', count: announcementsBadgeCount },
@@ -623,7 +624,13 @@ export const AdminDashboard: React.FC = () => {
                   <span className="text-[10px] text-zinc-500 font-medium">Block all brand uploads instantly</span>
                 </div>
                 <button
-                  onClick={() => adminToggleGlobalTaskUpload(!settings.disableAllClientUploads)}
+                  onClick={() => {
+                    if (currentUser?.role === 'moderator') {
+                      setShowPermissionRestrictedModal("Toggling the global task lock or modifying core brand settings is restricted to Platform Administrators.");
+                      return;
+                    }
+                    adminToggleGlobalTaskUpload(!settings.disableAllClientUploads);
+                  }}
                   className={`p-1.5 rounded-xl border flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
                     settings.disableAllClientUploads
                       ? 'bg-red-500/20 text-red-400 border-red-500/30'
@@ -876,12 +883,18 @@ export const AdminDashboard: React.FC = () => {
                               </div>
                             )}
 
-                            {currentUser?.role === 'admin' && (
+                            {(currentUser?.role === 'admin' || currentUser?.role === 'moderator') && (
                               <div className="pt-2 border-t border-white/5 flex justify-end">
                                 <button
                                   type="button"
-                                  onClick={() => setClientToDelete(c)}
-                                  className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold uppercase rounded cursor-pointer bg-red-950/20 hover:bg-red-650 border border-red-500/15 text-red-400 hover:text-white select-none transition-all"
+                                  onClick={() => {
+                                    if (currentUser?.role === 'moderator') {
+                                      setShowPermissionRestrictedModal("Permanently deleting client brand profiles is restricted to senior Platform Administrators.");
+                                      return;
+                                    }
+                                    setClientToDelete(c);
+                                  }}
+                                  className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold uppercase rounded cursor-pointer bg-red-950/20 hover:bg-red-650 border border-red-500/15 text-red-500 hover:text-white select-none transition-all"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" /> Delete Account
                                 </button>
@@ -1234,7 +1247,21 @@ export const AdminDashboard: React.FC = () => {
 
         {/* ================= CLIENT PAYMENT DESK TAB ================= */}
         {activeTab === 'client-payments' && (
-          <div className="space-y-10">
+          currentUser?.role !== 'admin' ? (
+            <div className="p-8 text-center bg-zinc-950/40 rounded-3xl border border-white/10 max-w-2xl mx-auto space-y-4 my-8 font-sans">
+              <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto text-red-500">
+                <ShieldAlert className="w-6 h-6 animate-pulse" />
+              </div>
+              <h3 className="text-lg font-black text-white">Shield Guard: Restricted Access</h3>
+              <p className="text-xs text-zinc-400 max-w-md mx-auto leading-relaxed font-semibold">
+                Agency payment proofs, financial configurations, incoming invoice channels, and accounting logs require senior Administrator clearance.
+              </p>
+              <div className="pt-2 text-[10px] text-zinc-500 font-mono font-bold uppercase tracking-wider">
+                Role Context: Moderator Level II Desk
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-10">
             {/* STYLED SUMMARY STATS STRIP FOR ADMINISTRATORS */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               <div className="p-5 bg-zinc-950 rounded-2xl border border-white/5 flex flex-col justify-between">
@@ -1593,6 +1620,7 @@ export const AdminDashboard: React.FC = () => {
               </div>
             </div>
           </div>
+          )
         )}
 
         {/* ================= CLIENT SUPPORT CHAT DESK TAB ================= */}
@@ -2127,12 +2155,16 @@ export const AdminDashboard: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => {
+                                if (currentUser?.role === 'moderator') {
+                                  setShowPermissionRestrictedModal("Adjusting user balances or deducting credits is restricted to senior Platform Administrators.");
+                                  return;
+                                }
                                 setDeductTargetUser(u);
                                 setDeductAmountInput('');
                                 setDeductReasonInput('');
                                 setDeductTaskNameInput('');
                               }}
-                              className="px-2.5 py-1 bg-red-600/15 hover:bg-red-600 border border-red-500/25 text-red-400 hover:text-white text-[10px] font-black rounded cursor-pointer transition-all uppercase tracking-wider inline-flex items-center gap-1"
+                              className="px-2.5 py-1 bg-red-650/15 hover:bg-red-600 border border-red-500/25 text-red-400 hover:text-white text-[10px] font-black rounded cursor-pointer transition-all uppercase tracking-wider inline-flex items-center gap-1"
                             >
                               💸 Deduct Balance
                             </button>
@@ -2141,12 +2173,18 @@ export const AdminDashboard: React.FC = () => {
                         {u.role === 'admin' && (
                           <span className="text-[10px] text-zinc-500 font-extrabold uppercase">Platform Admin Locked</span>
                         )}
-                        {currentUser?.role === 'admin' && u.role !== 'admin' && (
+                        {(currentUser?.role === 'admin' || currentUser?.role === 'moderator') && u.role !== 'admin' && (
                           <div className="pt-2 border-t border-white/5 flex gap-1.5 justify-end flex-wrap">
                             {u.role === 'moderator' ? (
                               <button
                                 type="button"
-                                onClick={() => setDemoteTargetUser(u)}
+                                onClick={() => {
+                                  if (currentUser?.role === 'moderator') {
+                                    setShowPermissionRestrictedModal("Demoting moderators or changing user privileges is restricted to Platform Administrators.");
+                                    return;
+                                  }
+                                  setDemoteTargetUser(u);
+                                }}
                                 className="px-2.5 py-1 bg-amber-600 hover:bg-amber-500 text-white text-[10px] font-black rounded cursor-pointer transition-all uppercase tracking-wider"
                               >
                                 Remove Moderator
@@ -2154,7 +2192,13 @@ export const AdminDashboard: React.FC = () => {
                             ) : (
                               <button
                                 type="button"
-                                onClick={() => setPromoteTargetUser(u)}
+                                onClick={() => {
+                                  if (currentUser?.role === 'moderator') {
+                                    setShowPermissionRestrictedModal("Promoting users to moderator or changing privileges is restricted to Platform Administrators.");
+                                    return;
+                                  }
+                                  setPromoteTargetUser(u);
+                                }}
                                 className="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-black rounded cursor-pointer transition-all uppercase tracking-wider"
                               >
                                 Promote to Moderator
@@ -2162,8 +2206,14 @@ export const AdminDashboard: React.FC = () => {
                             )}
                             <button
                               type="button"
-                              onClick={() => setUserToDelete(u)}
-                              className="px-2.5 py-1 bg-red-950/20 hover:bg-red-600 border border-red-500/15 text-red-500 hover:text-white text-[10px] font-black rounded cursor-pointer transition-all uppercase tracking-wider inline-flex items-center gap-1"
+                              onClick={() => {
+                                if (currentUser?.role === 'moderator') {
+                                  setShowPermissionRestrictedModal("Permanently deleting member profiles is restricted to senior Platform Administrators.");
+                                  return;
+                                }
+                                setUserToDelete(u);
+                              }}
+                              className="px-2.5 py-1 bg-red-950/20 hover:bg-red-650 border border-red-500/15 text-red-500 hover:text-white text-[10px] font-black rounded cursor-pointer transition-all uppercase tracking-wider inline-flex items-center gap-1"
                             >
                               <Trash2 className="w-3.5 h-3.5" /> Delete Account
                             </button>
@@ -2763,7 +2813,21 @@ export const AdminDashboard: React.FC = () => {
 
         {/* ================= WITHDRAWALS TAB ================= */}
         {activeTab === 'withdrawals' && (
-          <div className="space-y-6">
+          currentUser?.role !== 'admin' ? (
+            <div className="p-8 text-center bg-zinc-950/40 rounded-3xl border border-white/10 max-w-2xl mx-auto space-y-4 my-8 font-sans">
+              <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto text-red-500">
+                <ShieldAlert className="w-6 h-6 animate-pulse" />
+              </div>
+              <h3 className="text-lg font-black text-white">Shield Guard: Restricted Access</h3>
+              <p className="text-xs text-zinc-400 max-w-md mx-auto leading-relaxed font-semibold">
+                Earning payouts, creator cashout ledgers, direct wallet transfers, and financial transaction sheets require senior Administrator clearance.
+              </p>
+              <div className="pt-2 text-[10px] text-zinc-500 font-mono font-bold uppercase tracking-wider">
+                Role Context: Moderator Level II Desk
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-6">
             <div className="flex justify-between items-center pb-4 border-b border-white/5">
               <h2 className="text-base font-black">Earning Withdrawal Desk</h2>
               <span className="text-xs text-zinc-500 font-semibold">Cashouts queue: {pendingWithdrawalsCount} pending</span>
@@ -2839,6 +2903,7 @@ export const AdminDashboard: React.FC = () => {
               </table>
             </div>
           </div>
+          )
         )}
 
         {/* ================= 📊 TRACK DATA TAB ================= */}
@@ -2955,6 +3020,10 @@ export const AdminDashboard: React.FC = () => {
                         type="text" 
                         value={currentSimulatedIP}
                         onChange={(e) => {
+                          if (currentUser?.role === 'moderator') {
+                            setShowPermissionRestrictedModal("Modifying simulated network IP controls is restricted to Platform Administrators.");
+                            return;
+                          }
                           const val = e.target.value.trim();
                           setCurrentSimulatedIP(val);
                         }}
@@ -2968,7 +3037,13 @@ export const AdminDashboard: React.FC = () => {
                     <label className="text-[9px] font-extrabold uppercase tracking-wide text-zinc-400 block mb-1">Simulated Country Origin</label>
                     <select
                       value={currentSimulatedCountry}
-                      onChange={(e) => setCurrentSimulatedCountry(e.target.value)}
+                      onChange={(e) => {
+                        if (currentUser?.role === 'moderator') {
+                          setShowPermissionRestrictedModal("Changing country routing controls or simulation properties is restricted to Platform Administrators.");
+                          return;
+                        }
+                        setCurrentSimulatedCountry(e.target.value);
+                      }}
                       className="w-full text-xs text-white bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 font-bold"
                     >
                       <option value="United States">🇺🇸 United States</option>
@@ -3000,6 +3075,10 @@ export const AdminDashboard: React.FC = () => {
                   <h3 className="text-sm font-black text-white flex items-center gap-2">🚨 Fraud Alerts Detection Stream</h3>
                   <button 
                     onClick={() => {
+                      if (currentUser?.role === 'moderator') {
+                        setShowPermissionRestrictedModal("Executing platform security audits and duplicate accounts mapping is restricted to senior Platform Administrators.");
+                        return;
+                      }
                       scanForDuplicates();
                       alert('Security re-scan completed. All user IP nodes, fingerprints and GMail dot addresses audited!');
                     }}
@@ -3068,6 +3147,10 @@ export const AdminDashboard: React.FC = () => {
                               </button>
                               <button 
                                 onClick={() => {
+                                  if (currentUser?.role === 'moderator') {
+                                    setShowPermissionRestrictedModal("Suspending member profiles via fraud intercepts is restricted to Platform Administrators.");
+                                    return;
+                                  }
                                   adminReviewFraudAction(alertItem.id, 'suspend');
                                   alert('User has been Auto-Suspended.');
                                 }}
@@ -3077,6 +3160,10 @@ export const AdminDashboard: React.FC = () => {
                               </button>
                               <button 
                                 onClick={() => {
+                                  if (currentUser?.role === 'moderator') {
+                                    setShowPermissionRestrictedModal("Issuing permanent database bans is restricted to senior Platform Administrators.");
+                                    return;
+                                  }
                                   adminReviewFraudAction(alertItem.id, 'ban');
                                   alert('User has been banned.');
                                 }}
@@ -3086,6 +3173,10 @@ export const AdminDashboard: React.FC = () => {
                               </button>
                               <button 
                                 onClick={() => {
+                                  if (currentUser?.role === 'moderator') {
+                                    setShowPermissionRestrictedModal("Freezing/confiscating creator account earnings is restricted to senior Platform Administrators.");
+                                    return;
+                                  }
                                   adminReviewFraudAction(alertItem.id, 'freeze');
                                   alert('Earnings frozen and user suspended.');
                                 }}
@@ -3165,6 +3256,10 @@ export const AdminDashboard: React.FC = () => {
                                 </select>
                                 <button 
                                   onClick={() => {
+                                    if (currentUser?.role === 'moderator') {
+                                      setShowPermissionRestrictedModal("Consolidating database accounts or merging duplicate profiles is restricted to senior Administrators.");
+                                      return;
+                                    }
                                     const selectEl = document.getElementById(`merge-select-${group.id}`) as HTMLSelectElement;
                                     if (selectEl) {
                                       const primaryId = selectEl.value;
@@ -3207,6 +3302,10 @@ export const AdminDashboard: React.FC = () => {
                       />
                       <button 
                         onClick={() => {
+                          if (currentUser?.role === 'moderator') {
+                            setShowPermissionRestrictedModal("Banning network IP nodes or blacklisting subnets is restricted to Platform Administrators.");
+                            return;
+                          }
                           const val = (document.getElementById('new-blacklist-ip') as HTMLInputElement)?.value.trim();
                           if (val) {
                             blacklistIP(val);
@@ -3231,6 +3330,10 @@ export const AdminDashboard: React.FC = () => {
                           <span className="text-zinc-300 font-bold">{ip}</span>
                           <button 
                             onClick={() => {
+                              if (currentUser?.role === 'moderator') {
+                                setShowPermissionRestrictedModal("Lifting IP blocks or unbanning subnets is restricted to Platform Administrators.");
+                                return;
+                              }
                               unblacklistIP(ip);
                               alert(`IP ${ip} is unblocked.`);
                             }}
@@ -3396,7 +3499,13 @@ export const AdminDashboard: React.FC = () => {
               {deletedTasks.length > 0 && (
                 <button
                   type="button"
-                  onClick={handleClearDeletedHistory}
+                  onClick={() => {
+                    if (currentUser?.role === 'moderator') {
+                      setShowPermissionRestrictedModal("Clearing platform historical logs is an owner-only action restricted to Platform Administrators.");
+                      return;
+                    }
+                    handleClearDeletedHistory();
+                  }}
                   className="px-3.5 py-1.5 bg-red-650/10 hover:bg-red-650/35 text-red-400 hover:text-white border border-red-500/20 text-xs font-black rounded-lg cursor-pointer transition uppercase"
                 >
                   Clear History
@@ -4215,6 +4324,38 @@ export const AdminDashboard: React.FC = () => {
             >
               <Trash2 className="w-3.5 h-3.5" /> Delete Selected
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ⚠️ Restricted Permission Modal Overlay */}
+      {showPermissionRestrictedModal && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-50 select-none animate-fade-in font-sans">
+          <div className="bg-zinc-950 border border-red-500/30 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl relative text-left">
+            <div className="flex items-center gap-3 text-red-500">
+              <ShieldAlert className="w-6 h-6 animate-pulse" />
+              <h3 className="text-lg font-black tracking-tight text-white m-0">Restricted Permission</h3>
+            </div>
+            
+            <p className="text-xs text-zinc-300 leading-relaxed font-semibold m-0">
+              {showPermissionRestrictedModal}
+            </p>
+
+            <div className="bg-red-500/5 border border-red-500/10 p-3.5 rounded-xl font-sans text-[11px] text-zinc-400 space-y-1">
+              <p className="text-[10px] text-red-400 font-extrabold uppercase tracking-wider mb-1 m-0">🛡️ MODERATOR DELEGATION LEVEL:</p>
+              <p className="m-0 leading-normal">As a platform Moderator, you are authorized to manage content submissions, review proof files, view support tickets, and resolve task disputes.</p>
+              <p className="font-extrabold text-zinc-300 mt-1.5 m-0 leading-normal">Master settings, permanent deletion, server routing, and financial disbursements are restricted to owner/admin roles.</p>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setShowPermissionRestrictedModal(null)}
+                className="px-5 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs font-black cursor-pointer transition-all border border-white/5 active:scale-95"
+              >
+                Acknowledge Restricted State
+              </button>
+            </div>
           </div>
         </div>
       )}
