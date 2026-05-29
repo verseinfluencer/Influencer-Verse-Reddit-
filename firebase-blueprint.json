@@ -197,6 +197,31 @@
         "reason": { "type": "string" }
       },
       "required": ["id", "title", "clientName", "type", "agencyPay", "memberPay", "deletedAt", "deletedBy"]
+    },
+    "ClientTask": {
+      "title": "Client Proposed Campaign Task",
+      "description": "A campaign task submitted by an approved client for admin review and subsequent list publication.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "type": { "type": "string", "enum": ["Reddit Post Task", "Reddit Comment Task"] },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "targetSubreddit": { "type": "string" },
+        "postUrlToCommentOn": { "type": "string" },
+        "guidelines": { "type": "string" },
+        "deadline": { "type": "string" },
+        "notes": { "type": "string" },
+        "agencyPay": { "type": "number" },
+        "memberPay": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending_review", "approved/live", "claimed", "submitted", "client_review", "completed", "revision", "removed"] },
+        "claimedBy": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "approvedAt": { "type": "string" }
+      },
+      "required": ["id", "clientId", "type", "title", "description", "guidelines", "deadline", "agencyPay", "status"]
     }
   },
   "firestore": {
@@ -207,6 +232,10 @@
     "clients": {
       "schema": "Client",
       "description": "Customer/client enterprise records."
+    },
+    "client_tasks": {
+      "schema": "ClientTask",
+      "description": "Client proposed tasks collection."
     },
     "tasks": {
       "schema": "Task",

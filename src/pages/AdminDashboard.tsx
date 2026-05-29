@@ -2170,9 +2170,11 @@ export const AdminDashboard: React.FC = () => {
                             </button>
                           </div>
                         )}
-                        {u.role === 'admin' && (
+                        {u.email?.toLowerCase() === 'kalloldeyprivate20@gmail.com' ? (
+                          <span className="text-[10px] text-emerald-400 font-extrabold uppercase bg-emerald-500/10 px-2.5 py-1 rounded border border-emerald-500/20 tracking-wider">Protected Owner Account</span>
+                        ) : u.role === 'admin' ? (
                           <span className="text-[10px] text-zinc-500 font-extrabold uppercase">Platform Admin Locked</span>
-                        )}
+                        ) : null}
                         {(currentUser?.role === 'admin' || currentUser?.role === 'moderator') && u.role !== 'admin' && (
                           <div className="pt-2 border-t border-white/5 flex gap-1.5 justify-end flex-wrap">
                             {u.role === 'moderator' ? (

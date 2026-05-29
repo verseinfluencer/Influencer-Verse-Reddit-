@@ -143,32 +143,79 @@ export const ClientDashboard: React.FC = () => {
     setUploadError('');
     setUploadSuccess('');
 
-    if (!taskTitle || !taskDescription || !guidelines || !agencyPay) {
-      setUploadError('Please fill out all mandatory fields prior to campaign submission.');
+    // Pre-flight client status check
+    if (clientRecord?.status === 'pending') {
+      setUploadError('Your client account approval is pending.');
+      return;
+    }
+
+    if (clientRecord?.status !== 'approved') {
+      setUploadError('Unable to publish task. Please check required fields and try again.');
+      return;
+    }
+
+    // Required Field Validations
+    if (!taskTitle || !taskTitle.trim()) {
+      setUploadError('Unable to publish task. Please check required fields and try again.');
+      return;
+    }
+
+    if (!taskDescription || !taskDescription.trim()) {
+      setUploadError('Unable to publish task. Please check required fields and try again.');
+      return;
+    }
+
+    if (!taskType) {
+      setUploadError('Unable to publish task. Please check required fields and try again.');
+      return;
+    }
+
+    if (taskType === 'Reddit Post Task' && (!targetSubreddit || !targetSubreddit.trim())) {
+      setUploadError('Unable to publish task. Please check required fields and try again.');
+      return;
+    }
+
+    if (taskType === 'Reddit Comment Task' && (!postUrlToCommentOn || !postUrlToCommentOn.trim())) {
+      setUploadError('Unable to publish task. Please check required fields and try again.');
+      return;
+    }
+
+    if (!agencyPay || !agencyPay.trim()) {
+      setUploadError('Unable to publish task. Please check required fields and try again.');
       return;
     }
 
     const payNum = parseFloat(agencyPay);
     if (isNaN(payNum) || payNum <= 0) {
-      setUploadError('Agency pay must be a valid positive amount.');
+      setUploadError('Unable to publish task. Please check required fields and try again.');
+      return;
+    }
+
+    if (!deadline || !deadline.trim()) {
+      setUploadError('Unable to publish task. Please check required fields and try again.');
+      return;
+    }
+
+    if (!guidelines || !guidelines.trim()) {
+      setUploadError('Unable to publish task. Please check required fields and try again.');
       return;
     }
 
     try {
       await clientCreateTask({
         type: taskType,
-        title: taskTitle,
-        description: taskDescription,
-        targetSubreddit: taskType === 'Reddit Post Task' ? targetSubreddit : undefined,
-        postUrlToCommentOn: taskType === 'Reddit Comment Task' ? postUrlToCommentOn : undefined,
-        guidelines,
-        deadline,
-        notes,
+        title: taskTitle.trim(),
+        description: taskDescription.trim(),
+        targetSubreddit: taskType === 'Reddit Post Task' ? targetSubreddit.trim() : undefined,
+        postUrlToCommentOn: taskType === 'Reddit Comment Task' ? postUrlToCommentOn.trim() : undefined,
+        guidelines: guidelines.trim(),
+        deadline: deadline.trim(),
+        notes: notes.trim(),
         agencyPay: payNum
       });
 
-      setUploadSuccess('Campaign uploaded successfully under pending verification review!');
-      // reset
+      setUploadSuccess('Campaign published successfully');
+      // reset form values on success
       setTaskTitle('');
       setTaskDescription('');
       setTargetSubreddit('');
@@ -177,7 +224,15 @@ export const ClientDashboard: React.FC = () => {
       setNotes('');
       setAgencyPay('');
     } catch (err: any) {
-      setUploadError(err?.message || 'Error occurred while creating task campaign.');
+      // Extensive error logging for debugging (hidden from end-users)
+      console.error('[DATABASE DEBUG] Campaign publication error:', err);
+
+      const errorStr = (err instanceof Error ? err.message : String(err)) || '';
+      if (clientRecord?.status === 'pending' || errorStr.toLowerCase().includes('pending')) {
+        setUploadError('Your client account approval is pending.');
+      } else {
+        setUploadError('Unable to publish task. Please check required fields and try again.');
+      }
     }
   };
 

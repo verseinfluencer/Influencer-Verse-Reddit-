@@ -226,7 +226,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [currentSimulatedCountry, setCurrentSimulatedCountry] = useState<string>('UK');
 
   // Seeding Database if empty
-  const seedDatabaseIfEmpty = async () => {
+  const seedDatabaseIfEmpty = async (adminUid?: string) => {
     try {
       const q = doc(db, 'test', 'connection');
       const testDoc = await getDoc(q);
@@ -244,7 +244,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           await setDoc(doc(db, 'tasks', t.id), t);
         }
         for (const u of INITIAL_USERS) {
-          await setDoc(doc(db, 'users', u.id), u);
+          if (u.email?.toLowerCase() === 'kalloldeyprivate20@gmail.com' && adminUid) {
+            await setDoc(doc(db, 'users', adminUid), { ...u, id: adminUid });
+          } else {
+            await setDoc(doc(db, 'users', u.id), u);
+          }
         }
         for (const s of INITIAL_SUBMISSIONS) {
           await setDoc(doc(db, 'submissions', s.id), s);
@@ -281,7 +285,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (firebaseUser) {
         // Trigger auto-seeding if the logged in user is the authorized administrator
         if (firebaseUser.email?.toLowerCase() === 'kalloldeyprivate20@gmail.com') {
-          seedDatabaseIfEmpty();
+          seedDatabaseIfEmpty(firebaseUser.uid);
         }
 
         // Current user setup
@@ -299,7 +303,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         // Setup real-time list configurations matching exact user intent for prompt-to-db mirroring
         const unsubUsers = onSnapshot(collection(db, 'users'), (snap) => {
-          setUsers(snap.docs.map(d => d.data() as User));
+          let loadedUsers = snap.docs.map(d => d.data() as User);
+          const adminEmail = 'kalloldeyprivate20@gmail.com';
+          const isCurrentAdmin = firebaseUser.email?.toLowerCase() === adminEmail;
+
+          if (isCurrentAdmin) {
+            const primaryAdminUid = firebaseUser.uid;
+            
+            // Detect and remove duplicate users/admin-1 or any other duplicate records with same admin email
+            const duplicateDocs = loadedUsers.filter(u => 
+              u.email?.toLowerCase() === adminEmail && u.id !== primaryAdminUid
+            );
+
+            if (duplicateDocs.length > 0) {
+              duplicateDocs.forEach(async (dup) => {
+                try {
+                  await deleteDoc(doc(db, 'users', dup.id));
+                  console.log(`Successfully auto-removed duplicate admin record: ${dup.id}`);
+                } catch (e) {
+                  console.error("Failed to delete duplicate admin user record:", e);
+                }
+              });
+
+              // Filter out duplicate admin records from state instantly in real-time
+              loadedUsers = loadedUsers.filter(u => 
+                !(u.email?.toLowerCase() === adminEmail && u.id !== primaryAdminUid)
+              );
+            }
+          } else {
+            // Keep only the first admin record encountered and filter out other duplicates for non-admin viewers
+            let foundAdmin = false;
+            loadedUsers = loadedUsers.filter(u => {
+              if (u.email?.toLowerCase() === adminEmail) {
+                if (foundAdmin) return false;
+                foundAdmin = true;
+                return true;
+              }
+              return true;
+            });
+          }
+
+          setUsers(loadedUsers);
         });
 
         const unsubClients = onSnapshot(collection(db, 'clients'), (snap) => {
@@ -456,7 +500,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const userRef = doc(db, 'users', uid);
       const userDoc = await getDoc(userRef);
 
-      if (!userDoc.exists() || isAdminEmail) {
+      if (!userDoc.exists()) {
         const isSystemAdmin = isAdminEmail;
         const draftStr = localStorage.getItem('pending_reg_' + email.trim().toLowerCase());
         let initialUser: any;
@@ -526,14 +570,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const locationInfo = getEstimatedLocationByIP(currentSimulatedIP);
       const country = locationInfo.country;
       const nowISO = new Date().toISOString();
-      const updatedUser = {
+      const updatedUser: any = {
         ...u,
         loginHistory: [{ ip: currentSimulatedIP, country, timestamp: nowISO }, ...(u.loginHistory || [])],
         ipHistory: [{ ip: currentSimulatedIP, timestamp: nowISO, location: country }, ...(u.ipHistory || []).filter(h => h.ip !== currentSimulatedIP)],
         lastLoginDate: nowISO.split('T')[0]
       };
+      if (isAdminEmail) {
+        updatedUser.role = 'admin';
+      }
       await setDoc(userRef, updatedUser, { merge: true });
-      return updatedUser;
+      return updatedUser as User;
     } catch (err: any) {
       throw new Error(err.message || 'Login failed.');
     }
@@ -558,8 +605,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     const existingEmailMatch = users.find(u => normalizeEmail(u.email) === normalizedNewEmail);
-    if (existingEmailMatch) {
-      throw new Error('❌ This email address is already registered on Influencer Verse.');
+    const existingClientMatch = clients.find(c => normalizeEmail(c.gmail) === normalizedNewEmail);
+    if (existingEmailMatch || existingClientMatch) {
+      throw new Error("Account already exists with this email.");
     }
 
     const cleanNewReddit = userData.redditUsername.replace(/^u\//i, '').trim().toLowerCase();
@@ -655,7 +703,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const code = err?.code || "";
       const msg = err?.message || "";
       if (code === 'auth/email-already-in-use' || msg.includes('email-already-in-use')) {
-        throw new Error("This email is already registered. Please sign in instead.");
+        throw new Error("Account already exists with this email.");
       }
       if (code === 'auth/invalid-email' || msg.includes('invalid-email')) {
         throw new Error("Please enter a valid email address.");
@@ -720,6 +768,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const clientRegister = async (clientData: Omit<Client, 'id' | 'status' | 'registeredAt' | 'payAgencyBalance' | 'payAgencyHistory' | 'taskUploadEnabled'> & { password?: string }): Promise<Client> => {
     try {
       const trimmedGmail = (clientData.gmail || '').trim().toLowerCase();
+      const normalizedGmail = normalizeEmail(trimmedGmail);
+
+      if (normalizedGmail === normalizeEmail('kalloldeyprivate20@gmail.com')) {
+        throw new Error('❌ The admin email address is reserved and normal registrations are prohibited.');
+      }
+
+      const existingEmailMatch = users.find(u => normalizeEmail(u.email) === normalizedGmail);
+      const existingClientMatch = clients.find(c => normalizeEmail(c.gmail) === normalizedGmail);
+      if (existingEmailMatch || existingClientMatch) {
+        throw new Error("Account already exists with this email.");
+      }
+
       const creds = await createUserWithEmailAndPassword(auth, trimmedGmail, clientData.password || 'client123');
       const uid = creds.user.uid;
       
@@ -759,7 +819,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const code = err?.code || "";
       const msg = err?.message || "";
       if (code === 'auth/email-already-in-use' || msg.includes('email-already-in-use')) {
-        throw new Error("This email is already registered. Please sign in instead.");
+        throw new Error("Account already exists with this email.");
       }
       if (code === 'auth/invalid-email' || msg.includes('invalid-email')) {
         throw new Error("Please enter a valid email address.");
@@ -891,6 +951,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (currentClient.status === 'banned' || currentClient.status === 'Banned') {
       throw new Error("❌ Your account is banned. You cannot perform this action.");
     }
+    if (currentClient.status === 'pending') {
+      throw new Error("Your client account approval is pending.");
+    }
+    if (currentClient.status !== 'approved' && currentClient.status !== 'Approved') {
+      throw new Error("Unable to publish task. Please check required fields and try again.");
+    }
     const newClientTask: ClientTask = {
       id: `client-task-${Date.now()}`,
       clientId: currentClient.id,
@@ -912,9 +978,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       await setDoc(doc(db, 'client_tasks', newClientTask.id), newClientTask);
 
+      const actualAdminId = users.find(u => u.role === 'admin' || u.email?.toLowerCase() === 'kalloldeyprivate20@gmail.com')?.id || 'admin-1';
       const adminNotif: AppNotification = {
         id: `notif-client-task-${Date.now()}`,
-        userId: 'admin-1',
+        userId: actualAdminId,
         type: 'client_update',
         title: 'New Client Task Proposal',
         message: `Client "${currentClient.name}" proposed a high reward ${taskData.type} task: "${taskData.title}". Check proposed payouts.`,
@@ -1324,9 +1391,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       // Send verification notification to admin
       const adminNotifId = `notif-payment-proof-${Date.now()}`;
+      const actualAdminId = users.find(u => u.role === 'admin' || u.email?.toLowerCase() === 'kalloldeyprivate20@gmail.com')?.id || 'admin-1';
       const adminNotif: AppNotification = {
         id: adminNotifId,
-        userId: 'admin-1', // Admin channel identifier
+        userId: actualAdminId, // Admin channel identifier
         type: 'client_update',
         title: 'New Payment Proof Uploaded',
         message: `Brand "${proof.clientCompany}" has uploaded a payment proof of $${Number(proof.amount).toFixed(2)} USDT for verification.`,
@@ -1439,6 +1507,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const snap = await getDoc(uRef);
     if (!snap.exists()) return;
     const u = snap.data() as User;
+
+    if (u.email?.toLowerCase() === 'kalloldeyprivate20@gmail.com') {
+      throw new Error("Security Violation: Deducting values from the Protected Owner Account is prohibited.");
+    }
 
     const newDec: DeductionRecord = {
       id: `ded-${Date.now()}`,
@@ -1961,6 +2033,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const adminRejectUser = async (userId: string, reason: string) => {
+    const targetUser = users.find(u => u.id === userId);
+    if (targetUser?.email?.toLowerCase() === 'kalloldeyprivate20@gmail.com') {
+      throw new Error("Security Violation: Rejection of the Protected Owner Account (kalloldeyprivate20@gmail.com) is strictly locked.");
+    }
     await updateDoc(doc(db, 'users', userId), {
       status: 'Rejected',
       rejectionReason: reason
@@ -1968,6 +2044,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const adminBanUser = async (userId: string, reason: string) => {
+    const targetUser = users.find(u => u.id === userId);
+    if (targetUser?.email?.toLowerCase() === 'kalloldeyprivate20@gmail.com') {
+      throw new Error("Security Violation: Banning the Protected Owner Account (kalloldeyprivate20@gmail.com) is strictly locked.");
+    }
     await updateDoc(doc(db, 'users', userId), {
       status: 'banned',
       isBanned: true,
@@ -1989,6 +2069,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const adminSuspendUser = async (userId: string, reason: string, duration?: string) => {
+    const targetUser = users.find(u => u.id === userId);
+    if (targetUser?.email?.toLowerCase() === 'kalloldeyprivate20@gmail.com') {
+      throw new Error("Security Violation: Suspending the Protected Owner Account (kalloldeyprivate20@gmail.com) is strictly locked.");
+    }
     await updateDoc(doc(db, 'users', userId), {
       status: 'suspended',
       isSuspended: true,
@@ -2454,6 +2538,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const uSnap = await getDoc(uRef);
     if (!uSnap.exists()) return;
     const u = uSnap.data() as User;
+
+    if (u.email?.toLowerCase() === 'kalloldeyprivate20@gmail.com') {
+      throw new Error("Security Violation: Updating Karma of the Protected Owner Account (kalloldeyprivate20@gmail.com) is strictly locked.");
+    }
 
     let b = 'Bronze';
     if (targetKarma >= 10000) b = 'Diamond';
