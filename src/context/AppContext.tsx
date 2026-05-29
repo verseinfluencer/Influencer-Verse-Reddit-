@@ -154,6 +154,8 @@ interface AppContextType {
   adminSuspendUser: (userId: string, reason: string, duration?: string) => void;
   adminUnbanUser: (userId: string) => void;
   adminUnsuspendUser: (userId: string) => void;
+  adminDeleteUserAccount: (userId: string) => Promise<void>;
+  adminDeleteClientAccount: (clientId: string) => Promise<void>;
   adminCreateTask: (taskData: Omit<Task, 'id' | 'completedSubmissionsCount' | 'status'> & { isSpecial?: boolean; minKarmaRequired?: number; specialLabel?: string }) => void;
   adminEditTask: (taskId: string, taskData: Partial<Task>) => void;
   adminDeleteTask: (taskId: string) => void;
@@ -2496,6 +2498,155 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const adminDeleteUserAccount = async (userId: string) => {
+    if (!currentUser || currentUser.role !== 'admin') {
+      throw new Error("Security Error: Only platform Administrators can permanently delete accounts. Moderators are forbidden.");
+    }
+
+    if (userId === currentUser.id) {
+      throw new Error("Operation Aborted: You cannot delete your own active administrator account.");
+    }
+
+    const uRef = doc(db, 'users', userId);
+    const uSnap = await getDoc(uRef);
+    if (!uSnap.exists()) {
+      throw new Error("Error: Target user profile not found in database.");
+    }
+
+    const uData = uSnap.data() as User;
+    const email = (uData.email || '').toLowerCase().trim();
+    if (email === 'kalloldeyprivate20@gmail.com') {
+      throw new Error("Security Violation: Deleting the primary creator/developer account (kalloldeyprivate20@gmail.com) is strictly locked.");
+    }
+
+    // 1. Move to Deleted Accounts Archive for 7 days safety
+    const archiveId = `archive-member-${userId}-${Date.now()}`;
+    const archiveDoc = {
+      id: archiveId,
+      type: 'member',
+      originalId: userId,
+      deletedAt: new Date().toISOString(),
+      profile: uData,
+      keepUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+    };
+    await setDoc(doc(db, 'deleted_accounts_archive', archiveId), archiveDoc);
+
+    // 2. Cleanup associated user data
+    // Delete profile
+    await deleteDoc(uRef);
+
+    // Delete wallets / wallet structure if any
+    await deleteDoc(doc(db, 'wallets', userId));
+
+    // Delete notifications
+    const someNotifsQuery = query(collection(db, 'notifications'), where('userId', '==', userId));
+    const someNotifsSnap = await getDocs(someNotifsQuery);
+    for (const d of someNotifsSnap.docs) {
+      await deleteDoc(doc(db, 'notifications', d.id));
+    }
+
+    // Delete submissions
+    const subsQuery = query(collection(db, 'submissions'), where('userId', '==', userId));
+    const subsSnap = await getDocs(subsQuery);
+    for (const d of subsSnap.docs) {
+      await deleteDoc(doc(db, 'submissions', d.id));
+    }
+
+    // Delete withdrawals
+    const withdrawalsQuery = query(collection(db, 'withdrawals'), where('userId', '==', userId));
+    const withdrawalsSnap = await getDocs(withdrawalsQuery);
+    for (const d of withdrawalsSnap.docs) {
+      await deleteDoc(doc(db, 'withdrawals', d.id));
+    }
+
+    // Delete transactions
+    const transactionsQuery = query(collection(db, 'transactions'), where('userId', '==', userId));
+    const transactionsSnap = await getDocs(transactionsQuery);
+    for (const d of transactionsSnap.docs) {
+      await deleteDoc(doc(db, 'transactions', d.id));
+    }
+
+    // Delete tickets
+    const ticketsQuery = query(collection(db, 'tickets'), where('userId', '==', userId));
+    const ticketsSnap = await getDocs(ticketsQuery);
+    for (const d of ticketsSnap.docs) {
+      await deleteDoc(doc(db, 'tickets', d.id));
+    }
+
+    // Delete fraud alerts
+    const fraudQuery = query(collection(db, 'fraud_alerts'), where('userId', '==', userId));
+    const fraudSnap = await getDocs(fraudQuery);
+    for (const d of fraudSnap.docs) {
+      await deleteDoc(doc(db, 'fraud_alerts', d.id));
+    }
+  };
+
+  const adminDeleteClientAccount = async (clientId: string) => {
+    if (!currentUser || currentUser.role !== 'admin') {
+      throw new Error("Security Error: Only platform Administrators can permanently delete accounts. Moderators are forbidden.");
+    }
+
+    if (clientId === currentUser.id) {
+      throw new Error("Operation Aborted: You cannot delete your own admin/client session.");
+    }
+
+    const cRef = doc(db, 'clients', clientId);
+    const cSnap = await getDoc(cRef);
+    if (!cSnap.exists()) {
+      throw new Error("Error: Target client profile not found in database.");
+    }
+
+    const cData = cSnap.data();
+    const gmail = (cData.gmail || '').toLowerCase().trim();
+    if (gmail === 'kalloldeyprivate20@gmail.com') {
+      throw new Error("Security Violation: Deleting the primary system administrator client profile is strictly locked.");
+    }
+
+    // 1. Move to Deleted Accounts Archive for 7 days safety
+    const archiveId = `archive-client-${clientId}-${Date.now()}`;
+    const archiveDoc = {
+      id: archiveId,
+      type: 'client',
+      originalId: clientId,
+      deletedAt: new Date().toISOString(),
+      profile: cData,
+      keepUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+    };
+    await setDoc(doc(db, 'deleted_accounts_archive', archiveId), archiveDoc);
+
+    // 2. Cleanup associated client data
+    // Delete profile
+    await deleteDoc(cRef);
+
+    // Delete campaigns / client tasks
+    const clientTasksQuery = query(collection(db, 'client_tasks'), where('clientId', '==', clientId));
+    const clientTasksSnap = await getDocs(clientTasksQuery);
+    for (const d of clientTasksSnap.docs) {
+      await deleteDoc(doc(db, 'client_tasks', d.id));
+    }
+
+    // Delete billing proofs / payments
+    const clientPaymentsQuery = query(collection(db, 'client_payments'), where('clientId', '==', clientId));
+    const clientPaymentsSnap = await getDocs(clientPaymentsQuery);
+    for (const d of clientPaymentsSnap.docs) {
+      await deleteDoc(doc(db, 'client_payments', d.id));
+    }
+
+    // Delete chat sessions
+    const chatsQuery = query(collection(db, 'chats'), where('clientId', '==', clientId));
+    const chatsSnap = await getDocs(chatsQuery);
+    for (const d of chatsSnap.docs) {
+      await deleteDoc(doc(db, 'chats', d.id));
+    }
+
+    // Delete support tickets
+    const ticketsQuery = query(collection(db, 'tickets'), where('clientId', '==', clientId));
+    const ticketsSnap = await getDocs(ticketsQuery);
+    for (const d of ticketsSnap.docs) {
+      await deleteDoc(doc(db, 'tickets', d.id));
+    }
+  };
+
   const completeCreatorRegistration = async (userDraft: User) => {
     const freshDraft = {
       ...userDraft,
@@ -2645,6 +2796,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       adminSuspendUser,
       adminUnbanUser,
       adminUnsuspendUser,
+      adminDeleteUserAccount,
+      adminDeleteClientAccount,
       adminCreateTask,
       adminEditTask,
       adminDeleteTask,

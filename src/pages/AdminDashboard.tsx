@@ -16,6 +16,7 @@ export const AdminDashboard: React.FC = () => {
     currentUser,
     users, tasks, submissions, withdrawals, transactions, settings,
     adminApproveUser, adminRejectUser, adminBanUser, adminSuspendUser, adminUnbanUser, adminUnsuspendUser,
+    adminDeleteUserAccount, adminDeleteClientAccount,
     adminCreateTask, adminEditTask, adminDeleteTask,
     adminReviewSubmission, adminFinalReleasePayment, adminReviewWithdrawal,
     adminCreateAnnouncement, adminUpdateSettings,
@@ -169,8 +170,18 @@ export const AdminDashboard: React.FC = () => {
   const [referralBonus, setReferralBonus] = useState(settings.referralBonus);
   const [settingsSuccess, setSettingsSuccess] = useState(false);
   const [selectedAdminTierFilter, setSelectedAdminTierFilter] = useState<string>('all');
-  const [selectedAdminStatusFilter, setSelectedAdminStatusFilter] = useState<string>('all');
+  const [selectedAdminStatusFilter, setSelectedAdminStatusFilter] = useState<string>('active_pending');
   const [selectedAdminRoleFilter, setSelectedAdminRoleFilter] = useState<string>('all');
+  
+  // Client management status filter & search states
+  const [selectedClientStatusFilter, setSelectedClientStatusFilter] = useState<string>('active_pending');
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [clientSearchQuery, setClientSearchQuery] = useState('');
+
+  // Permanent account deletion state
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
+  const [isDeletingInProgress, setIsDeletingInProgress] = useState(false);
   
   // Ban/Suspend confirmation values
   const [banTargetUser, setBanTargetUser] = useState<User | null>(null);
@@ -221,11 +232,29 @@ export const AdminDashboard: React.FC = () => {
   const visibleRemovedTasks = (clientTasks || []).filter(t => (t.status || '').toLowerCase() === 'removed');
 
   const filteredUsersForAdmin = users.filter(u => {
+    // 0. Search filter
+    if (userSearchQuery.trim() !== '') {
+      const q = userSearchQuery.toLowerCase();
+      const name = (u.fullName || '').toLowerCase();
+      const email = (u.email || '').toLowerCase();
+      const reddit = (u.redditUsername || '').toLowerCase();
+      if (!name.includes(q) && !email.includes(q) && !reddit.includes(q)) {
+        return false;
+      }
+    }
+
     // 1. Status filter
-    if (selectedAdminStatusFilter !== 'all') {
+    if (selectedAdminStatusFilter === 'active_pending') {
+      const uStatusLower = (u.status || '').toLowerCase();
+      if (uStatusLower === 'rejected') {
+        return false;
+      }
+    } else if (selectedAdminStatusFilter !== 'all') {
       const uStatusLower = (u.status || '').toLowerCase();
       const filterLower = selectedAdminStatusFilter.toLowerCase();
-      if (filterLower === 'banned') {
+      if (filterLower === 'deleted') {
+        return false;
+      } else if (filterLower === 'banned') {
         if (uStatusLower !== 'banned' && !u.isBanned) {
           return false;
         }
@@ -253,6 +282,30 @@ export const AdminDashboard: React.FC = () => {
       if (selectedAdminRoleFilter === 'members' && (uRole !== 'user' && uRole !== 'member')) {
         return false;
       }
+    }
+    return true;
+  });
+
+  const filteredClientsForAdmin = (clients || []).filter(c => {
+    // 0. Search filter
+    if (clientSearchQuery.trim() !== '') {
+      const q = clientSearchQuery.toLowerCase();
+      const name = (c.name || '').toLowerCase();
+      const company = (c.company || '').toLowerCase();
+      const gmail = (c.gmail || '').toLowerCase();
+      const whatsapp = (c.whatsapp || '').toLowerCase();
+      if (!name.includes(q) && !company.includes(q) && !gmail.includes(q) && !whatsapp.includes(q)) {
+        return false;
+      }
+    }
+
+    // 1. Status filter
+    const cStatusLower = (c.status || '').toLowerCase();
+    if (selectedClientStatusFilter === 'active_pending') {
+      return cStatusLower === 'approved' || cStatusLower === 'pending';
+    }
+    if (selectedClientStatusFilter !== 'all') {
+      return cStatusLower === selectedClientStatusFilter;
     }
     return true;
   });
@@ -590,6 +643,57 @@ export const AdminDashboard: React.FC = () => {
               </div>
             </div>
 
+            {/* Search and Status Filters */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-zinc-950/60 p-4 rounded-2xl border border-white/5">
+              {/* Search Bar */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400">Search Brand Clients</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={clientSearchQuery}
+                    onChange={(e) => setClientSearchQuery(e.target.value)}
+                    placeholder="Search by name, company, email..."
+                    className="w-full text-xs bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500/50"
+                  />
+                  {clientSearchQuery && (
+                    <button 
+                      onClick={() => setClientSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white text-[10px] uppercase font-black"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Status Filter Sub-Tabs */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400">Status Registry View</label>
+                <div className="flex flex-wrap gap-1">
+                  {[
+                    { id: 'active_pending', label: '👥 Active & Pending' },
+                    { id: 'approved', label: '✅ Approved' },
+                    { id: 'pending', label: '⏳ Pending Approval' },
+                    { id: 'rejected', label: '❌ Rejected Brands' },
+                    { id: 'all', label: '🌐 All Brands' }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setSelectedClientStatusFilter(tab.id)}
+                      className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer border ${
+                        selectedClientStatusFilter === tab.id
+                          ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg'
+                          : 'bg-zinc-900 hover:bg-zinc-800 border-white/5 text-zinc-400 hover:text-white'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             {/* Clients Table */}
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
@@ -606,14 +710,14 @@ export const AdminDashboard: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5 text-xs">
-                  {(clients || []).length === 0 ? (
+                  {filteredClientsForAdmin.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="py-8 text-center text-zinc-500 font-semibold italic">
-                        No clients registered under the system yet.
+                        No clients matching current filters found in database.
                       </td>
                     </tr>
                   ) : (
-                    (clients || []).map(c => {
+                    filteredClientsForAdmin.map(c => {
                       return (
                         <tr key={c.id} className="hover:bg-white/[0.02] tracking-wide">
                           <td className="py-4 px-2 space-y-0.5">
@@ -758,9 +862,30 @@ export const AdminDashboard: React.FC = () => {
                             )}
 
                             {c.status === 'rejected' && (
-                              <p className="text-[10px] text-zinc-500 italic max-w-[200px] text-right ml-auto">
-                                rejected: "{c.rejectionReason}"
-                              </p>
+                              <div className="space-y-1.5 text-right">
+                                <p className="text-[10px] text-zinc-500 italic max-w-[200px] text-right ml-auto">
+                                  Reason: "{c.rejectionReason || 'No reason specified'}"
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() => adminReviewClient(c.id, 'approved')}
+                                  className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600 border border-emerald-500/30 text-emerald-400 hover:text-white text-[10px] font-black rounded cursor-pointer inline-block"
+                                >
+                                  Restore Brand
+                                </button>
+                              </div>
+                            )}
+
+                            {currentUser?.role === 'admin' && (
+                              <div className="pt-2 border-t border-white/5 flex justify-end">
+                                <button
+                                  type="button"
+                                  onClick={() => setClientToDelete(c)}
+                                  className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold uppercase rounded cursor-pointer bg-red-950/20 hover:bg-red-650 border border-red-500/15 text-red-400 hover:text-white select-none transition-all"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" /> Delete Account
+                                </button>
+                              </div>
                             )}
                           </td>
                         </tr>
@@ -1694,14 +1819,40 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               </div>
 
+              {/* Creator Search Bar */}
+              <div className="bg-zinc-950/40 border border-white/5 p-4 rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+                <div className="flex-1 space-y-1">
+                  <label className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400">Search Members & Creators</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={userSearchQuery}
+                      onChange={(e) => setUserSearchQuery(e.target.value)}
+                      placeholder="Search by full name, email, reddit username..."
+                      className="w-full text-xs bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500/50"
+                    />
+                    {userSearchQuery && (
+                      <button 
+                        type="button"
+                        onClick={() => setUserSearchQuery('')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white text-[10px] uppercase font-black"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               {/* Users sub-tabs for User Management */}
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-3 bg-zinc-950/40 border border-white/5 rounded-2xl select-none">
                 <div className="flex flex-wrap gap-1">
                   {[
-                    { id: 'all', label: '👥 All Users', count: users.length },
-                    { id: 'Pending', label: '⏳ Pending', count: users.filter(u => u.status === 'Pending' || u.status === 'pending').length },
-                    { id: 'Approved', label: '✅ Approved', count: users.filter(u => u.status === 'Approved').length },
-                    { id: 'Rejected', label: '❌ Rejected', count: users.filter(u => u.status === 'Rejected').length },
+                    { id: 'active_pending', label: '👥 Active & Pending', count: users.filter(u => (u.status || '').toLowerCase() !== 'rejected').length },
+                    { id: 'all', label: '🌐 All Users', count: users.length },
+                    { id: 'Pending', label: '⏳ Pending Approval', count: users.filter(u => u.status === 'Pending' || u.status === 'pending').length },
+                    { id: 'Approved', label: '✅ Approved Only', count: users.filter(u => u.status === 'Approved' || u.status === 'approved').length },
+                    { id: 'Rejected', label: '❌ Rejected Only', count: users.filter(u => u.status === 'Rejected' || u.status === 'rejected').length },
                     { id: 'banned', label: '🚫 Banned', count: users.filter(u => u.status === 'banned' || u.status === 'Banned' || u.isBanned).length },
                     { id: 'suspended', label: '⚠️ Suspended', count: users.filter(u => u.status === 'suspended' || u.status === 'Suspended' || u.isSuspended).length },
                   ].map((sTab) => (
@@ -1947,6 +2098,21 @@ export const AdminDashboard: React.FC = () => {
                             </button>
                           </div>
                         )}
+                        {(u.status === 'Rejected' || u.status === 'rejected') && (
+                          <div className="space-y-1.5 text-right pb-1.5">
+                            <p className="text-[10px] text-zinc-500 italic max-w-[180px] ml-auto">
+                              Reason: "{u.rejectionReason || 'identity/reddit profile validation standard check failed'}"
+                            </p>
+                            <button 
+                              type="button"
+                              onClick={() => adminApproveUser(u.id)}
+                              className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600 border border-emerald-500/30 text-emerald-400 hover:text-white text-[10px] font-black rounded cursor-pointer inline-block"
+                            >
+                              Restore & Approve User
+                            </button>
+                          </div>
+                        )}
+
                         {u.role !== 'admin' && (
                           <div className="pt-2 flex gap-1.5 justify-end flex-wrap">
                             <button
@@ -1976,9 +2142,10 @@ export const AdminDashboard: React.FC = () => {
                           <span className="text-[10px] text-zinc-500 font-extrabold uppercase">Platform Admin Locked</span>
                         )}
                         {currentUser?.role === 'admin' && u.role !== 'admin' && (
-                          <div className="pt-2 border-t border-white/5 flex gap-1.5 justify-end">
+                          <div className="pt-2 border-t border-white/5 flex gap-1.5 justify-end flex-wrap">
                             {u.role === 'moderator' ? (
                               <button
+                                type="button"
                                 onClick={() => setDemoteTargetUser(u)}
                                 className="px-2.5 py-1 bg-amber-600 hover:bg-amber-500 text-white text-[10px] font-black rounded cursor-pointer transition-all uppercase tracking-wider"
                               >
@@ -1986,12 +2153,20 @@ export const AdminDashboard: React.FC = () => {
                               </button>
                             ) : (
                               <button
+                                type="button"
                                 onClick={() => setPromoteTargetUser(u)}
                                 className="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-black rounded cursor-pointer transition-all uppercase tracking-wider"
                               >
                                 Promote to Moderator
                               </button>
                             )}
+                            <button
+                              type="button"
+                              onClick={() => setUserToDelete(u)}
+                              className="px-2.5 py-1 bg-red-950/20 hover:bg-red-600 border border-red-500/15 text-red-500 hover:text-white text-[10px] font-black rounded cursor-pointer transition-all uppercase tracking-wider inline-flex items-center gap-1"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" /> Delete Account
+                            </button>
                           </div>
                         )}
                       </td>
@@ -3751,6 +3926,120 @@ export const AdminDashboard: React.FC = () => {
           </div>
         );
       })()}
+
+      {/* Member/User Account Permanent Deletion Modal */}
+      {userToDelete && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-50 select-none animate-fade-in">
+          <div className="bg-zinc-950 border border-red-500/30 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl relative">
+            <div className="flex items-center gap-3 text-red-500">
+              <Trash2 className="w-6 h-6 animate-pulse" />
+              <h3 className="text-lg font-black tracking-tight text-white">Confirm Permanent Deletion</h3>
+            </div>
+            
+            <p className="text-xs text-zinc-300 leading-relaxed font-semibold">
+              This action will permanently delete this account and associated data. This cannot be undone.
+            </p>
+
+            <div className="bg-red-500/5 border border-red-500/10 p-3.5 rounded-xl font-sans">
+              <p className="text-[10px] text-red-400 font-extrabold uppercase tracking-wider mb-1">Target Creator Profile:</p>
+              <p className="text-xs text-zinc-100 font-extrabold">{userToDelete.fullName || userToDelete.redditUsername || 'Creator'}</p>
+              <p className="text-[10px] text-zinc-500 font-mono mt-0.5">{userToDelete.email}</p>
+              <ul className="text-[9px] text-zinc-400 list-disc pl-4 space-y-1 mt-2.5">
+                <li>Remove credentials from Auth directory</li>
+                <li>Clear creator profile, wallets & payout history</li>
+                <li>Erase task histories, referrals & notifications</li>
+                <li>Archive backup index records for security logs</li>
+              </ul>
+            </div>
+
+            <div className="flex gap-2.5 justify-end pt-2">
+              <button
+                type="button"
+                disabled={isDeletingInProgress}
+                onClick={() => setUserToDelete(null)}
+                className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-xl text-xs font-black cursor-pointer transition-all disabled:opacity-40"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingInProgress}
+                onClick={async () => {
+                  try {
+                    setIsDeletingInProgress(true);
+                    await adminDeleteUserAccount(userToDelete.id);
+                    setUserToDelete(null);
+                  } catch (err: any) {
+                    alert(`Deletion failed: ${err.message || err}`);
+                  } finally {
+                    setIsDeletingInProgress(false);
+                  }
+                }}
+                className="px-4 py-2 bg-red-650 hover:bg-red-500 rounded-xl text-xs font-black text-white cursor-pointer transition-all shadow-md shadow-red-900/20 disabled:opacity-40"
+              >
+                {isDeletingInProgress ? 'Processing Cleanup...' : 'Delete Permanently'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Client Brand Account Permanent Deletion Modal */}
+      {clientToDelete && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-50 select-none animate-fade-in font-sans">
+          <div className="bg-zinc-950 border border-red-500/30 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl relative">
+            <div className="flex items-center gap-3 text-red-500">
+              <Trash2 className="w-6 h-6 animate-pulse" />
+              <h3 className="text-lg font-black tracking-tight text-white">Confirm Permanent Deletion</h3>
+            </div>
+            
+            <p className="text-xs text-zinc-300 leading-relaxed font-semibold">
+              This action will permanently delete this account and associated data. This cannot be undone.
+            </p>
+
+            <div className="bg-red-500/5 border border-red-500/10 p-3.5 rounded-xl">
+              <p className="text-[10px] text-red-400 font-extrabold uppercase tracking-wider mb-1">Target Brand Company:</p>
+              <p className="text-xs text-zinc-100 font-extrabold">{clientToDelete.name} ({clientToDelete.company})</p>
+              <p className="text-[10px] text-zinc-500 font-mono mt-0.5">{clientToDelete.gmail}</p>
+              <ul className="text-[9px] text-zinc-400 list-disc pl-4 space-y-1 mt-2.5">
+                <li>Remove credentials from Auth directory</li>
+                <li>Clear brand metadata, billing lists & payment proofs</li>
+                <li>Erase upload configurations & active campaigns</li>
+                <li>Archive key database registers safely</li>
+              </ul>
+            </div>
+
+            <div className="flex gap-2.5 justify-end pt-2">
+              <button
+                type="button"
+                disabled={isDeletingInProgress}
+                onClick={() => setClientToDelete(null)}
+                className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-xl text-xs font-black cursor-pointer transition-all disabled:opacity-40"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingInProgress}
+                onClick={async () => {
+                  try {
+                    setIsDeletingInProgress(true);
+                    await adminDeleteClientAccount(clientToDelete.id);
+                    setClientToDelete(null);
+                  } catch (err: any) {
+                    alert(`Deletion failed: ${err.message || err}`);
+                  } finally {
+                    setIsDeletingInProgress(false);
+                  }
+                }}
+                className="px-4 py-2 bg-red-650 hover:bg-red-500 rounded-xl text-xs font-black text-white cursor-pointer transition-all shadow-md shadow-red-900/20 disabled:opacity-40"
+              >
+                {isDeletingInProgress ? 'Processing Cleanup...' : 'Delete Permanently'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Permanent Deletion Confirmation Modal Overlay */}
       {taskToDelete && (
