@@ -17,7 +17,11 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
 
   if (!currentUser) return null;
 
-  const handleSyncKarma = async () => {
+  const handleSyncKarma = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     setIsSyncing(true);
     setSyncSuccess(false);
     setSyncError(null);
@@ -25,10 +29,10 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
       await syncRedditKarma();
       setSyncSuccess(true);
       setTimeout(() => setSyncSuccess(false), 3000);
-    } catch (e: any) {
-      console.error(e);
-      setSyncError("Sync failed — showing last known karma");
-      setTimeout(() => setSyncError(null), 5000);
+    } catch (err: any) {
+      console.error(err);
+      setSyncError(err?.message || "Live sync temporarily unavailable. Displaying latest saved Reddit karma.");
+      setTimeout(() => setSyncError(null), 7000);
     } finally {
       setIsSyncing(false);
     }

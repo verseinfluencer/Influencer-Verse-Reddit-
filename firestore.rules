@@ -33,7 +33,35 @@ service cloud.firestore {
     // Tasks collection
     match /tasks/{taskId} {
       allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow create, delete: if isAdmin();
+      allow update: if isAuthenticated() && (
+        isAdmin() || (
+          // Current user must be an approved member/creator
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'Approved' &&
+          
+          // Cannot modify details of the task
+          request.resource.data.id == resource.data.id &&
+          request.resource.data.title == resource.data.title &&
+          request.resource.data.reward == resource.data.reward &&
+          request.resource.data.type == resource.data.type &&
+          
+          // Members cannot claim their own client tasks
+          (!exists(/databases/$(database)/documents/client_tasks/$(taskId)) || 
+            get(/databases/$(database)/documents/client_tasks/$(taskId)).data.clientId != request.auth.uid) &&
+          
+          // Users cannot claim restricted or suspended tasks (status transitions must be valid)
+          (
+            // 1. Claiming an available task
+            (request.resource.data.status == 'claimed' && resource.data.status == 'available' && request.resource.data.claimed_by == request.auth.uid) ||
+            
+            // 2. Unclaiming active task
+            (request.resource.data.status == 'available' && resource.data.claimed_by == request.auth.uid && request.resource.data.claimed_by == null) ||
+            
+            // 3. Completing / submitting task
+            (request.resource.data.status == 'completed' && resource.data.claimed_by == request.auth.uid)
+          )
+        )
+      );
     }
     
     // Submissions collection
@@ -72,6 +100,22 @@ service cloud.firestore {
         isAdmin() || (
           get(/databases/$(database)/documents/clients/$(request.auth.uid)).data.status == 'approved' &&
           resource.data.clientId == request.auth.uid
+        ) || (
+          // Also allow approved members/creators to update claimant fields of client tasks during claim/unclaim/submission state synchronization
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'Approved' &&
+          request.resource.data.clientId == resource.data.clientId &&
+          request.resource.data.title == resource.data.title &&
+          request.resource.data.agencyPay == resource.data.agencyPay &&
+          (
+            // 1. Claiming
+            (request.resource.data.status == 'claimed' && resource.data.status == 'approved/live' && request.resource.data.claimedBy != null) ||
+            
+            // 2. Unclaiming
+            (request.resource.data.status == 'approved/live' && resource.data.status == 'claimed' && request.resource.data.claimedBy == null) ||
+            
+            // 3. Submitting
+            ((request.resource.data.status == 'submitted' || request.resource.data.status == 'under_admin_review' || request.resource.data.status == 'approved/live') && resource.data.status == 'claimed')
+          )
         )
       );
       allow delete: if isAdmin();

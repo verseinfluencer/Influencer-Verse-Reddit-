@@ -17,6 +17,7 @@ import {
   getDistanceBetweenCoords,
   COUNTRY_COORDINATES
 } from '../utils/securityUtils';
+import { getKarmaTier } from '../utils/tierHelper';
 
 import { 
   signInWithEmailAndPassword, 
@@ -279,6 +280,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     rootElement.classList.add('dark');
     rootElement.classList.remove('light');
   }, []);
+
+  // Automatic Reddit karma sync check every 24 hours with scheduled retry backoff checks
+  useEffect(() => {
+    if (!currentUser || !currentUser.redditUsername) return;
+
+    const checkAndAutoSync = async () => {
+      const now = Date.now();
+      
+      // Calculate delay since last synced
+      const lastSyncedStr = currentUser.karmaLastSynced;
+      const lastSyncedTime = lastSyncedStr ? new Date(lastSyncedStr).getTime() : 0;
+      
+      const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+      const isPast24Hours = (now - lastSyncedTime) >= ONE_DAY_MS;
+
+      // Check next allowed attempt timestamp to enforce retry delay windows (15m, 1h, 6h)
+      const nextAttemptStr = localStorage.getItem(`reddit_sync_next_attempt_${currentUser.id}`);
+      const nextAttemptTime = nextAttemptStr ? parseInt(nextAttemptStr, 10) : 0;
+      const isPastBackoff = now >= nextAttemptTime;
+
+      if ((!lastSyncedStr || isPast24Hours) && isPastBackoff) {
+        console.log('[REDDIT AUTO SYNC] Running scheduled 24-hour karma sync check...');
+        try {
+          await syncRedditKarma();
+        } catch (e) {
+          console.error('[REDDIT AUTO SYNC] Automatic background sync failed:', e);
+        }
+      }
+    };
+
+    // Run check upon mount / user change
+    checkAndAutoSync();
+
+    // Check periodically in the background every 5 minutes
+    const interval = setInterval(checkAndAutoSync, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [currentUser?.id, currentUser?.redditUsername, currentUser?.karmaLastSynced]);
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
@@ -1888,37 +1926,95 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const claimTask = async (taskId: string): Promise<void> => {
-    if (!currentUser) throw new Error('Unauthenticated');
+    if (!currentUser) {
+      throw new Error('Unauthenticated');
+    }
+    
+    // Check if banned or suspended
     await checkBannedOrSuspended();
+
+    // 1. Check account status approval
+    if (currentUser.status !== 'Approved') {
+      throw new Error("You do not currently have permission to claim this task.");
+    }
+
+    // Check if already holding another active task reservation
+    if (currentUser.active_task_id && currentUser.active_task_id !== taskId) {
+      throw new Error("You can only claim one task at a time. Please finish or unclaim your currently active task.");
+    }
+
     const taskRef = doc(db, 'tasks', taskId);
     const snap = await getDoc(taskRef);
-    if (!snap.exists()) throw new Error('Task not found');
+    if (!snap.exists()) {
+      throw new Error('Task not found');
+    }
     const t = snap.data() as Task;
 
-    const expire = new Date(Date.now() + 60 * 60 * 1000).toISOString();
-    await updateDoc(taskRef, {
-      status: 'claimed',
-      claimed_by: currentUser.id,
-      claimed_at: new Date().toISOString(),
-      claim_expires_at: expire
-    });
+    // 2. Check if task is already claimed
+    if (t.status !== 'available' || (t.claimed_by && t.claimed_by !== currentUser.id)) {
+      throw new Error("Task already claimed.");
+    }
 
-    await updateDoc(doc(db, 'users', currentUser.id), {
-      active_task_id: taskId
-    });
+    // 3. Check slots available
+    if (t.completedSubmissionsCount >= t.maxSubmissions) {
+      throw new Error("Unable to claim task.");
+    }
 
-    // Synchronize to client tasks:
-    if (taskId.startsWith('client-task-')) {
+    // 4. Check special tier constraints (enough karma / tier)
+    if (t.isSpecial && t.minKarmaRequired) {
+      const userKarma = currentUser.karma || 0;
+      if (userKarma < t.minKarmaRequired) {
+        throw new Error("You do not currently have permission to claim this task.");
+      }
+    }
+
+    // 5. Check if it's their own client task to prevent self-claiming
+    if (taskId.startsWith('client-task-') || taskId.includes('client-task')) {
       const clientTaskRef = doc(db, 'client_tasks', taskId);
       const ctSnap = await getDoc(clientTaskRef);
       if (ctSnap.exists()) {
-        await updateDoc(clientTaskRef, {
-          status: 'claimed',
-          claimedBy: currentUser.redditUsername,
-          claimedAt: new Date().toISOString(),
-          completionDeadline: expire
-        });
+        const ctData = ctSnap.data() as ClientTask;
+        if (ctData.clientId === currentUser.id) {
+          throw new Error("You do not currently have permission to claim this task.");
+        }
       }
+    }
+
+    const expire = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    
+    try {
+      await updateDoc(taskRef, {
+        status: 'claimed',
+        claimed_by: currentUser.id,
+        claimed_at: new Date().toISOString(),
+        claim_expires_at: expire
+      });
+
+      await updateDoc(doc(db, 'users', currentUser.id), {
+        active_task_id: taskId
+      });
+
+      // Synchronize to client tasks:
+      if (taskId.startsWith('client-task-') || taskId.includes('client-task')) {
+        const clientTaskRef = doc(db, 'client_tasks', taskId);
+        const ctSnap = await getDoc(clientTaskRef);
+        if (ctSnap.exists()) {
+          await updateDoc(clientTaskRef, {
+            status: 'claimed',
+            claimedBy: currentUser.redditUsername,
+            claimedAt: new Date().toISOString(),
+            completionDeadline: expire
+          });
+        }
+      }
+    } catch (dbErr: any) {
+      console.error('[CLAIM ENGINE] Firestore transaction write failed:', dbErr);
+      
+      const errMsg = dbErr?.message || String(dbErr);
+      if (errMsg.toLowerCase().includes('permission') || errMsg.toLowerCase().includes('denied')) {
+        throw new Error("You do not currently have permission to claim this task.");
+      }
+      throw new Error("Unable to claim task.");
     }
   };
 
@@ -2555,34 +2651,131 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
+  const fetchRedditKarma = async (cleanUser: string): Promise<number> => {
+    const urls = [
+      `https://www.reddit.com/user/${cleanUser}/about.json`,
+      `https://corsproxy.io/?${encodeURIComponent(`https://www.reddit.com/user/${cleanUser}/about.json`)}`,
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://www.reddit.com/user/${cleanUser}/about.json`)}`
+    ];
+
+    let lastError: any = null;
+
+    for (const url of urls) {
+      try {
+        console.log(`[REDDIT SYNC ENGINE] Attempting fetch: ${url}`);
+        const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+        
+        if (res.status === 404) {
+          throw new Error("USER_NOT_FOUND");
+        }
+
+        if (!res.ok) {
+          throw new Error(`HTTP_STATUS_${res.status}`);
+        }
+
+        const data = await res.json();
+        const dataObj = data?.data || data;
+
+        if (dataObj && typeof dataObj.total_karma === 'number') {
+          return dataObj.total_karma;
+        }
+      } catch (e: any) {
+        console.warn(`[REDDIT SYNC ENGINE] URL failed: ${url}`, e);
+        if (e.message === 'USER_NOT_FOUND' || e.message?.includes('404')) {
+          throw new Error("USER_NOT_FOUND");
+        }
+        lastError = e;
+      }
+    }
+
+    throw lastError || new Error("API_FAILURE");
+  };
+
   const syncRedditKarma = async () => {
     if (!currentUser) return;
-    const cleanUser = currentUser.redditUsername.replace(/^u\//i, '').trim();
-    try {
-      const response = await fetch(`https://www.reddit.com/user/${cleanUser}/about.json`);
-      if (!response.ok) {
-        throw new Error(`Reddit API returned status ${response.status}`);
-      }
-      const data = await response.json();
-      if (!data || !data.data || typeof data.data.total_karma !== 'number') {
-        throw new Error('Invalid response structure from Reddit API');
-      }
-      const realKarma = data.data.total_karma;
-      
-      let b = 'Bronze';
-      if (realKarma >= 10000) b = 'Diamond';
-      else if (realKarma >= 5000) b = 'Gold';
-      else if (realKarma >= 1000) b = 'Silver';
+    const uid = currentUser.id;
+    const username = currentUser.redditUsername || '';
+    const cleanUser = username.replace(/^\/?u\//i, '').replace(/^\/user\//i, '').replace(/^\//, '').trim();
 
-      await updateDoc(doc(db, 'users', currentUser.id), {
+    // 1. Validation before syncing
+    if (!username.trim() || !/^[a-zA-Z0-9_-]{3,20}$/.test(cleanUser)) {
+      throw new Error("Invalid Reddit username. Please update your Reddit profile.");
+    }
+
+    try {
+      // 2. Fetch via multiple avenues to defeat CORS & Rate Limits
+      const realKarma = await fetchRedditKarma(cleanUser);
+
+      // 3. Clear failure tracking on success
+      localStorage.removeItem(`reddit_sync_failed_count_${uid}`);
+      localStorage.removeItem(`reddit_sync_next_attempt_${uid}`);
+
+      // 4. Update Tier & Badge level
+      const tier = getKarmaTier(realKarma);
+      const b = tier.name; // Bronze, Silver, Gold, Diamond...
+      const lastSynced = new Date().toISOString();
+
+      // 5. Save in Firebase Firestore
+      await updateDoc(doc(db, 'users', uid), {
         karma: realKarma,
         karmaBadge: b,
-        karmaYesterday: currentUser.karma,
-        karmaLastSynced: new Date().toISOString()
+        karmaYesterday: currentUser.karma ?? realKarma,
+        karmaLastSynced: lastSynced
       });
-    } catch (err) {
-      console.error('Reddit karma sync failed:', err);
-      throw new Error("Sync failed — showing last known karma");
+
+      // 6. Update local React state instantly for zero-latency UI refresh
+      setCurrentUser(prev => {
+        if (!prev || prev.id !== uid) return prev;
+        return {
+          ...prev,
+          karma: realKarma,
+          karmaBadge: b,
+          karmaYesterday: prev.karma ?? realKarma,
+          karmaLastSynced: lastSynced
+        };
+      });
+
+    } catch (err: any) {
+      console.error('[DATABASE DEBUG] Reddit Karma sync error:', err);
+
+      if (err.message === "USER_NOT_FOUND") {
+        throw new Error("Invalid Reddit username. Please update your Reddit profile.");
+      }
+
+      // 7. Auto Sync retry mechanism / backoff tracking
+      const currentFailuresStr = localStorage.getItem(`reddit_sync_failed_count_${uid}`);
+      const currentFailures = currentFailuresStr ? parseInt(currentFailuresStr, 10) : 0;
+      const nextFailures = currentFailures + 1;
+      localStorage.setItem(`reddit_sync_failed_count_${uid}`, nextFailures.toString());
+
+      let delayMs = 15 * 60 * 1000; // 15 mins by default (retry 1)
+      if (nextFailures === 2) {
+        delayMs = 60 * 60 * 1000; // 1 hour (retry 2)
+      } else if (nextFailures >= 3) {
+        delayMs = 6 * 60 * 60 * 1000; // 6 hours (retry 3+)
+      }
+
+      const nextAttemptTime = Date.now() + delayMs;
+      localStorage.setItem(`reddit_sync_next_attempt_${uid}`, nextAttemptTime.toString());
+
+      // 8. Admin Audit Logging of sync failures
+      try {
+        const logId = `log-sync-fail-${Date.now()}`;
+        await setDoc(doc(db, 'audit_logs', logId), {
+          id: logId,
+          action: `Reddit Sync Failure: ${err.message || 'API_FAILURE'}`,
+          targetUserId: uid,
+          operatorId: 'system',
+          operatorName: username,
+          operatorRole: 'system',
+          timestamp: new Date().toISOString()
+        });
+      } catch (logErr) {
+        console.error('Failed to log sync error to firestore:', logErr);
+      }
+
+      // 9. Throw Smart Fallback Message
+      throw new Error("Live sync temporarily unavailable. Displaying latest saved Reddit karma.");
     }
   };
 

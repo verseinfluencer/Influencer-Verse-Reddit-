@@ -181,8 +181,17 @@ export const Marketplace: React.FC = () => {
     try {
       await claimTask(taskId);
     } catch (err: any) {
-      setClaimError(err.message || 'Claim failed.');
-      setTimeout(() => setClaimError(null), 4000);
+      const msg = (err?.message || String(err)).toLowerCase();
+      let userFriendlyError = err.message || 'Unable to claim task.';
+      
+      if (msg.includes('permission') || msg.includes('insufficient') || msg.includes('denied')) {
+        userFriendlyError = "You do not currently have permission to claim this task.";
+      } else if (msg.includes('already claimed') || msg.includes('claimed_by')) {
+        userFriendlyError = "Task already claimed.";
+      }
+      
+      setClaimError(userFriendlyError);
+      setTimeout(() => setClaimError(null), 6000);
     } finally {
       setClaimLoading(null);
     }
