@@ -245,10 +245,18 @@ export const ClientDashboard: React.FC = () => {
 
     try {
       await clientReviewTaskSubmission(taskId, action, feedback);
-      setReviewActionSuccess(prev => ({ ...prev, [taskId]: `Claim submission status updated: ${action}!` }));
+      const successMsg = action === 'Approve' 
+        ? "Approval completed successfully." 
+        : `Claim submission status updated: ${action}!`;
+      setReviewActionSuccess(prev => ({ ...prev, [taskId]: successMsg }));
       setReviewFeedback(prev => ({ ...prev, [taskId]: '' }));
     } catch (err: any) {
-      alert(`Review action failure: ${err?.message}`);
+      const errStr = (err?.message || String(err)).toLowerCase();
+      let userFriendlyError = "Unable to process approval. Please try again.";
+      if (errStr.includes('permission') || errStr.includes('insufficient') || errStr.includes('denied') || errStr.includes('unauthorized')) {
+        userFriendlyError = "You do not have permission to approve this submission.";
+      }
+      alert(userFriendlyError);
     }
   };
 

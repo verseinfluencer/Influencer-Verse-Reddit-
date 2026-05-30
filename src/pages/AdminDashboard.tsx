@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Task, Submission, Withdrawal, User, TaskType, Client, ClientTask, ClientPayment, ClientPaymentProof, ChatMessage, ClientChat } from '../types';
+import { Task, Submission, Withdrawal, User, TaskType, Client, ClientTask, ClientPayment, ClientPaymentProof, ChatMessage, ClientChat, ArchivedApprovedTask, ArchivedWithdrawal } from '../types';
 import { getKarmaTier } from '../utils/tierHelper';
 import { db } from '../utils/firebase';
-import { collection, doc, deleteDoc, setDoc, getDocs, onSnapshot, query, orderBy, where } from 'firebase/firestore';
+import { collection, doc, deleteDoc, setDoc, getDocs, onSnapshot, query, orderBy, where, updateDoc } from 'firebase/firestore';
 import { 
   Users, FileText, CheckCircle, Wallet, Sparkles, 
   Trash2, Edit, CheckCircle2, XCircle, AlertCircle, Send, Plus, 
   Settings, Link, ExternalLink, MessageCircle, BarChart2, ShieldAlert,
-  Building, CreditCard, MessageSquare, PlusCircle, CheckSquare, Shield, ToggleLeft, ToggleRight, AlertTriangle, Eye, SendHorizontal
+  Building, CreditCard, MessageSquare, PlusCircle, CheckSquare, Shield, ToggleLeft, ToggleRight, AlertTriangle, Eye, SendHorizontal,
+  Archive
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
@@ -206,6 +207,143 @@ export const AdminDashboard: React.FC = () => {
   // Task extension custom states
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [disabledExtensionTasks, setDisabledExtensionTasks] = useState<Record<string, boolean>>({});
+
+  // Deleted History States & Effects
+  const [archivedTasks, setArchivedTasks] = useState<ArchivedApprovedTask[]>([]);
+  const [archivedWithdrawals, setArchivedWithdrawals] = useState<ArchivedWithdrawal[]>([]);
+  const [activeDeletedHistoryTab, setActiveDeletedHistoryTab] = useState<'approved_tasks' | 'withdrawals'>('approved_tasks');
+
+  useEffect(() => {
+    const q = query(collection(db, 'deleted_history', 'approved_tasks', 'records'));
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const list: ArchivedApprovedTask[] = [];
+      snap.forEach((doc) => {
+        list.push(doc.data() as ArchivedApprovedTask);
+      });
+      setArchivedTasks(list);
+    }, (error) => {
+      console.error("Error fetching archived tasks", error);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const q = query(collection(db, 'deleted_history', 'withdrawals', 'records'));
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const list: ArchivedWithdrawal[] = [];
+      snap.forEach((doc) => {
+        list.push(doc.data() as ArchivedWithdrawal);
+      });
+      setArchivedWithdrawals(list);
+    }, (error) => {
+      console.error("Error fetching archived withdrawals", error);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleArchiveSubmission = async (sub: Submission) => {
+    if (!currentUser) return;
+    const confirm = window.confirm("Are you sure you want to Archive this Completed Submission? It will be hidden from the active list but all financial states & creator history remain preserved.");
+    if (!confirm) return;
+    try {
+      const actorName = currentUser.fullName || currentUser.email || 'Admin/Moderator';
+      const archiveRef = doc(db, 'deleted_history', 'approved_tasks', 'records', sub.id);
+      await setDoc(archiveRef, {
+        id: sub.id,
+        originalData: sub,
+        archivedBy: actorName,
+        archivedAt: new Date().toISOString()
+      });
+      
+      const subRef = doc(db, 'submissions', sub.id);
+      await updateDoc(subRef, {
+        archived: true,
+        archivedAt: new Date().toISOString(),
+        archivedBy: actorName
+      });
+      alert("Submission record archived successfully!");
+    } catch (err: any) {
+      console.error("Error archiving submission:", err);
+      alert("Error archiving submission: " + (err.message || err));
+    }
+  };
+
+  const handleArchiveWithdrawal = async (w: Withdrawal) => {
+    if (!currentUser) return;
+    const confirm = window.confirm("Are you sure you want to Archive this Approved Withdrawal? It will be hidden from the active list but all accounting logs and balance releases remain preserved.");
+    if (!confirm) return;
+    try {
+      const actorName = currentUser.fullName || currentUser.email || 'Admin/Moderator';
+      const archiveRef = doc(db, 'deleted_history', 'withdrawals', 'records', w.id);
+      await setDoc(archiveRef, {
+        id: w.id,
+        originalData: w,
+        archivedBy: actorName,
+        archivedAt: new Date().toISOString()
+      });
+      
+      const wRef = doc(db, 'withdrawals', w.id);
+      await updateDoc(wRef, {
+        archived: true,
+        archivedAt: new Date().toISOString(),
+        archivedBy: actorName
+      });
+      alert("Withdrawal record archived successfully!");
+    } catch (err: any) {
+      console.error("Error archiving withdrawal:", err);
+      alert("Error archiving withdrawal: " + (err.message || err));
+    }
+  };
+
+  const handleRestoreSubmission = async (item: ArchivedApprovedTask) => {
+    try {
+      await deleteDoc(doc(db, 'deleted_history', 'approved_tasks', 'records', item.id));
+      await updateDoc(doc(db, 'submissions', item.id), {
+        archived: false
+      });
+      alert("Submission restored to active list successfully!");
+    } catch (err: any) {
+      console.error("Error restoring submission:", err);
+      alert("Error restoring submission: " + (err.message || err));
+    }
+  };
+
+  const handleRestoreWithdrawal = async (item: ArchivedWithdrawal) => {
+    try {
+      await deleteDoc(doc(db, 'deleted_history', 'withdrawals', 'records', item.id));
+      await updateDoc(doc(db, 'withdrawals', item.id), {
+        archived: false
+      });
+      alert("Withdrawal restored to active list successfully!");
+    } catch (err: any) {
+      console.error("Error restoring withdrawal:", err);
+      alert("Error restoring withdrawal: " + (err.message || err));
+    }
+  };
+
+  const handlePermanentDeleteSubmission = async (item: ArchivedApprovedTask) => {
+    const confirm = window.confirm("CRITICAL WARNING:\nAre you sure you want to PERMANENTLY DELETE this archived tracking item?\nThis will remove the tracking record from the Deleted History registry forever. All completed financial states, payouts, and user histories will NOT be modified or lost.");
+    if (!confirm) return;
+    try {
+      await deleteDoc(doc(db, 'deleted_history', 'approved_tasks', 'records', item.id));
+      alert("Archived submission record permanently deleted from Deleted History.");
+    } catch (err: any) {
+      console.error("Error deleting archived submission:", err);
+      alert("Error deleting archived submission: " + (err.message || err));
+    }
+  };
+
+  const handlePermanentDeleteWithdrawal = async (item: ArchivedWithdrawal) => {
+    const confirm = window.confirm("CRITICAL WARNING:\nAre you sure you want to PERMANENTLY DELETE this archived tracking item?\nThis will remove the tracking record from the Deleted History registry forever. All completed member wallet cashouts and accounting ledger entries will NOT be modified or lost.");
+    if (!confirm) return;
+    try {
+      await deleteDoc(doc(db, 'deleted_history', 'withdrawals', 'records', item.id));
+      alert("Archived withdrawal record permanently deleted from Deleted History.");
+    } catch (err: any) {
+      console.error("Error deleting archived withdrawal:", err);
+      alert("Error deleting archived withdrawal: " + (err.message || err));
+    }
+  };
 
   useEffect(() => {
     if (toastMessage) {
@@ -439,14 +577,18 @@ export const AdminDashboard: React.FC = () => {
   }).length;
 
   const submissionsBadgeCount = submissions.filter(s => 
-    s.status === 'Pending' || 
-    s.status === 'Under Admin Review' ||
-    (s.submittedAt && new Date(s.submittedAt).getTime() > (lastViewedTime['submissions'] || 0))
+    !s.archived && (
+      s.status === 'Pending' || 
+      s.status === 'Under Admin Review' ||
+      (s.submittedAt && new Date(s.submittedAt).getTime() > (lastViewedTime['submissions'] || 0))
+    )
   ).length;
 
   const withdrawalsBadgeCount = withdrawals.filter(w => 
-    w.status === 'Pending' ||
-    (w.requestedAt && new Date(w.requestedAt).getTime() > (lastViewedTime['withdrawals'] || 0))
+    !w.archived && (
+      w.status === 'Pending' ||
+      (w.requestedAt && new Date(w.requestedAt).getTime() > (lastViewedTime['withdrawals'] || 0))
+    )
   ).length;
 
   const trackDataBadgeCount = 
@@ -575,7 +717,8 @@ export const AdminDashboard: React.FC = () => {
             { id: 'security', label: '🛡️ Security Center', count: securityBadgeCount },
             { id: 'announcements', label: 'Publish Feed', count: announcementsBadgeCount },
             { id: 'audit-log', label: '📜 Role Audit Logs', count: auditLogsBadgeCount },
-            { id: 'deleted-tasks', label: '🗑️ Deleted Tasks', count: 0 }
+            { id: 'deleted-tasks', label: '🗑️ Deleted Tasks', count: 0 },
+            { id: 'deleted-history', label: '🗄️ Deleted History', count: archivedTasks.length + archivedWithdrawals.length }
           ].map(tab => (
             <button
                key={tab.id}
@@ -2641,12 +2784,12 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             <div className="space-y-6">
-              {submissions.length === 0 ? (
+              {submissions.filter(s => !s.archived).length === 0 ? (
                 <div className="text-center py-10 text-zinc-500 text-xs text-balance">
                   Awesome! There are no submissions awaiting administrative checks in your queue.
                 </div>
               ) : (
-                submissions.map((sub) => {
+                submissions.filter(s => !s.archived).map((sub) => {
                   const subUser = users.find(u => u.id === sub.userId);
                   const subUserTier = subUser ? getKarmaTier(subUser.karma) : null;
                   return (
@@ -2801,6 +2944,14 @@ export const AdminDashboard: React.FC = () => {
                             <span className="text-zinc-400 block font-bold mb-0.5">Audit complete</span>
                             Reviewed status: <strong className="text-indigo-400 uppercase tracking-widest text-[10px] block mt-1">{sub.status}</strong>
                             {sub.feedback && <span className="block mt-1.5 text-[10px] italic">Feedback: "{sub.feedback}"</span>}
+                            {(sub.status === 'Approved' || sub.status === 'Client Approved (Payment Released)') && (
+                              <button
+                                onClick={() => handleArchiveSubmission(sub)}
+                                className="mt-2 w-full py-1.5 bg-zinc-900 hover:bg-zinc-850 hover:text-white border border-white/5 text-zinc-400 text-[10px] font-bold uppercase rounded-lg transition cursor-pointer"
+                              >
+                                Archive Record
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -2848,7 +2999,7 @@ export const AdminDashboard: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5 text-xs">
-                  {withdrawals.map(w => {
+                  {withdrawals.filter(w => !w.archived).map(w => {
                     const wUser = users.find(u => u.id === w.userId);
                     const t = wUser ? getKarmaTier(wUser.karma) : null;
                     return (
@@ -2896,7 +3047,17 @@ export const AdminDashboard: React.FC = () => {
                             </button>
                           </div>
                         ) : (
-                          <span className="text-[10px] text-zinc-500 italic block">Processed</span>
+                          <div className="flex flex-col items-end gap-1 justify-end">
+                            <span className="text-[10px] text-zinc-500 italic">Processed</span>
+                            {w.status === 'Approved' && (
+                              <button
+                                onClick={() => handleArchiveWithdrawal(w)}
+                                className="px-2 py-0.5 bg-zinc-950 border border-zinc-850 text-zinc-400 hover:text-white rounded text-[10px] uppercase font-bold cursor-pointer transition-colors"
+                              >
+                                Archive Record
+                              </button>
+                            )}
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -3482,6 +3643,238 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* ================= 🗄️ DELETED HISTORY SYSTEM ================= */}
+        {activeTab === 'deleted-history' && (
+          <div className="space-y-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-white/5">
+              <div>
+                <h2 className="text-base font-black flex items-center gap-2 text-purple-400">
+                  <Archive className="w-5 h-5" /> Deleted History Registry
+                </h2>
+                <p className="text-zinc-500 text-[11px] mt-1">
+                  View and manage archived financial records. Archiving completed transactions hides them from active queues while strictly preserving audit trails, user ledger sheets, and platform accounting integrity.
+                </p>
+              </div>
+
+              {/* Subtabs selection */}
+              <div className="flex gap-1.5 bg-zinc-950 p-1 rounded-xl border border-white/5">
+                <button
+                  type="button"
+                  onClick={() => setActiveDeletedHistoryTab('approved_tasks')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    activeDeletedHistoryTab === 'approved_tasks'
+                      ? 'bg-purple-600 text-white'
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  Archived Approved Tasks ({archivedTasks.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveDeletedHistoryTab('withdrawals')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    activeDeletedHistoryTab === 'withdrawals'
+                      ? 'bg-purple-600 text-white'
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  Archived Withdrawals ({archivedWithdrawals.length})
+                </button>
+              </div>
+            </div>
+
+            {/* TAB CONTENT: Archived Approved Tasks */}
+            {activeDeletedHistoryTab === 'approved_tasks' && (
+              <div className="space-y-4">
+                {archivedTasks.length === 0 ? (
+                  <div className="text-center py-16 bg-zinc-950/40 border border-white/5 rounded-2xl text-zinc-500 text-xs">
+                    No archived approved task submissions found.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {archivedTasks.map((item) => {
+                      const data = item.originalData;
+                      if (!data) return null;
+                      return (
+                        <div key={item.id} className="p-4 bg-zinc-950/50 border border-white/5 rounded-2xl space-y-4 relative hover:border-zinc-800 transition">
+                          <div className="flex justify-between items-start">
+                            <div className="space-y-1">
+                              <span className="text-[9px] px-2 py-0.5 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded font-bold uppercase tracking-wider">
+                                {data.taskType || 'Task'} submission
+                              </span>
+                              <h3 className="text-sm font-extrabold text-white tracking-tight mt-1">{data.taskTitle}</h3>
+                              <p className="text-[10px] text-zinc-500 font-mono">ID: {item.id}</p>
+                            </div>
+                            <span className="text-right text-xs font-extrabold text-emerald-400">
+                              +${data.reward ? data.reward.toFixed(2) : '0.00'} USDT
+                            </span>
+                          </div>
+
+                          {/* Record info */}
+                          <div className="grid grid-cols-2 gap-y-2 gap-x-4 bg-zinc-900/30 p-2.5 rounded-xl border border-white/5 text-[10px]">
+                            <div>
+                              <span className="text-zinc-500 block">Creator Member</span>
+                              <span className="font-bold text-white">{data.userFullName || 'Unknown'}</span>
+                              <span className="text-purple-400 block font-mono">@{data.redditUsername}</span>
+                            </div>
+                            <div>
+                              <span className="text-zinc-500 block">Submitted At</span>
+                              <span className="font-bold text-white leading-none">
+                                {data.submittedAt ? new Date(data.submittedAt).toLocaleDateString() : 'N/A'}
+                              </span>
+                            </div>
+                            {data.targetSubreddit && (
+                              <div>
+                                <span className="text-zinc-500 block">Subreddit</span>
+                                <span className="font-bold text-indigo-400">r/{data.targetSubreddit}</span>
+                              </div>
+                            )}
+                            <div>
+                              <span className="text-zinc-500 block">Proof URL/Permalink</span>
+                              {data.proofUrl && (
+                                <a
+                                  href={data.proofUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-purple-400 hover:underline flex items-center gap-0.5 break-all line-clamp-1"
+                                >
+                                  Open Proof <ExternalLink className="w-2.5 h-2.5 inline" />
+                                </a>
+                              )}
+                              {data.submissionLink && (
+                                <a
+                                  href={data.submissionLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-indigo-400 hover:underline flex items-center gap-0.5 break-all line-clamp-1 mt-0.5"
+                                >
+                                  Permalink <ExternalLink className="w-2.5 h-2.5 inline" />
+                                </a>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Archive/Audit trails metadata */}
+                          <div className="border-t border-white/5 pt-3 flex flex-col md:flex-row justify-between items-start md:items-center gap-2 text-[10px]">
+                            <div className="space-y-0.5 text-zinc-500">
+                              <p>Archived By: <strong className="text-zinc-300">{item.archivedBy}</strong></p>
+                              <p>Archived At: <span className="font-mono text-zinc-400">{item.archivedAt ? new Date(item.archivedAt).toLocaleString() : 'N/A'}</span></p>
+                            </div>
+                            
+                            <div className="flex gap-2 w-full md:w-auto justify-end">
+                              <button
+                                type="button"
+                                onClick={() => handleRestoreSubmission(item)}
+                                className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-purple-400 hover:text-white rounded-lg text-[10px] font-black cursor-pointer transition"
+                              >
+                                Restore Record
+                              </button>
+                              {(currentUser?.role === 'admin' || currentUser?.email === 'kalloldeyprivate20@gmail.com') && (
+                                <button
+                                  type="button"
+                                  onClick={() => handlePermanentDeleteSubmission(item)}
+                                  className="px-3 py-1.5 bg-red-950/40 hover:bg-red-900/60 text-red-400 hover:text-white border border-red-500/20 rounded-lg text-[10px] font-black cursor-pointer transition"
+                                >
+                                  Permanent Delete
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB CONTENT: Archived Withdrawals */}
+            {activeDeletedHistoryTab === 'withdrawals' && (
+              <div className="space-y-4">
+                {archivedWithdrawals.length === 0 ? (
+                  <div className="text-center py-16 bg-zinc-950/40 border border-white/5 rounded-2xl text-zinc-500 text-xs">
+                    No archived withdrawal cashouts found.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {archivedWithdrawals.map((item) => {
+                      const data = item.originalData;
+                      if (!data) return null;
+                      return (
+                        <div key={item.id} className="p-4 bg-zinc-950/50 border border-white/5 rounded-2xl space-y-4 relative hover:border-zinc-800 transition">
+                          <div className="flex justify-between items-start">
+                            <div className="space-y-1">
+                              <span className="text-[9px] px-2 py-0.5 bg-zinc-800 border border-zinc-700 text-purple-400 rounded font-bold uppercase tracking-wider font-mono">
+                                {data.withdrawalMethod === 'USDT_BEP20' ? 'USDT BEP20 (BSC)' : 'Binance Pay ID'}
+                              </span>
+                              <h3 className="text-sm font-extrabold text-white tracking-tight mt-1">{data.userFullName || 'Unknown'}</h3>
+                              <p className="text-[10px] text-zinc-500 font-mono">ID: {item.id}</p>
+                            </div>
+                            <span className="text-right text-xs font-extrabold text-purple-400 font-mono">
+                              ${data.amount ? data.amount.toFixed(2) : '0.00'} USDT
+                            </span>
+                          </div>
+
+                          {/* Record info */}
+                          <div className="grid grid-cols-2 gap-y-2 gap-x-4 bg-zinc-900/30 p-2.5 rounded-xl border border-white/5 text-[10px]">
+                            <div>
+                              <span className="text-zinc-500 block">Recipient Address</span>
+                              <span className="font-bold text-white select-all break-all tracking-wide font-mono font-bold">{data.paymentAddress}</span>
+                            </div>
+                            <div>
+                              <span className="text-zinc-500 block">Requested At</span>
+                              <span className="font-bold text-white leading-none font-mono font-bold">
+                                {data.requestedAt ? new Date(data.requestedAt).toLocaleDateString() : 'N/A'}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-zinc-500 block">User Email</span>
+                              <span className="text-zinc-300 font-mono leading-none">{data.email}</span>
+                            </div>
+                            <div>
+                              <span className="text-zinc-500 block">Completed Status</span>
+                              <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-bold uppercase text-[9px]">
+                                Approved & Paid
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Archive/Audit trails metadata */}
+                          <div className="border-t border-white/5 pt-3 flex flex-col md:flex-row justify-between items-start md:items-center gap-2 text-[10px]">
+                            <div className="space-y-0.5 text-zinc-500">
+                              <p>Archived By: <strong className="text-zinc-300">{item.archivedBy}</strong></p>
+                              <p>Archived At: <span className="font-mono text-zinc-400">{item.archivedAt ? new Date(item.archivedAt).toLocaleString() : 'N/A'}</span></p>
+                            </div>
+                            
+                            <div className="flex gap-2 w-full md:w-auto justify-end">
+                              <button
+                                type="button"
+                                onClick={() => handleRestoreWithdrawal(item)}
+                                className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-purple-400 hover:text-white rounded-lg text-[10px] font-black cursor-pointer transition"
+                              >
+                                Restore Record
+                              </button>
+                              {(currentUser?.role === 'admin' || currentUser?.email === 'kalloldeyprivate20@gmail.com') && (
+                                <button
+                                  type="button"
+                                  onClick={() => handlePermanentDeleteWithdrawal(item)}
+                                  className="px-3 py-1.5 bg-red-950/40 hover:bg-red-900/60 text-red-400 hover:text-white border border-red-500/20 rounded-lg text-[10px] font-black cursor-pointer transition"
+                                >
+                                  Permanent Delete
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

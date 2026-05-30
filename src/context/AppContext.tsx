@@ -1034,10 +1034,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const clientReviewTaskSubmission = async (taskId: string, action: 'Approve' | 'RequestRevision' | 'Reject', feedback?: string) => {
     try {
+      if (!currentClient) {
+        throw new Error("You do not have permission to approve this submission.");
+      }
+
       const docRef = doc(db, 'client_tasks', taskId);
       const snap = await getDoc(docRef);
-      if (!snap.exists()) throw new Error('Campaign task not found.');
+      if (!snap.exists()) {
+        throw new Error("Unable to process approval. Please try again.");
+      }
       const clientTask = snap.data() as ClientTask;
+
+      // Verify that the task belongs to this client
+      if (clientTask.clientId !== currentClient.id) {
+        throw new Error("You do not have permission to approve this submission.");
+      }
+      
+      // Also check client status is approved
+      const clientRecord = clients.find(c => c.id === currentClient.id);
+      if (!clientRecord || (clientRecord.status !== 'approved' && clientRecord.status !== 'Approved')) {
+        throw new Error("You do not have permission to approve this submission.");
+      }
       
       const clientName = currentClient?.name || currentClient?.company || 'Client';
 
@@ -1046,6 +1063,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const subSnap = await getDocs(q);
       const pendingSub = subSnap.docs.map(d => d.data() as Submission)
         .find(s => s.status === 'Admin Approved (Waiting for Client Approval)');
+
+      if (!pendingSub) {
+        throw new Error("Unable to process approval. Please try again.");
+      }
 
       if (action === 'Approve') {
         if (pendingSub && !pendingSub.billingProcessed) {
@@ -1162,7 +1183,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           await updateDoc(taskRef, { status: 'available' });
         }
       }
-    } catch (error) {
+    } catch (error: any) {
+      // Re-throw direct custom human-friendly error messages
+      if (error?.message && (
+        error.message.includes("You do not have permission") ||
+        error.message.includes("Unable to process approval")
+      )) {
+        throw error;
+      }
       handleFirestoreError(error, OperationType.UPDATE, `client_tasks/${taskId}`);
     }
   };
@@ -2343,7 +2371,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const ctSnap = await getDoc(clientTaskRef);
         if (ctSnap.exists()) {
           await updateDoc(clientTaskRef, {
-            status: 'submitted' // Client dashboard monitors 'submitted'
+            status: 'submitted', // Client dashboard monitors 'submitted'
+            claimedBy: sub.redditUsername || sub.userFullName || 'Member',
+            proofLink: sub.proofUrl || sub.submissionLink || ''
           });
         }
       }

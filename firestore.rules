@@ -13,6 +13,23 @@ service cloud.firestore {
     function isAuthenticated() {
       return request.auth != null;
     }
+
+    // Check if user is moderator
+    function isModerator() {
+      return request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'moderator';
+    }
+
+    // Helper to check if user has approved client profile
+    function isApprovedClient() {
+      return request.auth != null && 
+        exists(/databases/$(database)/documents/clients/$(request.auth.uid)) && 
+        (
+          get(/databases/$(database)/documents/clients/$(request.auth.uid)).data.status == 'approved' ||
+          get(/databases/$(database)/documents/clients/$(request.auth.uid)).data.status == 'Approved'
+        );
+    }
     
     // Allow admin full access
     match /{document=**} {
@@ -21,8 +38,9 @@ service cloud.firestore {
     
     // Users collection
     match /users/{userId} {
-      allow read, write: if isAuthenticated() 
-        && request.auth.uid == userId;
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() 
+        && (request.auth.uid == userId || isApprovedClient());
     }
     
     // Chats collection
@@ -35,7 +53,7 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create, delete: if isAdmin();
       allow update: if isAuthenticated() && (
-        isAdmin() || (
+        isAdmin() || isApprovedClient() || (
           // Current user must be an approved member/creator
           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'Approved' &&
           
@@ -66,7 +84,20 @@ service cloud.firestore {
     
     // Submissions collection
     match /submissions/{subId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        isModerator() ||
+        (request.auth.uid == resource.data.userId) ||
+        (
+          isApprovedClient() &&
+          get(/databases/$(database)/documents/client_tasks/$(resource.data.taskId)).data.clientId == request.auth.uid &&
+          request.resource.data.reward == resource.data.reward &&
+          resource.data.status == 'Admin Approved (Waiting for Client Approval)'
+        )
+      );
+      allow delete: if isAdmin();
     }
     
     // Notifications collection
@@ -77,7 +108,7 @@ service cloud.firestore {
     // Transactions collection
     match /transactions/{transId} {
       allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow write: if isAdmin() || isApprovedClient();
     }
     
     // Withdrawals collection
@@ -95,10 +126,16 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() &&
         request.resource.data.clientId == request.auth.uid &&
-        get(/databases/$(database)/documents/clients/$(request.auth.uid)).data.status == 'approved';
+        (
+          get(/databases/$(database)/documents/clients/$(request.auth.uid)).data.status == 'approved' ||
+          get(/databases/$(database)/documents/clients/$(request.auth.uid)).data.status == 'Approved'
+        );
       allow update: if isAuthenticated() && (
         isAdmin() || (
-          get(/databases/$(database)/documents/clients/$(request.auth.uid)).data.status == 'approved' &&
+          (
+            get(/databases/$(database)/documents/clients/$(request.auth.uid)).data.status == 'approved' ||
+            get(/databases/$(database)/documents/clients/$(request.auth.uid)).data.status == 'Approved'
+          ) &&
           resource.data.clientId == request.auth.uid
         ) || (
           // Also allow approved members/creators to update claimant fields of client tasks during claim/unclaim/submission state synchronization
@@ -134,6 +171,12 @@ service cloud.firestore {
     // Deleted tasks collection
     match /deleted_tasks/{taskId} {
       allow read, write: if isAuthenticated();
+    }
+
+    // Deleted history collection
+    match /deleted_history/{category}/records/{itemId} {
+      allow read, create, update: if isAuthenticated() && (isAdmin() || isModerator());
+      allow delete: if isAdmin();
     }
   }
 }

@@ -222,6 +222,30 @@
         "approvedAt": { "type": "string" }
       },
       "required": ["id", "clientId", "type", "title", "description", "guidelines", "deadline", "agencyPay", "status"]
+    },
+    "ArchivedApprovedTask": {
+      "title": "Archived Approved Task Submission",
+      "description": "A campaign task submission archived by admin/moderator.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "originalData": { "type": "object" },
+        "archivedBy": { "type": "string" },
+        "archivedAt": { "type": "string" }
+      },
+      "required": ["id", "originalData", "archivedBy", "archivedAt"]
+    },
+    "ArchivedWithdrawal": {
+      "title": "Archived Withdrawal",
+      "description": "A payout withdrawal receipt archived by admin/moderator.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "originalData": { "type": "object" },
+        "archivedBy": { "type": "string" },
+        "archivedAt": { "type": "string" }
+      },
+      "required": ["id", "originalData", "archivedBy", "archivedAt"]
     }
   },
   "firestore": {
@@ -264,6 +288,14 @@
     "deleted_tasks": {
       "schema": "DeletedTask",
       "description": "Permanently deleted campaign records with reason notes."
+    },
+    "deleted_history/approved_tasks/records": {
+      "schema": "ArchivedApprovedTask",
+      "description": "Archived approved creator submissions."
+    },
+    "deleted_history/withdrawals/records": {
+      "schema": "ArchivedWithdrawal",
+      "description": "Archived completed withdrawal payments."
     }
   }
 }

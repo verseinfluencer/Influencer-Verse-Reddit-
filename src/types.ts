@@ -125,6 +125,16 @@ export interface Submission {
   approvalTimestamp?: string;
   invoiceStatus?: string;
   clientId?: string;
+  archived?: boolean;
+  archivedAt?: string;
+  archivedBy?: string;
+}
+
+export interface ArchivedApprovedTask {
+  id: string;
+  originalData: Submission;
+  archivedBy: string;
+  archivedAt: string;
 }
 
 export interface Withdrawal {
@@ -137,6 +147,16 @@ export interface Withdrawal {
   paymentAddress: string;
   requestedAt: string;
   status: 'Pending' | 'Approved' | 'Rejected';
+  archived?: boolean;
+  archivedAt?: string;
+  archivedBy?: string;
+}
+
+export interface ArchivedWithdrawal {
+  id: string;
+  originalData: Withdrawal;
+  archivedBy: string;
+  archivedAt: string;
 }
 
 export interface Transaction {

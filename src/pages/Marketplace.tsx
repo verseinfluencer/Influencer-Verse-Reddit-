@@ -41,28 +41,37 @@ export const Marketplace: React.FC = () => {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(text);
         triggerToast(successMessage);
-      } else {
-        // Fallback for iframe and older browser environments
-        const textArea = document.createElement('textarea');
-        textArea.value = text;
-        textArea.style.top = '0';
-        textArea.style.left = '0';
-        textArea.style.position = 'fixed';
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        try {
-          const successful = document.execCommand('copy');
-          if (successful) {
-            triggerToast(successMessage);
-          } else {
-            console.error('Fallback copy was unsuccessful');
-          }
-        } catch (err) {
-          console.error('Fallback copy failed', err);
-        }
-        document.body.removeChild(textArea);
+        return;
       }
+    } catch (err) {
+      console.warn('navigator.clipboard failed, attempting fallback:', err);
+    }
+
+    try {
+      // Fallback for iframe and older browser environments (including mobile WebView)
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.fontSize = '12pt'; // Prevent auto zoom on iOS
+      textArea.style.top = '0';
+      textArea.style.left = '-9999px';
+      textArea.style.position = 'fixed';
+      textArea.setAttribute('readonly', ''); // Prevent keyboard popping up on mobile devices
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      textArea.setSelectionRange(0, 99999); // Mobile Safari support
+      
+      try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+          triggerToast(successMessage);
+        } else {
+          console.error('Fallback copy was unsuccessful');
+        }
+      } catch (err) {
+        console.error('Fallback copy failed', err);
+      }
+      document.body.removeChild(textArea);
     } catch (err) {
       console.error('Failed to copy: ', err);
     }
@@ -554,7 +563,7 @@ export const Marketplace: React.FC = () => {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleCopyText(task.requiredPostTitle || '', 'Title copied');
+                                handleCopyText(task.title || '', 'Task title copied');
                               }}
                               className="text-[9px] text-purple-400 hover:text-purple-300 font-extrabold flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-2 py-0.5 rounded transition-all border border-purple-500/5 cursor-pointer"
                             >
@@ -573,7 +582,7 @@ export const Marketplace: React.FC = () => {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleCopyText(task.description || '', 'Body copied! ✅');
+                                handleCopyText(task.description || '', 'Task body copied');
                               }}
                               className="text-[9px] text-purple-400 hover:text-purple-300 font-extrabold flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-2 py-0.5 rounded transition-all border border-purple-500/5 cursor-pointer"
                             >
@@ -583,11 +592,13 @@ export const Marketplace: React.FC = () => {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
+                                const subName = task.targetSubreddit || '';
+                                const subFormatted = subName ? (subName.startsWith('r/') ? subName : 'r/' + subName) : '';
                                 const content = 
-                                  `Title: ${task.title || ''}\n\n` +
-                                  `Body: ${task.description || ''}\n\n` +
-                                  `Subreddit: ${task.targetSubreddit || ''}`;
-                                handleCopyText(content, 'All content copied! ✅');
+                                  `Subreddit: ${subFormatted}\n\n` +
+                                  `Title:\n${task.title || ''}\n\n` +
+                                  `Body:\n${task.description || ''}`;
+                                handleCopyText(content, 'Task copied successfully');
                               }}
                               className="text-[9px] text-pink-400 hover:text-pink-300 font-extrabold flex items-center gap-1 bg-pink-500/10 hover:bg-pink-500/20 px-2 py-0.5 rounded transition-all border border-pink-500/5 cursor-pointer"
                             >
@@ -863,7 +874,7 @@ export const Marketplace: React.FC = () => {
                             <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-extrabold">Reddit Post Title</span>
                             <button
                               type="button"
-                              onClick={() => handleCopyText(selectedTask.requiredPostTitle || '', 'Title copied')}
+                              onClick={() => handleCopyText(selectedTask.title || '', 'Task title copied')}
                               className="text-[9px] text-purple-400 hover:text-purple-300 font-extrabold flex items-center gap-1 bg-purple-500/15 px-2 py-0.5 rounded cursor-pointer transition-all border border-purple-500/10"
                             >
                               <Copy className="w-2.5 h-2.5" /> Copy Title
@@ -881,7 +892,7 @@ export const Marketplace: React.FC = () => {
                           <div className="flex gap-1.5">
                             <button
                               type="button"
-                              onClick={() => handleCopyText(selectedTask.description || '', 'Body copied! ✅')}
+                              onClick={() => handleCopyText(selectedTask.description || '', 'Task body copied')}
                               className="text-[9px] text-purple-400 hover:text-purple-300 font-extrabold flex items-center gap-1 bg-purple-500/15 px-2 py-0.5 rounded cursor-pointer transition-all border border-purple-500/10"
                             >
                               <Copy className="w-2.5 h-2.5" /> Copy Body
@@ -889,11 +900,13 @@ export const Marketplace: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => {
+                                const subName = selectedTask.targetSubreddit || '';
+                                const subFormatted = subName ? (subName.startsWith('r/') ? subName : 'r/' + subName) : '';
                                 const content = 
-                                  `Title: ${selectedTask.title || ''}\n\n` +
-                                  `Body: ${selectedTask.description || ''}\n\n` +
-                                  `Subreddit: ${selectedTask.targetSubreddit || ''}`;
-                                handleCopyText(content, 'All content copied! ✅');
+                                  `Subreddit: ${subFormatted}\n\n` +
+                                  `Title:\n${selectedTask.title || ''}\n\n` +
+                                  `Body:\n${selectedTask.description || ''}`;
+                                handleCopyText(content, 'Task copied successfully');
                               }}
                               className="text-[9px] text-pink-400 hover:text-pink-300 font-extrabold flex items-center gap-1 bg-pink-500/15 px-2 py-0.5 rounded cursor-pointer transition-all border border-pink-500/10"
                             >
