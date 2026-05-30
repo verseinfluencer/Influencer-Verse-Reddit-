@@ -2116,8 +2116,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await setDoc(doc(db, 'withdrawals', newW.id), newW);
 
     await updateDoc(doc(db, 'users', currentUser.id), {
-      balance: currentUser.balance - amount,
-      withdrawn: currentUser.withdrawn + amount
+      balance: currentUser.balance - amount
     });
   };
 
@@ -2566,6 +2565,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await updateDoc(wRef, {
       status
     });
+
+    const uRef = doc(db, 'users', w.userId);
+    const uSnap = await getDoc(uRef);
+    if (uSnap.exists()) {
+      const u = uSnap.data() as User;
+      if (status === 'Approved') {
+        await updateDoc(uRef, {
+          withdrawn: (u.withdrawn || 0) + w.amount
+        });
+      } else if (status === 'Rejected') {
+        await updateDoc(uRef, {
+          balance: (u.balance || 0) + w.amount
+        });
+      }
+    }
 
     const tx: Transaction = {
       id: `tx-${Date.now()}`,

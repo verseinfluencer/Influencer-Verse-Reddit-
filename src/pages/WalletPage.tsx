@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { Wallet, DollarSign, Send, ArrowDownRight, ArrowUpRight, HelpCircle, ShieldAlert, CheckCircle2, Copy } from 'lucide-react';
 
 export const WalletPage: React.FC = () => {
-  const { currentUser, transactions, requestWithdrawal, submissions } = useApp();
+  const { currentUser, transactions, requestWithdrawal, submissions, withdrawals } = useApp();
 
   // Withdraw fields
   const [withdrawAmount, setWithdrawAmount] = useState<number>(5.00);
@@ -29,6 +29,11 @@ export const WalletPage: React.FC = () => {
   const availableBal = currentUser.balance;
   const pendingBal = currentUser.pendingBalance; // Under review task submissions
   const withdrawnAmt = currentUser.withdrawn;
+
+  // Calculate pending withdrawal requests (Pending Payout status)
+  const pendingWithdrawalAmt = (withdrawals || [])
+    .filter(w => w.userId === currentUser.id && w.status === 'Pending')
+    .reduce((sum, w) => sum + w.amount, 0);
 
   const handleWithdrawalRequest = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,31 +101,38 @@ export const WalletPage: React.FC = () => {
       </div>
 
       {/* Stats indicators banner */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 select-text">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 select-text">
         
-        {/* Available cards */}
+        {/* 1. Available Balance */}
         <div className="p-5 bg-gradient-to-tr from-purple-950/15 to-zinc-900 border border-purple-500/20 rounded-2xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-12 h-12 bg-purple-500/10 rounded-full blur-xl"></div>
-          <span className="text-[10px] text-purple-400 font-extrabold uppercase tracking-widest block mb-2">Available Balance</span>
+          <span className="text-[10px] text-purple-400 font-extrabold uppercase tracking-widest block mb-1">Available Balance</span>
           <span className="text-2xl font-black text-white block font-mono leading-none">${availableBal.toFixed(2)}</span>
           <span className="text-[10px] text-zinc-500 block font-semibold mt-2">Ready to cash out instantly</span>
         </div>
 
-        {/* Pending review credits */}
+        {/* 2. Pending Earnings */}
         <div className="p-5 bg-zinc-900/30 border border-white/5 rounded-2xl">
-          <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block mb-1">Earning Pending Review</span>
+          <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block mb-1">Pending Earnings</span>
           <span className="text-2xl font-black text-yellow-500 block font-mono leading-none">${pendingBal.toFixed(2)}</span>
-          <span className="text-[10px] text-zinc-500 block font-semibold mt-2">Locked during task proof review</span>
+          <span className="text-[10px] text-zinc-500 block font-semibold mt-2">Displays earnings from submitted tasks that are still awaiting Admin/Moderator review and approval.</span>
         </div>
 
-        {/* Total Earned */}
+        {/* 3. Total Earned Credits */}
         <div className="p-5 bg-zinc-900/30 border border-white/5 rounded-2xl">
           <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block mb-1">Total Earned Credits</span>
           <span className="text-2xl font-black text-white block font-mono leading-none">${currentUser.totalEarned.toFixed(2)}</span>
           <span className="text-[10px] text-zinc-500 block font-semibold mt-2">Accumulated campaign bonuses</span>
         </div>
 
-        {/* Total cashed out */}
+        {/* 4. Withdrawal Requests (Pending Payout) */}
+        <div className="p-5 bg-zinc-900/30 border border-white/5 rounded-2xl">
+          <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block mb-1">Withdrawal Requests (Pending Payout)</span>
+          <span className="text-2xl font-black text-purple-400 block font-mono leading-none">${pendingWithdrawalAmt.toFixed(2)}</span>
+          <span className="text-[10px] text-zinc-500 block font-semibold mt-2">Cashout requests awaiting administrative payout dispatch</span>
+        </div>
+
+        {/* 5. Completed Withdrawals */}
         <div className="p-5 bg-zinc-900/30 border border-white/5 rounded-2xl">
           <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block mb-1">Completed Withdrawals</span>
           <span className="text-2xl font-black text-emerald-400 block font-mono leading-none">${withdrawnAmt.toFixed(2)}</span>
