@@ -47,7 +47,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
       } else if (msg.includes("Please add your Reddit username")) {
         setSyncError("Please add your Reddit username in profile settings.");
       } else {
-        setSyncError("Live Reddit sync temporarily unavailable. Displaying last synced karma.");
+        setSyncError(`Sync failed: ${msg || "Remote interface was unresponsive"}`);
       }
       setTimeout(() => setSyncError(null), 12000);
     } finally {

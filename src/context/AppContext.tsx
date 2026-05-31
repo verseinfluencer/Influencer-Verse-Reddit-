@@ -2802,7 +2802,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const username = currentUser.redditUsername || '';
     const cleanUser = username.replace(/^\/?u\//i, '').replace(/^\/user\//i, '').replace(/^\//, '').trim();
 
-    console.log(`[REDDIT SYNC LOGS] STEP 1: Firebase state check.`);
+    console.log(`[REDDIT SYNC LOGS] STEP 1: Firebase Cloud Function trigger check.`);
     console.log(` - userId: "${uid}"`);
     console.log(` - redditUsername: "${username}"`);
     console.log(` - cleanUser parsed: "${cleanUser}"`);
@@ -2816,154 +2816,62 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       throw new Error("Invalid Reddit username format. Standard Reddit usernames are 3-20 characters.");
     }
 
-    let parsedTotalKarma = 0;
-    let parsedLinkKarma = 0;
-    let parsedCommentKarma = 0;
-    let success = false;
-    let status = 0;
-    let responseBodyText = "";
-    let syncErrorMsg = "";
-
-    const proxyUrl = `/api/reddit/karma?username=${encodeURIComponent(cleanUser)}&t=${Date.now()}`;
-    console.log(`[REDDIT SYNC LOGS] STEP 2: Request sent (Backend server proxy exclusively).`);
-    console.log(` - Request URL: ${proxyUrl}`);
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      controller.abort();
-    }, 12000);
-
+    const functionUrl = "/api/syncRedditKarma";
+    console.log(`[REDDIT SYNC LOGS] STEP 2: Triggering Server-Side Cloud Function syncRedditKarma.`);
+    
     try {
-      const res = await fetch(proxyUrl, {
-        signal: controller.signal,
+      const res = await fetch(functionUrl, {
+        method: "POST",
         headers: {
-          'Accept': 'application/json'
-        }
-      });
-      clearTimeout(timeoutId);
-
-      status = res.status;
-      responseBodyText = await res.text();
-
-      const headersMap: Record<string, string> = {};
-      res.headers.forEach((val, key) => {
-        headersMap[key] = val;
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ userId: uid })
       });
 
-      console.log(`[REDDIT SYNC LOGS] STEP 3: Server response received.`);
-      console.log(` - HTTP Status Code: ${status}`);
-      console.log(` - Response Headers:`, JSON.stringify(headersMap, null, 2));
-      console.log(` - Response body text length: ${responseBodyText.length}`);
+      const data = await res.json();
 
-      const contentType = res.headers.get("content-type") || "";
-      if (res.ok) {
-        if (!contentType.toLowerCase().includes("application/json")) {
-          console.error(`[REDDIT SYNC LOGS] Invalid response content-type: ${contentType}`);
-          syncErrorMsg = "API_UNAVAILABLE";
-        } else {
-          try {
-            const parsedJson = JSON.parse(responseBodyText);
-            const trimmed = responseBodyText.trim();
-            
-            if (trimmed.startsWith("<") || trimmed.toLowerCase().includes("<!doctype")) {
-              console.error("[REDDIT SYNC LOGS] HTML response detected in body text.");
-              syncErrorMsg = "API_UNAVAILABLE";
-            } else if (parsedJson && typeof parsedJson.total_karma === 'number') {
-              parsedTotalKarma = parsedJson.total_karma;
-              parsedLinkKarma = typeof parsedJson.link_karma === 'number' ? parsedJson.link_karma : 0;
-              parsedCommentKarma = typeof parsedJson.comment_karma === 'number' ? parsedJson.comment_karma : 0;
-              success = true;
-              console.log(`[REDDIT SYNC LOGS] Backend fetch succeeded! Parsed total_karma: ${parsedTotalKarma}`);
-            } else if (parsedJson && parsedJson.error) {
-              syncErrorMsg = parsedJson.error;
-            } else {
-              syncErrorMsg = "Required JSON fields like total_karma are missing from API response.";
-            }
-          } catch (jsonErr: any) {
-            syncErrorMsg = "API_UNAVAILABLE";
-          }
-        }
-      } else {
-        try {
-          const errorJson = JSON.parse(responseBodyText);
-          syncErrorMsg = errorJson.error || `HTTP_Error_${status}`;
-        } catch (e) {
-          syncErrorMsg = `HTTP_Error_${status}`;
-        }
+      if (!res.ok) {
+        const errorReason = data.error || "API_UNAVAILABLE";
+        console.error(`[REDDIT SYNC LOGS] Cloud Function returned error: ${errorReason}`);
+        throw new Error(errorReason);
       }
-    } catch (err: any) {
-      clearTimeout(timeoutId);
-      const isTimeout = err.name === 'AbortError';
-      syncErrorMsg = isTimeout ? "RATE_LIMIT_REACHED" : (err.message || "API_UNAVAILABLE");
-      console.error(`[REDDIT SYNC LOGS] Server-side request network/failure error:`, err);
-    }
 
-    if (!success) {
-      console.error(`[REDDIT SYNC LOGS] Sync critically failed: ${syncErrorMsg}`);
-      throw new Error(syncErrorMsg || "API_UNAVAILABLE");
-    }
+      console.log(`[REDDIT SYNC LOGS] STEP 3: Cloud Function saved successfully! Updating client state memory:`, data);
 
-    localStorage.removeItem(`reddit_sync_failed_count_${uid}`);
-    localStorage.removeItem(`reddit_sync_next_attempt_${uid}`);
+      const parsedTotalKarma = data.total_karma;
+      const parsedLinkKarma = data.link_karma;
+      const parsedCommentKarma = data.comment_karma;
+      const b = data.karmaBadge;
+      const lastSynced = data.karmaLastSynced;
 
-    const tier = getKarmaTier(parsedTotalKarma);
-    const b = tier.name;
-    const lastSynced = new Date().toISOString();
-
-    console.log(`[REDDIT SYNC LOGS] STEP 4: Writing updated variables to Firebase Firestore.`);
-    console.log(` - Collection: 'users', docId: '${uid}'`);
-
-    await updateDoc(doc(db, 'users', uid), {
-      karma: parsedTotalKarma,
-      redditKarma: parsedTotalKarma,
-      total_karma: parsedTotalKarma,
-      comment_karma: parsedCommentKarma,
-      link_karma: parsedLinkKarma,
-      karmaBadge: b,
-      karmaTier: b,
-      karmaYesterday: currentUser.karma ?? parsedTotalKarma,
-      karmaLastSynced: lastSynced,
-      lastRedditSync: lastSynced,
-      linkKarma: parsedLinkKarma,
-      commentKarma: parsedCommentKarma,
-      redditLinkKarma: parsedLinkKarma,
-      redditCommentKarma: parsedCommentKarma
-    });
-
-    console.log(`[REDDIT SYNC LOGS] STEP 5: Firebase update complete! Propagating values to React Application Context...`);
-
-    setCurrentUser(prev => {
-      if (!prev || prev.id !== uid) return prev;
-      const updatedUser = {
-        ...prev,
-        karma: parsedTotalKarma,
-        redditKarma: parsedTotalKarma,
-        total_karma: parsedTotalKarma,
-        comment_karma: parsedCommentKarma,
-        link_karma: parsedLinkKarma,
-        karmaBadge: b,
-        karmaTier: b,
-        karmaYesterday: prev.karma ?? parsedTotalKarma,
-        karmaLastSynced: lastSynced,
-        lastRedditSync: lastSynced,
-        linkKarma: parsedLinkKarma,
-        commentKarma: parsedCommentKarma,
-        redditLinkKarma: parsedLinkKarma,
-        redditCommentKarma: parsedCommentKarma
-      };
-      
-      console.log(`[REDDIT SYNC LOGS] UI state synchronized live:`, {
-        userId: updatedUser.id,
-        updatedKarma: updatedUser.redditKarma,
-        updatedLinkKarma: updatedUser.linkKarma,
-        updatedCommentKarma: updatedUser.commentKarma,
-        updatedTier: updatedUser.karmaTier,
-        updatedLastSync: updatedUser.lastRedditSync
+      setCurrentUser(prev => {
+        if (!prev || prev.id !== uid) return prev;
+        const updatedUser = {
+          ...prev,
+          karma: parsedTotalKarma,
+          redditKarma: parsedTotalKarma,
+          total_karma: parsedTotalKarma,
+          comment_karma: parsedCommentKarma,
+          link_karma: parsedLinkKarma,
+          karmaBadge: b,
+          karmaTier: b,
+          karmaYesterday: prev.karma ?? parsedTotalKarma,
+          karmaLastSynced: lastSynced,
+          lastRedditSync: lastSynced,
+          linkKarma: parsedLinkKarma,
+          commentKarma: parsedCommentKarma,
+          redditLinkKarma: parsedLinkKarma,
+          redditCommentKarma: parsedCommentKarma
+        };
+        return updatedUser;
       });
-      return updatedUser;
-    });
 
-    return parsedTotalKarma;
+      return parsedTotalKarma;
+
+    } catch (err: any) {
+      console.error(`[REDDIT SYNC LOGS] Cloud Function execution failed:`, err);
+      throw err;
+    }
   };
 
   const adminDeleteUserAccount = async (userId: string) => {
