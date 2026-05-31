@@ -673,16 +673,32 @@ export const Marketplace: React.FC = () => {
                         <div className="space-y-1 border-t border-white/5 pt-2">
                           <div className="flex justify-between items-center">
                             <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-extrabold">Comment Text</span>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleCopyText(task.commentGuidelines || '', 'Comment text copied');
-                              }}
-                              className="text-[9px] text-purple-400 hover:text-purple-300 font-extrabold flex items-center gap-0.5 bg-purple-500/10 hover:bg-purple-500/20 px-2 py-0.5 rounded transition-all border border-purple-500/5 cursor-pointer font-sans"
-                            >
-                              <Copy className="w-2.5 h-2.5" /> Copy Comment Text
-                            </button>
+                            <div className="flex gap-1.5">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCopyText(task.commentGuidelines || '', 'Comment copied successfully');
+                                }}
+                                className="text-[9px] text-purple-400 hover:text-purple-300 font-extrabold flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-2 py-0.5 rounded transition-all border border-purple-500/5 cursor-pointer font-sans"
+                              >
+                                <Copy className="w-2.5 h-2.5" /> Copy Comment
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const content = 
+                                    `Post URL: ${task.postUrlToCommentOn || ''}\n\n` +
+                                    `Comment Description: ${task.commentGuidelines || ''}\n\n` +
+                                    `Task Instructions: ${task.description || ''}`;
+                                  handleCopyText(content, 'Task copied successfully');
+                                }}
+                                className="text-[9px] text-pink-400 hover:text-pink-300 font-extrabold flex items-center gap-1 bg-pink-500/10 hover:bg-pink-500/20 px-2 py-0.5 rounded transition-all border border-pink-500/5 cursor-pointer"
+                              >
+                                <Copy className="w-2.5 h-2.5" /> Copy All
+                              </button>
+                            </div>
                           </div>
                           <p className="text-zinc-300 font-normal leading-normal select-text break-words line-clamp-2 hover:line-clamp-none transition-all duration-300">
                             {task.commentGuidelines}
@@ -975,13 +991,28 @@ export const Marketplace: React.FC = () => {
                         <div className="space-y-1 bg-zinc-900 border border-white/5 p-2.5 rounded-xl">
                           <div className="flex justify-between items-center">
                             <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-extrabold">Comment Text / Guidelines</span>
-                            <button
-                              type="button"
-                              onClick={() => handleCopyText(selectedTask.commentGuidelines || '', 'Comment text copied')}
-                              className="text-[9px] text-purple-400 hover:text-purple-300 font-extrabold flex items-center gap-0.5 bg-purple-500/15 px-2 py-0.5 rounded cursor-pointer transition-all border border-purple-500/10"
-                            >
-                              <Copy className="w-2.5 h-2.5" /> Copy Comment Text
-                            </button>
+                            <div className="flex gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleCopyText(selectedTask.commentGuidelines || '', 'Comment copied successfully')}
+                                className="text-[9px] text-purple-400 hover:text-purple-300 font-extrabold flex items-center gap-1 bg-purple-500/15 px-2 py-0.5 rounded cursor-pointer transition-all border border-purple-500/10 font-sans"
+                              >
+                                <Copy className="w-2.5 h-2.5" /> Copy Comment
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const content = 
+                                    `Post URL: ${selectedTask.postUrlToCommentOn || ''}\n\n` +
+                                    `Comment Description: ${selectedTask.commentGuidelines || ''}\n\n` +
+                                    `Task Instructions: ${selectedTask.description || ''}`;
+                                  handleCopyText(content, 'Task copied successfully');
+                                }}
+                                className="text-[9px] text-pink-400 hover:text-pink-300 font-extrabold flex items-center gap-1 bg-pink-500/15 px-2 py-0.5 rounded cursor-pointer transition-all border border-pink-500/10 font-sans"
+                              >
+                                <Copy className="w-2.5 h-2.5" /> Copy All
+                              </button>
+                            </div>
                           </div>
                           <p className="text-zinc-300 text-[11px] select-text break-words whitespace-pre-wrap leading-relaxed">
                             {selectedTask.commentGuidelines}

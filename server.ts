@@ -41,203 +41,101 @@ function getKarmaTier(karma: number) {
   return tiers[tiers.length - 1];
 }
 
-// Scrape helper with rotating proxy pool
+// Scrape helper with retry-once and validation rules
 async function fetchRedditKarmaInternal(cleanUser: string): Promise<KarmaResult> {
-  const inspectResponseError = (status: number, text: string): string => {
-    if (status === 429) return "RATE_LIMIT_REACHED";
-    if (status === 403) return "PRIVATE_PROFILE";
-    
-    let parsed: any = null;
-    try {
-      parsed = JSON.parse(text);
-    } catch (e) {}
-
-    if (parsed?.error === 404 || status === 404) {
-      if (parsed?.reason === "suspended" || parsed?.reason === "deleted" || 
-          (parsed?.message && /suspended|deleted|deactivated/i.test(parsed.message))) {
-        return "DELETED_OR_SUSPENDED";
-      }
-      return "USER_NOT_FOUND";
-    }
-
-    if (parsed?.error === 403) return "PRIVATE_PROFILE";
-    if (parsed?.error === 429) return "RATE_LIMIT_REACHED";
-
-    return "API_UNAVAILABLE";
-  };
-
-  const clientId = process.env.REDDIT_CLIENT_ID;
-  const clientSecret = process.env.REDDIT_CLIENT_SECRET;
-
-  // Approach 1: OAuth client credentials flow
-  if (clientId && clientSecret) {
-    try {
-      console.log(`[REDDIT SERVER API] Fetching via Reddit OAuth client credentials...`);
-      const authHeader = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
-      const tokenRes = await fetch("https://www.reddit.com/api/v1/access_token", {
-        method: "POST",
-        headers: {
-          "Authorization": `Basic ${authHeader}`,
-          "Content-Type": "application/x-www-form-urlencoded",
-          "User-Agent": "InfluencerVerseRedditSync/1.0.0 (by /u/kallol_admin)"
-        },
-        body: "grant_type=client_credentials"
-      });
-
-      if (tokenRes.ok) {
-        const tokenData: any = await tokenRes.json();
-        const accessToken = tokenData.access_token;
-        if (accessToken) {
-          const targetUrl = `https://oauth.reddit.com/user/${cleanUser}/about?raw_json=1&t=${Date.now()}`;
-          const userRes = await fetch(targetUrl, {
-            headers: {
-              "Authorization": `Bearer ${accessToken}`,
-              "User-Agent": "InfluencerVerseRedditSync/1.0.0 (by /u/kallol_admin)"
-            }
-          });
-
-          const text = await userRes.text();
-          if (!userRes.ok) {
-            const errCode = inspectResponseError(userRes.status, text);
-            throw new Error(errCode);
-          }
-
-          const userData = JSON.parse(text);
-          const d = userData?.data;
-          if (d) {
-            if (d.is_suspended === true) {
-              throw new Error("DELETED_OR_SUSPENDED");
-            }
-            const link_karma = typeof d.link_karma === 'number' ? d.link_karma : 0;
-            const comment_karma = typeof d.comment_karma === 'number' ? d.comment_karma : 0;
-            const awarder_karma = typeof d.awarder_karma === 'number' ? d.awarder_karma : 0;
-            const awardee_karma = typeof d.awardee_karma === 'number' ? d.awardee_karma : 0;
-            const total_karma = link_karma + comment_karma + awarder_karma + awardee_karma;
-
-            return { total_karma, link_karma, comment_karma, awarder_karma, awardee_karma, method: "OAuth" };
-          }
-        }
-      }
-    } catch (err: any) {
-      const errStr = err.message || "";
-      if (["USER_NOT_FOUND", "DELETED_OR_SUSPENDED", "PRIVATE_PROFILE", "RATE_LIMIT_REACHED"].includes(errStr)) {
-        throw err;
-      }
-      console.warn(`[REDDIT SERVER API] OAuth failed, attempting public fallback: ${errStr}`);
-    }
-  }
-
-  // Approach 2: Direct public fetch with cache buster
   const directUrl = `https://www.reddit.com/user/${cleanUser}/about.json?raw_json=1&t=${Date.now()}`;
-  try {
-    console.log(`[REDDIT SERVER API] Fetching public Reddit profile: ${directUrl}`);
+
+  const attemptFetch = async (): Promise<any> => {
+    console.log(`[REDDIT SERVER API] Dispatching request with User-Agent: Mozilla/5.0 and Accept: application/json to: ${directUrl}`);
     const response = await fetch(directUrl, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 (InfluencerVerseRedditSyncClient/1.0)",
+        "User-Agent": "Mozilla/5.0",
         "Accept": "application/json"
       }
     });
 
-    const text = await response.text();
+    const statusCode = response.status;
+    const bodyText = (await response.text()).trim();
+
     if (!response.ok) {
-      const errCode = inspectResponseError(response.status, text);
-      throw new Error(errCode);
-    }
-
-    const parsed = JSON.parse(text);
-    const d = parsed?.data;
-    if (d) {
-      if (d.is_suspended === true) {
-        throw new Error("DELETED_OR_SUSPENDED");
-      }
-      const link_karma = typeof d.link_karma === 'number' ? d.link_karma : 0;
-      const comment_karma = typeof d.comment_karma === 'number' ? d.comment_karma : 0;
-      const awarder_karma = typeof d.awarder_karma === 'number' ? d.awarder_karma : 0;
-      const awardee_karma = typeof d.awardee_karma === 'number' ? d.awardee_karma : 0;
-      const total_karma = link_karma + comment_karma + awarder_karma + awardee_karma;
-
-      return { total_karma, link_karma, comment_karma, awarder_karma, awardee_karma, method: "Direct" };
-    }
-  } catch (err: any) {
-    const errStr = err.message || "";
-    if (["USER_NOT_FOUND", "DELETED_OR_SUSPENDED", "PRIVATE_PROFILE", "RATE_LIMIT_REACHED"].includes(errStr)) {
-      throw err;
-    }
-    console.warn(`[REDDIT SERVER API] Direct fetch failed, attempting backup proxies: ${errStr}`);
-  }
-
-  // Approach 3: Rotating CORS proxy fallback pool
-  const proxyUrls = [
-    `https://api.allorigins.win/get?url=${encodeURIComponent(directUrl)}`,
-    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(directUrl)}`,
-    `https://corsproxy.io/?${encodeURIComponent(directUrl)}`
-  ];
-
-  for (const proxyUrl of proxyUrls) {
-    try {
-      console.log(`[REDDIT SERVER API] Checking backup proxy: ${proxyUrl}`);
-      const response = await fetch(proxyUrl, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-          "Accept": "application/json"
-        }
-      });
-
-      if (!response.ok) continue;
-
-      const bodyText = await response.text();
-      let payload: any = null;
-      try {
-        payload = JSON.parse(bodyText);
-      } catch (e) {
-        continue;
-      }
-
-      if (payload && typeof payload.contents === 'string') {
-        const contentsStr = payload.contents.trim();
-        if (contentsStr.startsWith("<") || contentsStr.toLowerCase().includes("<!doctype")) {
-          continue;
-        }
-        try {
-          payload = JSON.parse(contentsStr);
-        } catch (e) {
-          continue;
-        }
-      }
-
-      if (payload && (payload.error === 404 || payload.message === "Not Found")) {
-        throw new Error("USER_NOT_FOUND");
-      }
-      if (payload && (payload.error === 403 || payload.message === "Forbidden" || payload.reason === "private")) {
-        throw new Error("PRIVATE_PROFILE");
-      }
-      if (payload && (payload.error === 429 || payload.message === "Too Many Requests")) {
+      if (statusCode === 429) {
         throw new Error("RATE_LIMIT_REACHED");
       }
-
-      const dataObj = payload?.data || payload;
-      if (dataObj) {
-        if (dataObj.is_suspended === true) {
-          throw new Error("DELETED_OR_SUSPENDED");
-        }
-        const link_karma = typeof dataObj.link_karma === 'number' ? dataObj.link_karma : 0;
-        const comment_karma = typeof dataObj.comment_karma === 'number' ? dataObj.comment_karma : 0;
-        const awarder_karma = typeof dataObj.awarder_karma === 'number' ? dataObj.awarder_karma : 0;
-        const awardee_karma = typeof dataObj.awardee_karma === 'number' ? dataObj.awardee_karma : 0;
-        const total_karma = link_karma + comment_karma + awarder_karma + awardee_karma;
-
-        return { total_karma, link_karma, comment_karma, awarder_karma, awardee_karma, method: "Proxy" };
+      if (statusCode === 403) {
+        throw new Error("PRIVATE_PROFILE");
       }
-    } catch (proxyErr: any) {
-      const pMsg = proxyErr.message || "";
-      if (["USER_NOT_FOUND", "DELETED_OR_SUSPENDED", "PRIVATE_PROFILE", "RATE_LIMIT_REACHED"].includes(pMsg)) {
-        throw proxyErr;
+      if (statusCode === 404) {
+        throw new Error("USER_NOT_FOUND");
       }
+      throw new Error(`HTTP_ERROR_${statusCode}`);
+    }
+
+    if (!bodyText) {
+      throw new Error("EMPTY_RESPONSE");
+    }
+
+    if (bodyText.startsWith("<") || bodyText.toLowerCase().includes("<!doctype") || bodyText.toLowerCase().includes("<html")) {
+      throw new Error("HTML_RESPONSE");
+    }
+
+    let parsed: any;
+    try {
+      parsed = JSON.parse(bodyText);
+    } catch (e) {
+      throw new Error("INVALID_JSON");
+    }
+
+    if (parsed && (parsed.error === 404 || parsed.error === 403 || parsed.error === 429)) {
+      if (parsed.error === 404) throw new Error("USER_NOT_FOUND");
+      if (parsed.error === 403) throw new Error("PRIVATE_PROFILE");
+      if (parsed.error === 429) throw new Error("RATE_LIMIT_REACHED");
+    }
+
+    const d = parsed?.data;
+    if (!d) {
+      throw new Error("INVALID_REDDIT_PAYLOAD");
+    }
+
+    if (d.is_suspended === true) {
+      throw new Error("DELETED_OR_SUSPENDED");
+    }
+
+    return d;
+  };
+
+  try {
+    const data = await attemptFetch();
+    const link_karma = typeof data.link_karma === 'number' ? data.link_karma : 0;
+    const comment_karma = typeof data.comment_karma === 'number' ? data.comment_karma : 0;
+    const awarder_karma = typeof data.awarder_karma === 'number' ? data.awarder_karma : 0;
+    const awardee_karma = typeof data.awardee_karma === 'number' ? data.awardee_karma : 0;
+    const total_karma = link_karma + comment_karma + awarder_karma + awardee_karma;
+
+    return { total_karma, link_karma, comment_karma, awarder_karma, awardee_karma, method: "Primary" };
+  } catch (err: any) {
+    const errMessage = err.message || "";
+    // Terminal exceptions should not be retried (avoid useless waits)
+    if (["USER_NOT_FOUND", "DELETED_OR_SUSPENDED", "PRIVATE_PROFILE"].includes(errMessage)) {
+      throw err;
+    }
+
+    console.warn(`[REDDIT SERVER API] Primary attempt failed (${errMessage}). Retrying once after 2 seconds...`);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    try {
+      const data = await attemptFetch();
+      const link_karma = typeof data.link_karma === 'number' ? data.link_karma : 0;
+      const comment_karma = typeof data.comment_karma === 'number' ? data.comment_karma : 0;
+      const awarder_karma = typeof data.awarder_karma === 'number' ? data.awarder_karma : 0;
+      const awardee_karma = typeof data.awardee_karma === 'number' ? data.awardee_karma : 0;
+      const total_karma = link_karma + comment_karma + awarder_karma + awardee_karma;
+
+      return { total_karma, link_karma, comment_karma, awarder_karma, awardee_karma, method: "Retry" };
+    } catch (retryErr: any) {
+      console.error(`[REDDIT SERVER API] Retry attempt failed: ${retryErr.message}`);
+      throw retryErr;
     }
   }
-
-  // Absolute limit fallback
-  throw new Error("RATE_LIMIT_REACHED");
 }
 
 async function startServer() {
@@ -246,7 +144,7 @@ async function startServer() {
 
   app.use(express.json());
 
-  // 1. Pure HTTP Proxy GET endpoint (preserves compatibility)
+  // 1. Pure HTTP Proxy GET endpoint (preserves backwards compatibility)
   app.get("/api/reddit/karma", async (req, res) => {
     const usernameQuery = req.query.username as string;
     if (!usernameQuery) {
@@ -264,7 +162,7 @@ async function startServer() {
     } catch (err: any) {
       const errStr = err.message || "API_UNAVAILABLE";
       const statusCode = errStr === "RATE_LIMIT_REACHED" ? 429 : errStr === "PRIVATE_PROFILE" ? 403 : 404;
-      return res.status(statusCode).json({ error: errStr });
+      return res.status(statusCode).json({ error: errStr, message: `Sync failed: ${errStr}` });
     }
   });
 
