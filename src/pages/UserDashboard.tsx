@@ -28,11 +28,18 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
     try {
       await syncRedditKarma();
       setSyncSuccess(true);
+      setSyncError(null); // Clear any and all Sync Failed warnings on success
       setTimeout(() => setSyncSuccess(false), 3000);
     } catch (err: any) {
-      console.error(err);
-      setSyncError(err?.message || "Live sync temporarily unavailable. Displaying latest saved Reddit karma.");
-      setTimeout(() => setSyncError(null), 7000);
+      console.error("[DASHBOARD SYNC ERROR]", err);
+      // Requirement 6: Keep previous karma, show friendly fallback instructions, suppress raw errors
+      const msg = err?.message || "";
+      if (msg.includes("Please add your Reddit username")) {
+        setSyncError("Please add your Reddit username in profile settings.");
+      } else {
+        setSyncError("Unable to fetch latest Reddit karma. Displaying last synced value.");
+      }
+      setTimeout(() => setSyncError(null), 10000);
     } finally {
       setIsSyncing(false);
     }
@@ -178,21 +185,30 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
               <Star className="w-4 h-4 text-amber-400" /> Reddit Karma Tier Status
             </span>
             <div className="flex items-center gap-3">
-              <span className="text-white font-black font-mono">{currentUser.karma?.toLocaleString() || 0} Reddit Karma</span>
+              <div className="flex flex-col text-right">
+                <span className="text-white font-black font-mono">{currentUser.karma?.toLocaleString() || 0} Reddit Karma</span>
+                {currentUser.linkKarma !== undefined && currentUser.commentKarma !== undefined && (
+                  <span className="text-[9px] text-zinc-400 font-mono">
+                    (Link: {currentUser.linkKarma.toLocaleString()} | Comment: {currentUser.commentKarma.toLocaleString()})
+                  </span>
+                )}
+              </div>
               <button
                 id="sync-reddit-karma-btn"
                 onClick={handleSyncKarma}
-                disabled={isSyncing}
-                className={`flex items-center gap-1 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg border transition-all ${
-                  isSyncing 
-                    ? 'bg-purple-500/10 text-purple-400 border-purple-500/20 cursor-wait'
-                    : syncSuccess
-                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                      : 'bg-white/5 text-zinc-300 border-white/5 hover:bg-white/10 hover:border-white/10 active:scale-95'
+                disabled={isSyncing || !currentUser.redditUsername || !currentUser.redditUsername.trim()}
+                className={`flex items-center justify-center gap-2 px-3.5 py-2.5 md:py-1 md:px-2.5 text-xs md:text-[10px] font-black uppercase tracking-wider rounded-xl md:rounded-lg border transition-all cursor-pointer min-h-[44px] md:min-h-0 ${
+                  (!currentUser.redditUsername || !currentUser.redditUsername.trim())
+                    ? 'bg-zinc-900 text-zinc-500 border-zinc-800 cursor-not-allowed opacity-50'
+                    : isSyncing 
+                      ? 'bg-purple-500/10 text-purple-400 border-purple-500/20 cursor-wait'
+                      : syncSuccess
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                        : 'bg-white/5 text-zinc-300 border-white/5 hover:bg-white/10 hover:border-white/10 active:scale-95'
                 }`}
-                title="Force refresh Reddit karma balance now"
+                title={(!currentUser.redditUsername || !currentUser.redditUsername.trim()) ? "Please add your Reddit username in profile settings" : "Force refresh Reddit karma balance now"}
               >
-                <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-3.5 h-3.5 md:w-3 md:h-3 ${isSyncing ? 'animate-spin' : ''}`} />
                 <span>{isSyncing ? 'Syncing...' : syncSuccess ? 'Synced' : 'Sync Now'}</span>
               </button>
             </div>
@@ -205,11 +221,15 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
             </span>
           </div>
 
-          {syncError && (
+          {(!currentUser.redditUsername || !currentUser.redditUsername.trim()) ? (
+            <div className="text-[10px] text-amber-500 font-bold bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-xl uppercase tracking-wider inline-flex items-center gap-1.5 w-max">
+              <span>⚠️ Please add your Reddit username in profile settings.</span>
+            </div>
+          ) : syncError ? (
             <div className="text-[10px] text-amber-500 font-bold bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-xl uppercase tracking-wider animate-pulse inline-flex items-center gap-1.5">
               <span>⚠️ {syncError}</span>
             </div>
-          )}
+          ) : null}
           
           {/* Progress bar to next tier */}
           <div className="space-y-1">
@@ -235,16 +255,28 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
           </div>
         </div>
 
-        <div className="flex gap-4 md:border-l md:border-white/5 md:pl-8 py-1.5 shrink-0 select-none">
+        <div className="flex flex-wrap gap-4 md:border-l md:border-white/5 md:pl-8 py-1.5 shrink-0 select-none">
           <div>
-            <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider block">Global Multiplier</span>
-            <span className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-400 font-display">
-              {settings.globalMultiplier.toFixed(2)}x Boost
+            <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider block">Global Boost</span>
+            <span className="text-sm font-black text-white font-mono block">
+              {settings.globalMultiplier.toFixed(2)}x
+            </span>
+          </div>
+          <div>
+            <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider block">Tier Boost</span>
+            <span className="text-sm font-black text-purple-400 font-mono block">
+              {(currentTier.multiplier || 1.00).toFixed(2)}x
+            </span>
+          </div>
+          <div>
+            <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider block text-pink-400">Total Reward Multiplier</span>
+            <span className="text-lg font-black bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-pink-400 to-amber-400 font-display font-mono block">
+              {(settings.globalMultiplier * (currentTier.multiplier || 1.00)).toFixed(2)}x
             </span>
           </div>
           <div>
             <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider block">Badge level</span>
-            <span className="text-xs px-2.5 py-1 bg-zinc-950 border border-zinc-800 rounded-lg text-purple-400 font-black font-mono inline-block">
+            <span className="text-xs px-2.5 py-1 bg-zinc-950 border border-zinc-800 rounded-lg text-purple-400 font-black font-mono inline-block mt-0.5">
               {currentTier.emoji} {currentTier.name}
             </span>
           </div>

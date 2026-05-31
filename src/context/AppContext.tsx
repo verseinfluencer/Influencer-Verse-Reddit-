@@ -345,6 +345,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const adminEmail = 'kalloldeyprivate20@gmail.com';
           const isCurrentAdmin = firebaseUser.email?.toLowerCase() === adminEmail;
 
+          // REQUIREMENT 3: Verify and ensure every user has a valid redditUsername field stored in Firebase.
+          loadedUsers.forEach(async (u) => {
+            if (!u.redditUsername || typeof u.redditUsername !== 'string' || !u.redditUsername.trim()) {
+              const uRef = doc(db, 'users', u.id);
+              let fallbackUsername = '';
+              if (u.email && u.email.includes('@')) {
+                fallbackUsername = 'u/' + u.email.split('@')[0].replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 15);
+              } else {
+                fallbackUsername = 'u/user_' + u.id.slice(0, 6);
+              }
+              console.warn(`[DATABASE MONITOR] User ${u.id} (${u.fullName || u.email}) is missing a redditUsername. Repairing with valid fallback: ${fallbackUsername}`);
+              try {
+                await updateDoc(uRef, {
+                  redditUsername: fallbackUsername,
+                  redditProfileLink: u.redditProfileLink || `https://www.reddit.com/user/${fallbackUsername.replace(/^u\//, '')}`
+                });
+                console.log(`[DATABASE MONITOR] Successfully repaired redditUsername field in Firebase for user ${u.id}`);
+              } catch (err) {
+                console.error(`[DATABASE MONITOR] Failed to automatically repair missing redditUsername for user ${u.id}:`, err);
+              }
+            }
+          });
+
           if (isCurrentAdmin) {
             const primaryAdminUid = firebaseUser.uid;
             
@@ -676,11 +699,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       let initialKarma = 450;
       try {
-        const resp = await fetch(`https://www.reddit.com/user/${cleanNewReddit}/about.json`);
+        const resp = await fetch(`/api/reddit/karma?username=${encodeURIComponent(cleanNewReddit)}`);
         if (resp.ok) {
           const body = await resp.json();
-          if (body && body.data && typeof body.data.total_karma === 'number') {
-            initialKarma = body.data.total_karma;
+          if (body && typeof body.total_karma === 'number') {
+            initialKarma = body.total_karma;
           }
         }
       } catch (err) {
@@ -2696,40 +2719,104 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const fetchRedditKarma = async (cleanUser: string): Promise<number> => {
+    // 1. Primary: Query the secure local backend server proxy (CORS-free, direct request, OAuth-enabled, rate-limit protected)
+    try {
+      console.log(`[REDDIT SYNC ENGINE] Resolving Karma for u/${cleanUser} via server API /api/reddit/karma...`);
+      const res = await fetch(`/api/reddit/karma?username=${encodeURIComponent(cleanUser)}`);
+      const payload = await res.json();
+
+      console.log(`[REDDIT SYNC ENGINE] Server API response payload:`, payload);
+
+      if (res.status === 404 || payload.error === "USER_NOT_FOUND") {
+        throw new Error("USER_NOT_FOUND");
+      }
+      if (res.status === 429 || payload.error === "RATE_LIMIT_REACHED") {
+        throw new Error("RATE_LIMIT_REACHED");
+      }
+      if (!res.ok) {
+        throw new Error(payload.message || `API_FAILURE_HTTP_STATUS_${res.status}`);
+      }
+
+      if (payload && typeof payload.total_karma === 'number') {
+        console.log(`[REDDIT SYNC ENGINE] Successfully fetched u/${cleanUser} karma directly from server API: ${payload.total_karma} (Method: ${payload.method || 'Direct'})`);
+        return payload.total_karma;
+      }
+    } catch (e: any) {
+      console.warn(`[REDDIT SYNC ENGINE] Primary backend API fetch failed. Swapping to public CORS proxies. Detail:`, e);
+      if (e.message === "USER_NOT_FOUND" || e.message === "RATE_LIMIT_REACHED") {
+        throw e;
+      }
+    }
+
+    // 2. Secondary fallback via direct client-side proxies
     const urls = [
-      `https://www.reddit.com/user/${cleanUser}/about.json`,
+      `https://api.allorigins.win/get?url=${encodeURIComponent(`https://www.reddit.com/user/${cleanUser}/about.json`)}`,
+      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(`https://www.reddit.com/user/${cleanUser}/about.json`)}`,
       `https://corsproxy.io/?${encodeURIComponent(`https://www.reddit.com/user/${cleanUser}/about.json`)}`,
-      `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://www.reddit.com/user/${cleanUser}/about.json`)}`
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://www.reddit.com/user/${cleanUser}/about.json`)}`,
+      `https://www.reddit.com/user/${cleanUser}/about.json`
     ];
 
     let lastError: any = null;
+    let isRateLimited = false;
 
     for (const url of urls) {
       try {
-        console.log(`[REDDIT SYNC ENGINE] Attempting fetch: ${url}`);
+        console.log(`[REDDIT SYNC ENGINE] Client proxy backup fetch: ${url}`);
         const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
         
         if (res.status === 404) {
           throw new Error("USER_NOT_FOUND");
         }
 
+        if (res.status === 429) {
+          isRateLimited = true;
+          throw new Error("RATE_LIMIT_REACHED");
+        }
+
         if (!res.ok) {
           throw new Error(`HTTP_STATUS_${res.status}`);
         }
 
-        const data = await res.json();
+        let data = await res.json();
+        
+        // Handle AllOrigins wrapped payload format
+        if (data && typeof data.contents === 'string') {
+          try {
+            data = JSON.parse(data.contents);
+          } catch (e) {
+            console.warn("[REDDIT SYNC ENGINE] Failed to parse wrapped contents from AllOrigins wrapper.", e);
+          }
+        }
+
+        // Check if error information was wrapped inside successful response
+        if (data && (data.error === 404 || data.message === "Not Found")) {
+          throw new Error("USER_NOT_FOUND");
+        }
+        if (data && (data.error === 429 || data.message === "Too Many Requests")) {
+          isRateLimited = true;
+          throw new Error("RATE_LIMIT_REACHED");
+        }
+
         const dataObj = data?.data || data;
 
         if (dataObj && typeof dataObj.total_karma === 'number') {
           return dataObj.total_karma;
         }
       } catch (e: any) {
-        console.warn(`[REDDIT SYNC ENGINE] URL failed: ${url}`, e);
-        if (e.message === 'USER_NOT_FOUND' || e.message?.includes('404')) {
+        console.warn(`[REDDIT SYNC ENGINE] Client backup URL failed: ${url}`, e);
+        if (e.message === 'USER_NOT_FOUND') {
           throw new Error("USER_NOT_FOUND");
+        }
+        if (e.message === 'RATE_LIMIT_REACHED') {
+          isRateLimited = true;
         }
         lastError = e;
       }
+    }
+
+    if (isRateLimited) {
+      throw new Error("RATE_LIMIT_REACHED");
     }
 
     throw lastError || new Error("API_FAILURE");
@@ -2741,86 +2828,157 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const username = currentUser.redditUsername || '';
     const cleanUser = username.replace(/^\/?u\//i, '').replace(/^\/user\//i, '').replace(/^\//, '').trim();
 
-    // 1. Validation before syncing
-    if (!username.trim() || !/^[a-zA-Z0-9_-]{3,20}$/.test(cleanUser)) {
-      throw new Error("Invalid Reddit username. Please update your Reddit profile.");
+    // 8. If redditUsername is missing: Show custom prompt, disable Sync Button
+    if (!username.trim() || !cleanUser) {
+      throw new Error("Please add your Reddit username in profile settings.");
     }
+    if (!/^[a-zA-Z0-9_-]{3,20}$/.test(cleanUser)) {
+      throw new Error("Invalid Reddit username format. Standard Reddit usernames are 3-20 characters.");
+    }
+
+    let parsedTotalKarma = 0;
+    let parsedLinkKarma = 0;
+    let parsedCommentKarma = 0;
+    let success = false;
+    let status = 0;
+    let responseBodyText = "";
+
+    // 9. Add timeout protection: Abort request after 10 seconds
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 10000);
 
     try {
-      // 2. Fetch via multiple avenues to defeat CORS & Rate Limits
-      const realKarma = await fetchRedditKarma(cleanUser);
-
-      // 3. Clear failure tracking on success
-      localStorage.removeItem(`reddit_sync_failed_count_${uid}`);
-      localStorage.removeItem(`reddit_sync_next_attempt_${uid}`);
-
-      // 4. Update Tier & Badge level
-      const tier = getKarmaTier(realKarma);
-      const b = tier.name; // Bronze, Silver, Gold, Diamond...
-      const lastSynced = new Date().toISOString();
-
-      // 5. Save in Firebase Firestore
-      await updateDoc(doc(db, 'users', uid), {
-        karma: realKarma,
-        karmaBadge: b,
-        karmaYesterday: currentUser.karma ?? realKarma,
-        karmaLastSynced: lastSynced
+      const targetUrl = `https://www.reddit.com/user/${cleanUser}/about.json`;
+      console.log(`[REDDIT SYNC ENGINE] Initiating client direct fetch: ${targetUrl}`);
+      
+      const res = await fetch(targetUrl, {
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 (InfluencerVerseRedditSyncClient/1.0)'
+        }
       });
+      clearTimeout(timeoutId);
 
-      // 6. Update local React state instantly for zero-latency UI refresh
-      setCurrentUser(prev => {
-        if (!prev || prev.id !== uid) return prev;
-        return {
-          ...prev,
-          karma: realKarma,
-          karmaBadge: b,
-          karmaYesterday: prev.karma ?? realKarma,
-          karmaLastSynced: lastSynced
-        };
-      });
+      status = res.status;
+      responseBodyText = await res.text();
 
-    } catch (err: any) {
-      console.error('[DATABASE DEBUG] Reddit Karma sync error:', err);
+      // 7. Add console logging: Username used, HTTP status, Response body, Parsed karma value
+      console.log(`[REDDIT SYNC LOGS] Direct Fetch Results:`);
+      console.log(` - Username used: ${cleanUser}`);
+      console.log(` - HTTP status: ${status}`);
+      console.log(` - Response body length: ${responseBodyText.length}`);
+      console.log(` - Response body preview: ${responseBodyText.slice(0, 500)}`);
 
-      if (err.message === "USER_NOT_FOUND") {
-        throw new Error("Invalid Reddit username. Please update your Reddit profile.");
+      if (res.ok) {
+        const parsedJson = JSON.parse(responseBodyText);
+        const data = parsedJson?.data;
+        if (data && typeof data.total_karma === 'number') {
+          parsedTotalKarma = data.total_karma;
+          parsedLinkKarma = typeof data.link_karma === 'number' ? data.link_karma : 0;
+          parsedCommentKarma = typeof data.comment_karma === 'number' ? data.comment_karma : 0;
+          
+          console.log(`[REDDIT SYNC LOGS] Parsed karma value: ${parsedTotalKarma} (Link: ${parsedLinkKarma}, Comment: ${parsedCommentKarma})`);
+          success = true;
+        } else {
+          console.warn("[REDDIT SYNC LOGS] No data.total_karma found in direct JSON response body.");
+        }
+      } else {
+        console.warn(`[REDDIT SYNC LOGS] Direct fetch returned non-200 status: ${status}`);
       }
-
-      // 7. Auto Sync retry mechanism / backoff tracking
-      const currentFailuresStr = localStorage.getItem(`reddit_sync_failed_count_${uid}`);
-      const currentFailures = currentFailuresStr ? parseInt(currentFailuresStr, 10) : 0;
-      const nextFailures = currentFailures + 1;
-      localStorage.setItem(`reddit_sync_failed_count_${uid}`, nextFailures.toString());
-
-      let delayMs = 15 * 60 * 1000; // 15 mins by default (retry 1)
-      if (nextFailures === 2) {
-        delayMs = 60 * 60 * 1000; // 1 hour (retry 2)
-      } else if (nextFailures >= 3) {
-        delayMs = 6 * 60 * 60 * 1000; // 6 hours (retry 3+)
-      }
-
-      const nextAttemptTime = Date.now() + delayMs;
-      localStorage.setItem(`reddit_sync_next_attempt_${uid}`, nextAttemptTime.toString());
-
-      // 8. Admin Audit Logging of sync failures
-      try {
-        const logId = `log-sync-fail-${Date.now()}`;
-        await setDoc(doc(db, 'audit_logs', logId), {
-          id: logId,
-          action: `Reddit Sync Failure: ${err.message || 'API_FAILURE'}`,
-          targetUserId: uid,
-          operatorId: 'system',
-          operatorName: username,
-          operatorRole: 'system',
-          timestamp: new Date().toISOString()
-        });
-      } catch (logErr) {
-        console.error('Failed to log sync error to firestore:', logErr);
-      }
-
-      // 9. Throw Smart Fallback Message
-      throw new Error("Live sync temporarily unavailable. Displaying latest saved Reddit karma.");
+    } catch (directErr: any) {
+      clearTimeout(timeoutId);
+      console.warn(`[REDDIT SYNC LOGS] Direct client fetch failed or timed out:`, directErr.message || directErr);
     }
+
+    // Fallback path: If direct browser-side fetch fails (CORS blocks), query the secure local backend proxy
+    if (!success) {
+      const fallbackController = new AbortController();
+      const fallbackTimeoutId = setTimeout(() => fallbackController.abort(), 10000);
+      try {
+        const proxyUrl = `/api/reddit/karma?username=${encodeURIComponent(cleanUser)}`;
+        console.log(`[REDDIT SYNC ENGINE] Trying CORS-free server proxy: ${proxyUrl}`);
+        const res = await fetch(proxyUrl, {
+          signal: fallbackController.signal
+        });
+        clearTimeout(fallbackTimeoutId);
+
+        status = res.status;
+        responseBodyText = await res.text();
+
+        console.log(`[REDDIT SYNC LOGS] [FALLBACK PROXY]`);
+        console.log(` - Username used: ${cleanUser}`);
+        console.log(` - HTTP status: ${status}`);
+        console.log(` - Response body length: ${responseBodyText.length}`);
+        console.log(` - Response body: ${responseBodyText}`);
+
+        if (res.ok) {
+          const parsedJson = JSON.parse(responseBodyText);
+          if (parsedJson && typeof parsedJson.total_karma === 'number') {
+            parsedTotalKarma = parsedJson.total_karma;
+            parsedLinkKarma = typeof parsedJson.link_karma === 'number' ? parsedJson.link_karma : 0;
+            parsedCommentKarma = typeof parsedJson.comment_karma === 'number' ? parsedJson.comment_karma : 0;
+            
+            console.log(`[REDDIT SYNC LOGS] [FALLBACK PROXY] Parsed karma value: ${parsedTotalKarma} (Link: ${parsedLinkKarma}, Comment: ${parsedCommentKarma})`);
+            success = true;
+          }
+        }
+      } catch (fallbackErr: any) {
+        clearTimeout(fallbackTimeoutId);
+        console.error(`[REDDIT SYNC LOGS] Fallback proxy fetch failed:`, fallbackErr.message || fallbackErr);
+      }
+    }
+
+    if (!success) {
+      // 6. If the request fails: Keep previous karma value, throw custom message, do not expose internal errors
+      throw new Error("Unable to fetch latest Reddit karma. Displaying last synced value.");
+    }
+
+    // Clear failure tracking on success
+    localStorage.removeItem(`reddit_sync_failed_count_${uid}`);
+    localStorage.removeItem(`reddit_sync_next_attempt_${uid}`);
+
+    // Calculate tiers:
+    // Bronze: 400-999, Silver: 1000-4999, Gold: 5000-9999, Platinum: 10000+
+    const tier = getKarmaTier(parsedTotalKarma);
+    const b = tier.name; // Bronze, Silver, Gold, Platinum
+    const lastSynced = new Date().toISOString();
+
+    // 3. Update Firebase: redditKarma, lastRedditSync, karmaTier (and keep legacy compatibility)
+    await updateDoc(doc(db, 'users', uid), {
+      karma: parsedTotalKarma,
+      redditKarma: parsedTotalKarma,
+      karmaBadge: b,
+      karmaTier: b,
+      karmaYesterday: currentUser.karma ?? parsedTotalKarma,
+      karmaLastSynced: lastSynced,
+      lastRedditSync: lastSynced,
+      linkKarma: parsedLinkKarma,
+      commentKarma: parsedCommentKarma,
+      redditLinkKarma: parsedLinkKarma,
+      redditCommentKarma: parsedCommentKarma
+    });
+
+    // 5. Update dashboard immediately (React state callback)
+    setCurrentUser(prev => {
+      if (!prev || prev.id !== uid) return prev;
+      return {
+        ...prev,
+        karma: parsedTotalKarma,
+        redditKarma: parsedTotalKarma,
+        karmaBadge: b,
+        karmaTier: b,
+        karmaYesterday: prev.karma ?? parsedTotalKarma,
+        karmaLastSynced: lastSynced,
+        lastRedditSync: lastSynced,
+        linkKarma: parsedLinkKarma,
+        commentKarma: parsedCommentKarma,
+        redditLinkKarma: parsedLinkKarma,
+        redditCommentKarma: parsedCommentKarma
+      };
+    });
   };
 
   const adminDeleteUserAccount = async (userId: string) => {

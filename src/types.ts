@@ -27,6 +27,9 @@ export interface User {
   karmaYesterday: number;
   karmaBadge?: string | null;
   karmaLastSynced?: string | null; // ISO string for when Reddit karma was last updated
+  redditKarma?: number;
+  lastRedditSync?: string | null;
+  karmaTier?: string | null;
 
   // Task Claiming & Cooldown fields (Firebase / Server state mirror)
   last_claimed_at?: string | null; // ISO timestamp

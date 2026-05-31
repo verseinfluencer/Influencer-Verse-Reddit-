@@ -5,16 +5,14 @@ export interface KarmaTier {
   maxKarma: number;
   emoji: string;
   badge: string;
+  multiplier: number;
 }
 
 export const KARMA_TIERS: KarmaTier[] = [
-  { id: 1, name: "Bronze", minKarma: 400, maxKarma: 999, emoji: "🥉", badge: "🥉 Bronze" },
-  { id: 2, name: "Silver", minKarma: 1000, maxKarma: 3000, emoji: "🥈", badge: "🥈 Silver" },
-  { id: 3, name: "Gold", minKarma: 3001, maxKarma: 5000, emoji: "⭐", badge: "⭐ Gold" },
-  { id: 4, name: "Diamond", minKarma: 5001, maxKarma: 7000, emoji: "💎", badge: "💎 Diamond" },
-  { id: 5, name: "Platinum", minKarma: 7001, maxKarma: 9000, emoji: "🔥", badge: "🔥 Platinum" },
-  { id: 6, name: "Elite", minKarma: 9001, maxKarma: 11000, emoji: "👑", badge: "👑 Elite" },
-  { id: 7, name: "Legend", minKarma: 11001, maxKarma: Infinity, emoji: "🚀", badge: "🚀 Legend" },
+  { id: 1, name: "Bronze", minKarma: 400, maxKarma: 999, emoji: "🥉", badge: "🥉 Bronze", multiplier: 1.00 },
+  { id: 2, name: "Silver", minKarma: 1000, maxKarma: 4999, emoji: "🥈", badge: "🥈 Silver", multiplier: 1.10 },
+  { id: 3, name: "Gold", minKarma: 5000, maxKarma: 9999, emoji: "⭐", badge: "⭐ Gold", multiplier: 1.25 },
+  { id: 4, name: "Platinum", minKarma: 10000, maxKarma: Infinity, emoji: "💎", badge: "💎 Platinum", multiplier: 1.50 },
 ];
 
 export function getKarmaTier(karma: number): KarmaTier {
@@ -24,7 +22,7 @@ export function getKarmaTier(karma: number): KarmaTier {
   if (k < 400) {
     return KARMA_TIERS[0];
   }
-  return KARMA_TIERS[6];
+  return KARMA_TIERS[KARMA_TIERS.length - 1];
 }
 
 export function getKarmaProgressBar(karma: number) {
