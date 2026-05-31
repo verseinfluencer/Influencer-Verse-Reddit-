@@ -144,6 +144,23 @@ async function startServer() {
 
   app.use(express.json());
 
+  // API route to resolve the visitor's real client IP
+  app.get("/api/ip", (req, res) => {
+    const forwardHeader = req.headers['x-forwarded-for'];
+    const remoteIp = req.socket.remoteAddress;
+    let ip = '';
+    if (forwardHeader) {
+      ip = Array.isArray(forwardHeader) ? forwardHeader[0] : forwardHeader.split(',')[0].trim();
+    } else if (remoteIp) {
+      ip = remoteIp;
+    }
+    // Clean loopback dual stack notation
+    if (ip === '::1' || ip === '127.0.0.1' || ip.includes('127.0.0.1')) {
+      return res.json({ ip: "Not Configured" });
+    }
+    return res.json({ ip });
+  });
+
   // 1. Pure HTTP Proxy GET endpoint (preserves backwards compatibility)
   app.get("/api/reddit/karma", async (req, res) => {
     console.log("[REDDIT PROXY] Reddit api sync is temporarily disabled.");

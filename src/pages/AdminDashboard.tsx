@@ -3235,13 +3235,21 @@ export const AdminDashboard: React.FC = () => {
         )}
 
         {/* ================= 🛡️ ANTI-CHEAT SECURITY CENTER ================= */}
-        {activeTab === 'security' && (
-          <div className="space-y-8 font-semibold">
-            {/* Header and Simulator margin panel config */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              
-              {/* Anti-cheat explanation */}
-              <div className="lg:col-span-2 space-y-4">
+        {activeTab === 'security' && (() => {
+          const isRealIpTrackingActive = (users || []).some(u => 
+            u.ipHistory && u.ipHistory.some(history => 
+              history.ip && 
+              history.ip !== '185.190.140.23' && 
+              history.ip !== currentSimulatedIP && 
+              history.ip !== '127.0.0.1' && 
+              !history.isSimulated
+            )
+          );
+
+          return (
+            <div className="space-y-8 font-semibold">
+              {/* Header and Simulator margin panel config */}
+              <div className="bg-zinc-950/20 p-6 rounded-2xl border border-white/5 space-y-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 bg-red-500/10 rounded-2xl border border-red-500/20 text-red-400">
                     <ShieldAlert className="w-6 h-6" />
@@ -3270,72 +3278,20 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* SIMULATION REAL-TIME IP CONTROL PANEL */}
-              <div className="bg-zinc-950 p-5 rounded-2xl border border-white/5 space-y-4">
-                <span className="text-[10px] font-black tracking-widest text-purple-400 uppercase block">Simulator Control Panel</span>
-                <p className="text-[11px] text-zinc-400 leading-normal font-normal">Change your current simulated network details to test bypass restrictions or automated location travel blocks!</p>
-                
-                <div className="space-y-3.5">
-                  <div>
-                    <label className="text-[9px] font-extrabold uppercase tracking-wide text-zinc-400 block mb-1">Simulated IP Address</label>
-                    <div className="relative">
-                      <input 
-                        type="text" 
-                        value={currentSimulatedIP}
-                        onChange={(e) => {
-                          if (currentUser?.role === 'moderator') {
-                            setShowPermissionRestrictedModal("Modifying simulated network IP controls is restricted to Platform Administrators.");
-                            return;
-                          }
-                          const val = e.target.value.trim();
-                          setCurrentSimulatedIP(val);
-                        }}
-                        className="w-full text-xs font-mono text-white bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-wrap"
-                        placeholder="e.g. 192.168.1.50"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[9px] font-extrabold uppercase tracking-wide text-zinc-400 block mb-1">Simulated Country Origin</label>
-                    <select
-                      value={currentSimulatedCountry}
-                      onChange={(e) => {
-                        if (currentUser?.role === 'moderator') {
-                          setShowPermissionRestrictedModal("Changing country routing controls or simulation properties is restricted to Platform Administrators.");
-                          return;
-                        }
-                        setCurrentSimulatedCountry(e.target.value);
-                      }}
-                      className="w-full text-xs text-white bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 font-bold"
-                    >
-                      <option value="United States">🇺🇸 United States</option>
-                      <option value="India">🇮🇳 India</option>
-                      <option value="Germany">🇩🇪 Germany</option>
-                      <option value="Brazil">🇧🇷 Brazil</option>
-                      <option value="Russia">🇷🇺 Russia</option>
-                      <option value="Japan">🇯🇵 Japan</option>
-                      <option value="Australia">🇦🇺 Australia</option>
-                    </select>
-                  </div>
-                  
-                  <div className="pt-2 text-center">
-                    <span className="px-2 py-0.5 bg-purple-500/10 border border-purple-500/25 rounded text-[8px] font-black text-purple-400 animate-pulse inline-block">
-                      🎯 ACTIVE TELEMETRY SIMULATION
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-
             {/* Core alert feed list and Blacklist */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               
               {/* Alert Feed Col (Takes 2 segments) */}
               <div className="lg:col-span-2 space-y-6">
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <h3 className="text-sm font-black text-white flex items-center gap-2">🚨 Fraud Alerts Detection Stream</h3>
+                  <div className="flex items-center gap-2.5">
+                    <h3 className="text-sm font-black text-white flex items-center gap-2">🚨 Fraud Alerts Detection Stream</h3>
+                    {!isRealIpTrackingActive && (
+                      <span className="px-2.5 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded text-[8px] font-black tracking-wider text-amber-400 uppercase">
+                        ⚠️ IP tracking not configured
+                      </span>
+                    )}
+                  </div>
                   <button 
                     onClick={() => {
                       if (currentUser?.role === 'moderator') {
@@ -3465,7 +3421,14 @@ export const AdminDashboard: React.FC = () => {
 
                 {/* Duplicates Groups Master List Rendering */}
                 <div className="space-y-4 pt-4 border-t border-white/5">
-                  <h3 className="text-sm font-black text-white flex items-center gap-2">🔗 Duplicate Identity Registry Groupings</h3>
+                  <div className="flex items-center gap-2.5">
+                    <h3 className="text-sm font-black text-white flex items-center gap-2">🔗 Duplicate Identity Registry Groupings</h3>
+                    {!isRealIpTrackingActive && (
+                      <span className="px-2.5 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded text-[8px] font-black tracking-wider text-amber-400 uppercase">
+                        ⚠️ IP tracking not configured
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-zinc-500 font-semibold mt-0.5 font-normal">Below are accounts linked by physical IP nodes, shared browser fingerprints, or email aliasing tricks.</p>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -3613,8 +3576,68 @@ export const AdminDashboard: React.FC = () => {
               </div>
 
             </div>
+
+            {/* PLATFORM ADMIN TESTING MODE (SIMULATOR TOOLS) */}
+            {currentUser?.role === 'admin' && (
+              <div className="mt-8 pt-8 border-t border-white/5 space-y-4">
+                <div className="bg-zinc-950 p-6 rounded-2xl border border-purple-500/20 space-y-4">
+                  <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2.5 py-0.5 bg-purple-500/10 border border-purple-500/20 rounded-md text-[9px] font-black text-purple-400">
+                          ⚙️ Testing Mode (Simulator Tools)
+                        </span>
+                        <span className="px-2.5 py-0.5 bg-yellow-500/10 border border-yellow-500/20 rounded-md text-[9px] font-black text-yellow-400 uppercase tracking-wider">
+                          Simulation Mode - Not Real User Data
+                        </span>
+                      </div>
+                      <h3 className="text-base font-black text-white">Administrative Network Simulation Engine</h3>
+                      <p className="text-xs text-zinc-400 font-normal mt-0.5">
+                        Simulate alternative incoming network endpoints to perform compliance test paths. Simulated values do not affect real production metrics or user risk scores, ban status, suspension, fraud alerts, or duplicate groups.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                    <div>
+                      <label className="text-[10px] font-extrabold uppercase tracking-wide text-zinc-400 block mb-1">Simulated IP Address</label>
+                      <input 
+                        type="text" 
+                        value={currentSimulatedIP}
+                        onChange={(e) => {
+                          const val = e.target.value.trim();
+                          setCurrentSimulatedIP(val);
+                        }}
+                        className="w-full text-xs font-mono text-white bg-zinc-900 border border-white/10 rounded-xl px-3 py-2.5"
+                        placeholder="e.g. 192.168.1.50"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-extrabold uppercase tracking-wide text-zinc-400 block mb-1">Simulated Country Origin</label>
+                      <select
+                        value={currentSimulatedCountry}
+                        onChange={(e) => setCurrentSimulatedCountry(e.target.value)}
+                        className="w-full text-xs text-white bg-zinc-900 border border-white/10 rounded-xl px-3 py-2.5 font-bold"
+                      >
+                        <option value="United States">🇺🇸 United States</option>
+                        <option value="India">🇮🇳 India</option>
+                        <option value="Germany">🇩🇪 Germany</option>
+                        <option value="Brazil">🇧🇷 Brazil</option>
+                        <option value="Russia">🇷🇺 Russia</option>
+                        <option value="Japan">🇯🇵 Japan</option>
+                        <option value="Australia">🇦🇺 Australia</option>
+                        <option value="UK">🇬🇧 UK</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
           </div>
-        )}
+         );
+       })()}
 
         {/* ================= ANNOUNCEMENTS TAB ================= */}
         {activeTab === 'announcements' && (

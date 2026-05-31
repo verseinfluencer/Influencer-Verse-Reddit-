@@ -516,9 +516,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const getRealIP = async (): Promise<string | null> => {
+    try {
+      const res = await fetch('/api/ip');
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.ip && data.ip !== 'Not Configured') {
+          return data.ip;
+        }
+      }
+    } catch (err) {
+      console.warn("[REAL IP LOCAL CAPTURE FAILED]", err);
+    }
+    try {
+      const controller = new AbortController();
+      const tId = setTimeout(() => controller.abort(), 1500);
+      const res = await fetch('https://api.ipify.org?format=json', { signal: controller.signal });
+      clearTimeout(tId);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.ip) {
+          return data.ip;
+        }
+      }
+    } catch (err) {
+      console.warn("[REAL IP DIRECT MIRROR FAILED]", err);
+    }
+    return null;
+  };
+
   const login = async (email: string, password: string): Promise<User> => {
-    if (blacklistedIPs.includes(currentSimulatedIP)) {
-      throw new Error(`❌ Access denied. Your IP address (${currentSimulatedIP}) has been blacklisted for violating our Terms of Service.`);
+    const realIP = await getRealIP();
+    if (realIP && blacklistedIPs.includes(realIP)) {
+      throw new Error(`❌ Access denied. Your IP address (${realIP}) has been blacklisted for violating our Terms of Service.`);
     }
 
     const isAdminEmail = email.toLowerCase() === 'kalloldeyprivate20@gmail.com';
@@ -628,13 +658,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const u = userDoc.data() as User;
 
-      const locationInfo = getEstimatedLocationByIP(currentSimulatedIP);
-      const country = locationInfo.country;
       const nowISO = new Date().toISOString();
+      
+      // Filter out any fake simulated IP from previous records to keep database logs clean!
+      const filteredLoginHist = (u.loginHistory || []).filter(h => h.ip !== '185.190.140.23' && h.ip !== currentSimulatedIP && !h.isSimulated);
+      const filteredIpHist = (u.ipHistory || []).filter(h => h.ip !== '185.190.140.23' && h.ip !== currentSimulatedIP && !h.isSimulated);
+
+      let loginHistory = filteredLoginHist;
+      let ipHistory = filteredIpHist;
+
+      if (realIP) {
+        const country = getEstimatedLocationByIP(realIP).country;
+        loginHistory = [{ ip: realIP, country, timestamp: nowISO }, ...filteredLoginHist];
+        ipHistory = [{ ip: realIP, timestamp: nowISO, location: country }, ...filteredIpHist.filter(h => h.ip !== realIP)];
+      }
+
       const updatedUser: any = {
         ...u,
-        loginHistory: [{ ip: currentSimulatedIP, country, timestamp: nowISO }, ...(u.loginHistory || [])],
-        ipHistory: [{ ip: currentSimulatedIP, timestamp: nowISO, location: country }, ...(u.ipHistory || []).filter(h => h.ip !== currentSimulatedIP)],
+        loginHistory,
+        ipHistory,
         lastLoginDate: nowISO.split('T')[0]
       };
       if (isAdminEmail) {
@@ -695,8 +737,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     referralCode?: string;
     password?: string;
   }): Promise<User> => {
-    if (blacklistedIPs.includes(currentSimulatedIP)) {
-      throw new Error(`❌ Access denied. Your IP address (${currentSimulatedIP}) has been blacklisted.`);
+    const realIP = await getRealIP();
+    if (realIP && blacklistedIPs.includes(realIP)) {
+      throw new Error(`❌ Access denied. Your IP address (${realIP}) has been blacklisted.`);
     }
 
     const trimmedEmail = (userData.email || '').trim().toLowerCase();
@@ -734,8 +777,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .map(b => (b % 36).toString(36))
         .join('')
         .toUpperCase();
-      const locationInfo = getEstimatedLocationByIP(currentSimulatedIP);
-      const country = locationInfo.country;
+      
+      const countryStr = realIP ? getEstimatedLocationByIP(realIP).country : 'Not Configured';
 
       let initialKarma = 450;
       try {
@@ -749,6 +792,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } catch (err) {
         console.error('Failed to get initial Reddit karma:', err);
       }
+
+      const ipHistory = realIP ? [{ ip: realIP, timestamp: new Date().toISOString(), location: countryStr }] : [];
+      const loginHistory = realIP ? [{ ip: realIP, country: countryStr, timestamp: new Date().toISOString() }] : [];
 
       const newUser: User = {
         id: uid,
@@ -773,9 +819,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         karmaLastSynced: new Date().toISOString() || null,
         emailVerified: false,
         gmailVerified: false,
-        ipHistory: [{ ip: currentSimulatedIP || null, timestamp: new Date().toISOString() || null, location: country || null }],
+        ipHistory,
         deviceFingerprints: [generateDeviceFingerprint() || null],
-        loginHistory: [{ ip: currentSimulatedIP || null, country: country || null, timestamp: new Date().toISOString() || null }],
+        loginHistory,
         rejectionReason: null,
         lastLoginDate: null,
         avatarUrl: null,
@@ -1801,6 +1847,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const scanForDuplicates = async () => {
     try {
+      // 1. First, search and purge any existing fake fraud alerts / duplicate groups caused by simulated IP: 185.190.140.23
+      try {
+        const fraudCollection = collection(db, 'fraud_alerts');
+        const fraudSnap = await getDocs(fraudCollection);
+        for (const d of fraudSnap.docs) {
+          const data = d.data();
+          const matchesSimIP = d.id.includes('185-190-140-23') || 
+                                d.id.includes('185.190.140.23') ||
+                                (data.details && data.details.includes('185.190.140.23')) ||
+                                (data.sharedIdentifier && data.sharedIdentifier === '185.190.140.23');
+          if (matchesSimIP) {
+            console.log(`[PURGE ANTI-CHEAT] Deleting fake simulated IP fraud alert: ${d.id}`);
+            await deleteDoc(doc(db, 'fraud_alerts', d.id));
+          }
+        }
+
+        const dupCollection = collection(db, 'duplicate_groups');
+        const dupSnap = await getDocs(dupCollection);
+        for (const d of dupSnap.docs) {
+          const data = d.data();
+          const matchesSimIP = d.id.includes('185-190-140-23') || 
+                                d.id.includes('185.190.140.23') ||
+                                data.sharedIdentifier === '185.190.140.23';
+          if (matchesSimIP) {
+            console.log(`[PURGE ANTI-CHEAT] Deleting fake duplicate group: ${d.id}`);
+            await deleteDoc(doc(db, 'duplicate_groups', d.id));
+          }
+        }
+      } catch (purgeErr) {
+        console.warn("Failed to purge historical simulated alerts/groups", purgeErr);
+      }
+
       const groups: DuplicateGroup[] = [];
       const alerts: FraudAlert[] = [];
 
@@ -1811,10 +1889,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       users.forEach(u => {
         if (u.ipHistory) {
           u.ipHistory.forEach(history => {
-            if (history.ip && history.ip !== '127.0.0.1') {
-              if (!ipToUsers[history.ip]) ipToUsers[history.ip] = [];
-              if (!ipToUsers[history.ip].some(existing => existing.id === u.id)) {
-                ipToUsers[history.ip].push(u);
+            const ip = history.ip;
+            const isSimulated = !ip || 
+                                 ip === '185.190.140.23' || 
+                                 ip === currentSimulatedIP || 
+                                 history.isSimulated === true || 
+                                 u.isSimulatedData === true;
+            if (ip && ip !== '127.0.0.1' && !isSimulated) {
+              if (!ipToUsers[ip]) ipToUsers[ip] = [];
+              if (!ipToUsers[ip].some(existing => existing.id === u.id)) {
+                ipToUsers[ip].push(u);
               }
             }
           });
@@ -1840,6 +1924,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       });
 
+      // Only evaluate duplicate IP groupings if real evidence exists
       Object.entries(ipToUsers).forEach(([ip, userList]) => {
         if (ip && userList.length > 1) {
           const grpId = `dup-ip-${ip.replace(/\./g, '-')}`;

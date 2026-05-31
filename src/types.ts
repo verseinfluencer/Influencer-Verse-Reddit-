@@ -42,16 +42,17 @@ export interface User {
   payoutRequests?: PayoutRequest[] | null;
 
   // Anti-Cheat tracking fields
-  ipHistory?: { ip: string; timestamp: string; location: string; }[] | null;
+  ipHistory?: { ip: string; timestamp: string; location: string; isSimulated?: boolean; }[] | null;
   deviceFingerprints?: string[] | null;
   fraudScore?: number | null; // 0-100
   fraudFlags?: { type: string; timestamp: string; details: string; }[] | null;
   submissionHashes?: string[] | null;
-  loginHistory?: { ip: string; country: string; timestamp: string; }[] | null;
+  loginHistory?: { ip: string; country: string; timestamp: string; isSimulated?: boolean; }[] | null;
   isSuspended?: boolean | null;
   suspensionReason?: string | null;
   isBanned?: boolean | null;
   banReason?: string | null;
+  isSimulatedData?: boolean;
 }
 
 export type TaskType = 'post' | 'comment';
