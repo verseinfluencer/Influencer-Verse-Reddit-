@@ -32,14 +32,15 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
       setTimeout(() => setSyncSuccess(false), 3000);
     } catch (err: any) {
       console.error("[DASHBOARD SYNC ERROR]", err);
-      // Requirement 6: Keep previous karma, show friendly fallback instructions, suppress raw errors
       const msg = err?.message || "";
       if (msg.includes("Please add your Reddit username")) {
         setSyncError("Please add your Reddit username in profile settings.");
+      } else if (msg) {
+        setSyncError(msg);
       } else {
         setSyncError("Unable to fetch latest Reddit karma. Displaying last synced value.");
       }
-      setTimeout(() => setSyncError(null), 10000);
+      setTimeout(() => setSyncError(null), 12000);
     } finally {
       setIsSyncing(false);
     }

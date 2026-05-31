@@ -2823,16 +2823,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const syncRedditKarma = async () => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      console.error("[REDDIT SYNC LOGS] No currentUser is logged in.");
+      return;
+    }
     const uid = currentUser.id;
     const username = currentUser.redditUsername || '';
     const cleanUser = username.replace(/^\/?u\//i, '').replace(/^\/user\//i, '').replace(/^\//, '').trim();
 
-    // 8. If redditUsername is missing: Show custom prompt, disable Sync Button
+    // 1. Is redditUsername being loaded from Firebase correctly?
+    console.log(`[REDDIT SYNC LOGS] STEP 1: Firebase state check.`);
+    console.log(` - userId: "${uid}"`);
+    console.log(` - redditUsername: "${username}"`);
+    console.log(` - cleanUser parsed: "${cleanUser}"`);
+
+    // 8. If redditUsername is missing: Show custom prompt, disable Sync Button in UI
     if (!username.trim() || !cleanUser) {
+      console.warn("[REDDIT SYNC LOGS] Aborted: Reddit username is empty.");
       throw new Error("Please add your Reddit username in profile settings.");
     }
     if (!/^[a-zA-Z0-9_-]{3,20}$/.test(cleanUser)) {
+      console.warn(`[REDDIT SYNC LOGS] Aborted: Username "${cleanUser}" format is invalid.`);
       throw new Error("Invalid Reddit username format. Standard Reddit usernames are 3-20 characters.");
     }
 
@@ -2842,6 +2853,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let success = false;
     let status = 0;
     let responseBodyText = "";
+    
+    let directErrReason = "";
+    let proxyErrReason = "";
+
+    // 2. Log exact request URL
+    const targetUrl = `https://www.reddit.com/user/${cleanUser}/about.json`;
+    console.log(`[REDDIT SYNC LOGS] STEP 2: Client request sent.`);
+    console.log(` - Request URL: ${targetUrl}`);
 
     // 9. Add timeout protection: Abort request after 10 seconds
     const controller = new AbortController();
@@ -2850,9 +2869,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }, 10000);
 
     try {
-      const targetUrl = `https://www.reddit.com/user/${cleanUser}/about.json`;
-      console.log(`[REDDIT SYNC ENGINE] Initiating client direct fetch: ${targetUrl}`);
-      
       const res = await fetch(targetUrl, {
         signal: controller.signal,
         headers: {
@@ -2865,41 +2881,66 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       status = res.status;
       responseBodyText = await res.text();
 
-      // 7. Add console logging: Username used, HTTP status, Response body, Parsed karma value
-      console.log(`[REDDIT SYNC LOGS] Direct Fetch Results:`);
-      console.log(` - Username used: ${cleanUser}`);
-      console.log(` - HTTP status: ${status}`);
+      // Convert headers to a loggable dictionary
+      const headersMap: Record<string, string> = {};
+      res.headers.forEach((val, key) => {
+        headersMap[key] = val;
+      });
+
+      // 3. Log HTTP status code, response headers, response body
+      console.log(`[REDDIT SYNC LOGS] STEP 3: Client response received.`);
+      console.log(` - HTTP Status Code: ${status}`);
+      console.log(` - Response Headers:`, JSON.stringify(headersMap, null, 2));
       console.log(` - Response body length: ${responseBodyText.length}`);
-      console.log(` - Response body preview: ${responseBodyText.slice(0, 500)}`);
+      console.log(` - Response body:`, responseBodyText);
 
       if (res.ok) {
-        const parsedJson = JSON.parse(responseBodyText);
-        const data = parsedJson?.data;
-        if (data && typeof data.total_karma === 'number') {
-          parsedTotalKarma = data.total_karma;
-          parsedLinkKarma = typeof data.link_karma === 'number' ? data.link_karma : 0;
-          parsedCommentKarma = typeof data.comment_karma === 'number' ? data.comment_karma : 0;
-          
-          console.log(`[REDDIT SYNC LOGS] Parsed karma value: ${parsedTotalKarma} (Link: ${parsedLinkKarma}, Comment: ${parsedCommentKarma})`);
-          success = true;
-        } else {
-          console.warn("[REDDIT SYNC LOGS] No data.total_karma found in direct JSON response body.");
+        try {
+          const parsedJson = JSON.parse(responseBodyText);
+          const data = parsedJson?.data;
+          if (data && typeof data.total_karma === 'number') {
+            parsedTotalKarma = data.total_karma;
+            parsedLinkKarma = typeof data.link_karma === 'number' ? data.link_karma : 0;
+            parsedCommentKarma = typeof data.comment_karma === 'number' ? data.comment_karma : 0;
+            success = true;
+            console.log(`[REDDIT SYNC LOGS] Direct client fetch succeeded! Parsed total_karma: ${parsedTotalKarma}`);
+          } else {
+            directErrReason = "Data block or total_karma missing in response body JSON structure.";
+          }
+        } catch (jsonErr: any) {
+          directErrReason = `JSON parse error: ${jsonErr.message || jsonErr}`;
         }
       } else {
-        console.warn(`[REDDIT SYNC LOGS] Direct fetch returned non-200 status: ${status}`);
+        directErrReason = `Request failed with non-200 HTTP status code: ${status}`;
       }
     } catch (directErr: any) {
       clearTimeout(timeoutId);
-      console.warn(`[REDDIT SYNC LOGS] Direct client fetch failed or timed out:`, directErr.message || directErr);
+      
+      // 4. If direct fetch fails (e.g., CORS system error / network / timeout)
+      const isCorsError = directErr instanceof TypeError || (directErr.message && directErr.message.toLowerCase().includes("failed to fetch"));
+      const isTimeout = directErr.name === 'AbortError';
+
+      if (isCorsError) {
+        directErrReason = "Browser CORS protection blocked direct connection to reddit.com.";
+        // 7. Explicitly report if browser CORS blocks client-side requests
+        console.warn("[REDDIT SYNC LOGS] [CORS ALERT] The browser blocked direct client-side requests to Reddit due to CORS restrictions. System is rolling over to CORS-free server fallback.");
+      } else if (isTimeout) {
+        directErrReason = "Timeout error (Request took longer than 10 seconds).";
+      } else {
+        directErrReason = `${directErr.name || 'Network Error'}: ${directErr.message || directErr}`;
+      }
+      console.error(`[REDDIT SYNC LOGS] STEP 3: Client response error.`, directErr);
     }
 
-    // Fallback path: If direct browser-side fetch fails (CORS blocks), query the secure local backend proxy
+    // Fallback path: If direct browser-side fetch fails (e.g., CORS/Network), query the local proxy backend
     if (!success) {
       const fallbackController = new AbortController();
       const fallbackTimeoutId = setTimeout(() => fallbackController.abort(), 10000);
       try {
         const proxyUrl = `/api/reddit/karma?username=${encodeURIComponent(cleanUser)}`;
-        console.log(`[REDDIT SYNC ENGINE] Trying CORS-free server proxy: ${proxyUrl}`);
+        console.log(`[REDDIT SYNC LOGS] STEP 3 [FALLBACK]: Requesting CORS-free server-side proxy.`);
+        console.log(` - Proxy Request URL: ${proxyUrl}`);
+
         const res = await fetch(proxyUrl, {
           signal: fallbackController.signal
         });
@@ -2908,35 +2949,63 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         status = res.status;
         responseBodyText = await res.text();
 
-        console.log(`[REDDIT SYNC LOGS] [FALLBACK PROXY]`);
-        console.log(` - Username used: ${cleanUser}`);
-        console.log(` - HTTP status: ${status}`);
-        console.log(` - Response body length: ${responseBodyText.length}`);
-        console.log(` - Response body: ${responseBodyText}`);
+        const proxyHeadersMap: Record<string, string> = {};
+        res.headers.forEach((val, key) => {
+          proxyHeadersMap[key] = val;
+        });
+
+        console.log(`[REDDIT SYNC LOGS] STEP 3 [FALLBACK]: Proxy response received.`);
+        console.log(` - HTTP Status Code: ${status}`);
+        console.log(` - Headers:`, JSON.stringify(proxyHeadersMap, null, 2));
+        console.log(` - Response body text:`, responseBodyText);
 
         if (res.ok) {
-          const parsedJson = JSON.parse(responseBodyText);
-          if (parsedJson && typeof parsedJson.total_karma === 'number') {
-            parsedTotalKarma = parsedJson.total_karma;
-            parsedLinkKarma = typeof parsedJson.link_karma === 'number' ? parsedJson.link_karma : 0;
-            parsedCommentKarma = typeof parsedJson.comment_karma === 'number' ? parsedJson.comment_karma : 0;
-            
-            console.log(`[REDDIT SYNC LOGS] [FALLBACK PROXY] Parsed karma value: ${parsedTotalKarma} (Link: ${parsedLinkKarma}, Comment: ${parsedCommentKarma})`);
-            success = true;
+          try {
+            const parsedJson = JSON.parse(responseBodyText);
+            if (parsedJson && typeof parsedJson.total_karma === 'number') {
+              parsedTotalKarma = parsedJson.total_karma;
+              parsedLinkKarma = typeof parsedJson.link_karma === 'number' ? parsedJson.link_karma : 0;
+              parsedCommentKarma = typeof parsedJson.comment_karma === 'number' ? parsedJson.comment_karma : 0;
+              success = true;
+              console.log(`[REDDIT SYNC LOGS] Proxy server endpoint fetch succeeded! Parsed total_karma: ${parsedTotalKarma}`);
+            } else if (parsedJson && parsedJson.error) {
+              proxyErrReason = `Proxy returned error: ${parsedJson.error}. ${parsedJson.message || ''}`;
+            } else {
+              proxyErrReason = "Data block or total_karma missing in proxy response.";
+            }
+          } catch (jsonErr: any) {
+            proxyErrReason = `JSON parse error of proxy response: ${jsonErr.message || jsonErr}`;
+          }
+        } else {
+          try {
+            const parsedJson = JSON.parse(responseBodyText);
+            proxyErrReason = parsedJson?.message || parsedJson?.error || `Proxy failed with status ${status}.`;
+          } catch (e) {
+            proxyErrReason = `Proxy failed with HTTP status ${status}.`;
           }
         }
       } catch (fallbackErr: any) {
         clearTimeout(fallbackTimeoutId);
-        console.error(`[REDDIT SYNC LOGS] Fallback proxy fetch failed:`, fallbackErr.message || fallbackErr);
+        const isTimeout = fallbackErr.name === 'AbortError';
+        proxyErrReason = isTimeout ? "Proxy API sync connection timed out after 10s." : `Proxy network error: ${fallbackErr.message || fallbackErr}`;
+        console.error(`[REDDIT SYNC LOGS] STEP 3 [FALLBACK]: Proxy query error.`, fallbackErr);
       }
     }
 
     if (!success) {
-      // 6. If the request fails: Keep previous karma value, throw custom message, do not expose internal errors
-      throw new Error("Unable to fetch latest Reddit karma. Displaying last synced value.");
+      // Construction of descriptive explicit failure trace for the warning card
+      let customFailureDetails = "";
+      if (directErrReason.includes("CORS")) {
+        customFailureDetails = `Browser CORS blocked connection. System proxy fallback error: ${proxyErrReason || 'All endpoints offline'}.`;
+      } else {
+        customFailureDetails = `Direct client fetch: ${directErrReason || 'failed'}. Backend proxy: ${proxyErrReason || 'failed'}.`;
+      }
+      
+      console.error(`[REDDIT SYNC LOGS] SYNC CRITICALLY FAILED. ${customFailureDetails}`);
+      throw new Error(`Unable to fetch latest Reddit karma. Reason: ${customFailureDetails} Displaying last synced value.`);
     }
 
-    // Clear failure tracking on success
+    // Clear local attempts on success
     localStorage.removeItem(`reddit_sync_failed_count_${uid}`);
     localStorage.removeItem(`reddit_sync_next_attempt_${uid}`);
 
@@ -2946,7 +3015,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const b = tier.name; // Bronze, Silver, Gold, Platinum
     const lastSynced = new Date().toISOString();
 
-    // 3. Update Firebase: redditKarma, lastRedditSync, karmaTier (and keep legacy compatibility)
+    console.log(`[REDDIT SYNC LOGS] STEP 4: Writing updated variables to Firebase Firestore.`);
+    console.log(` - Collection: 'users', docId: '${uid}'`);
+    console.log(` - Fields mapped for writing:`, {
+      userId: uid,
+      redditKarma: parsedTotalKarma,
+      link_karma: parsedLinkKarma,
+      comment_karma: parsedCommentKarma,
+      lastRedditSync: lastSynced,
+      karmaTier: b,
+      karmaYesterday: currentUser.karma ?? parsedTotalKarma,
+      karmaLastSynced: lastSynced
+    });
+
+    // 5. Verify the fetched karma values are actually written to Firebase:
+    // This updates the Firestore DB document to synchronize across browsers and backend audits
     await updateDoc(doc(db, 'users', uid), {
       karma: parsedTotalKarma,
       redditKarma: parsedTotalKarma,
@@ -2961,10 +3044,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       redditCommentKarma: parsedCommentKarma
     });
 
-    // 5. Update dashboard immediately (React state callback)
+    console.log(`[REDDIT SYNC LOGS] STEP 5: Firebase update complete! Propagating values to React Application Context...`);
+
+    // 6. Verify the dashboard is reading the updated Firebase values after sync (React State Update):
     setCurrentUser(prev => {
       if (!prev || prev.id !== uid) return prev;
-      return {
+      const updatedUser = {
         ...prev,
         karma: parsedTotalKarma,
         redditKarma: parsedTotalKarma,
@@ -2978,6 +3063,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         redditLinkKarma: parsedLinkKarma,
         redditCommentKarma: parsedCommentKarma
       };
+      
+      console.log(`[REDDIT SYNC LOGS] UI state synchronized live:`, {
+        userId: updatedUser.id,
+        updatedKarma: updatedUser.redditKarma,
+        updatedLinkKarma: updatedUser.linkKarma,
+        updatedCommentKarma: updatedUser.commentKarma,
+        updatedTier: updatedUser.karmaTier,
+        updatedLastSync: updatedUser.lastRedditSync
+      });
+      return updatedUser;
     });
   };
 
