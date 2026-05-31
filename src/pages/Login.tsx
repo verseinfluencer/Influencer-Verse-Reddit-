@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Mail, Lock, LogIn, Sparkles, ShieldCheck, AlertCircle, Clock } from 'lucide-react';
+import { Mail, Lock, LogIn, Sparkles, ShieldCheck, AlertCircle, Clock, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { auth, db } from '../utils/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
-import { sendEmailVerification } from 'firebase/auth';
+import { sendEmailVerification, sendPasswordResetEmail } from 'firebase/auth';
 
 interface LoginProps {
   onNavigate: (page: string) => void;
@@ -14,8 +14,55 @@ export const Login: React.FC<LoginProps> = ({ onNavigate }) => {
   const { login } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errorObj, setErrorObj] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Forgot Password state indicators
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState<string | null>(null);
+  const [resetError, setResetError] = useState<string | null>(null);
+
+  const handleResetPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetError(null);
+    setResetSuccess(null);
+
+    const cleanEmail = resetEmail.trim();
+
+    if (!cleanEmail) {
+      setResetError("Please enter your email address.");
+      return;
+    }
+
+    // Basic email validation regex
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      setResetError("Please enter a valid email address.");
+      return;
+    }
+
+    setResetLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, cleanEmail);
+      setResetSuccess("Password reset link sent. Please check your inbox and spam folder.");
+      setResetEmail("");
+    } catch (err: any) {
+      console.error("[PASSWORD RESET ERROR]", err);
+      const errCode = err?.code || "";
+      if (errCode === 'auth/user-not-found') {
+        setResetError("No account found with this email.");
+      } else if (errCode === 'auth/invalid-email') {
+        setResetError("Please enter a valid email address.");
+      } else {
+        setResetError("Unable to send reset link. Please try again later.");
+      }
+    } finally {
+      setResetLoading(false);
+    }
+  };
 
   // Email Verification block state indicators
   const [isEmailVerificationPending, setIsEmailVerificationPending] = useState(false);
@@ -211,6 +258,79 @@ export const Login: React.FC<LoginProps> = ({ onNavigate }) => {
     );
   }
 
+  if (showForgotPassword) {
+    return (
+      <div className="w-full min-h-[80vh] flex items-center justify-center bg-zinc-950 px-4 select-none" id="forgot-password-panel">
+        <div className="w-full max-w-md bg-zinc-900/40 border border-white/10 rounded-3xl p-8 backdrop-blur-md shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl"></div>
+          
+          {/* Brand visual header */}
+          <div className="text-center space-y-4 mb-8 flex flex-col items-center">
+            <Logo size="md" />
+            <div>
+              <h2 className="text-2.5xl font-black text-white">Reset Password</h2>
+              <p className="text-zinc-400 text-xs font-semibold mt-1">We will send you a secure link to update your password</p>
+            </div>
+          </div>
+
+          {resetError && (
+            <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-xl flex items-center gap-2 mb-5">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{resetError}</span>
+            </div>
+          )}
+
+          {resetSuccess && (
+            <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs rounded-xl flex items-center gap-2 mb-5">
+              <ShieldCheck className="w-4 h-4 shrink-0 animate-pulse" />
+              <span>{resetSuccess}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleResetPasswordSubmit} className="space-y-4">
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">Email Address</label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-zinc-500">
+                  <Mail className="w-4 h-4" />
+                </span>
+                <input 
+                  type="email" 
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  placeholder="you@example.com" 
+                  className="w-full text-xs text-white bg-zinc-950 border border-white/5 pl-10 pr-4 py-3 rounded-xl focus:border-purple-500 focus:outline-none transition-colors"
+                  autoComplete="email"
+                />
+              </div>
+            </div>
+
+            <button 
+              type="submit"
+              disabled={resetLoading}
+              className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-500 text-xs font-bold rounded-xl text-white hover:opacity-95 shadow-lg flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+            >
+              {resetLoading ? 'Sending Link...' : 'Send Reset Link'} <Sparkles className="w-3.5 h-3.5" />
+            </button>
+          </form>
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowForgotPassword(false);
+              setResetError(null);
+              setResetSuccess(null);
+            }}
+            className="w-full mt-4 py-2.5 bg-zinc-950 hover:bg-zinc-900 border border-white/5 text-xs text-zinc-300 font-bold rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 text-zinc-400" />
+            Back to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full min-h-[80vh] flex items-center justify-center bg-zinc-950 px-4 select-none" id="login-panel">
       <div className="w-full max-w-md bg-zinc-900/40 border border-white/10 rounded-3xl p-8 backdrop-blur-md shadow-2xl relative overflow-hidden">
@@ -253,20 +373,39 @@ export const Login: React.FC<LoginProps> = ({ onNavigate }) => {
           <div>
             <div className="flex justify-between items-center mb-1.5">
               <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Password</label>
-              <a href="#" className="text-[10px] text-purple-400 hover:text-purple-300 font-bold transition-colors">Forgot Password?</a>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForgotPassword(true);
+                  setResetEmail(email);
+                  setResetError(null);
+                  setResetSuccess(null);
+                }}
+                className="text-[10px] text-purple-400 hover:text-purple-300 font-bold transition-colors cursor-pointer bg-transparent border-none p-0"
+              >
+                Forgot Password?
+              </button>
             </div>
             <div className="relative">
               <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-zinc-500">
                 <Lock className="w-4 h-4" />
               </span>
               <input 
-                type="password" 
+                type={showPassword ? "text" : "password"} 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••" 
-                className="w-full text-xs text-white bg-zinc-950 border border-white/5 pl-10 pr-4 py-3 rounded-xl focus:border-purple-500 focus:outline-none transition-colors"
+                className="w-full text-xs text-white bg-zinc-950 border border-white/5 pl-10 pr-10 py-3 rounded-xl focus:border-purple-500 focus:outline-none transition-colors"
                 autoComplete="current-password"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+                title={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
           </div>
 

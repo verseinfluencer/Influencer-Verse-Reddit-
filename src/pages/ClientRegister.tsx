@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
   Building, User, Mail, Lock, Phone, Globe, Coins, FileText, 
-  AlertCircle, CheckCircle, Clock, ArrowRight, ShieldCheck, ChevronDown, Search, X 
+  AlertCircle, CheckCircle, Clock, ArrowRight, ShieldCheck, ChevronDown, Search, X,
+  Eye, EyeOff
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ALL_COUNTRIES } from '../utils/countries';
@@ -37,6 +38,7 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
   const [whatsAppNum, setWhatsAppNum] = useState('');
   const [gmail, setGmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'Crypto' | 'Bank Transfer' | 'Other'>('Crypto');
   const [budget, setBudget] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
@@ -541,13 +543,21 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-3.5 w-4 h-4 text-neutral-500" />
                   <input 
-                    type="password" 
+                    type={showPassword ? "text" : "password"} 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     required
-                    className="w-full pl-11 pr-4 py-3 bg-neutral-950 text-white rounded-xl border border-neutral-800 focus:outline-none focus:border-indigo-550 text-sm font-sans"
+                    className="w-full pl-11 pr-11 py-3 bg-neutral-950 text-white rounded-xl border border-neutral-800 focus:outline-none focus:border-indigo-550 text-sm font-sans"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer"
+                    title={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
                 <p className="text-[10px] text-zinc-500 mt-1">Create a secure client portal logging password.</p>
               </div>

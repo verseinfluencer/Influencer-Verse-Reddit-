@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Mail, Lock, AlertCircle, ArrowRight, CheckCircle, Clock } from 'lucide-react';
+import { Mail, Lock, AlertCircle, ArrowRight, CheckCircle, Clock, Eye, EyeOff } from 'lucide-react';
 import { auth, db } from '../utils/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { sendEmailVerification } from 'firebase/auth';
@@ -13,6 +13,7 @@ export const ClientLogin: React.FC<ClientLoginProps> = ({ onNavigate }) => {
   const { clientLogin, completeClientRegistration } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -297,13 +298,21 @@ export const ClientLogin: React.FC<ClientLoginProps> = ({ onNavigate }) => {
             <div className="relative">
               <Lock className="absolute left-3.5 top-3 w-4.5 h-4.5 text-neutral-500" />
               <input 
-                type="password" 
+                type={showPassword ? "text" : "password"} 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
-                className="w-full pl-11 pr-4 py-2.5 bg-neutral-950 text-white rounded-xl border border-neutral-800 focus:outline-none focus:border-indigo-500 text-sm font-sans"
+                className="w-full pl-11 pr-11 py-2.5 bg-neutral-950 text-white rounded-xl border border-neutral-800 focus:outline-none focus:border-indigo-500 text-sm font-sans"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer"
+                title={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
           </div>
 

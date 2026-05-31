@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Settings, Shield, RefreshCw, Key, ShieldAlert, CheckCircle2, UserCheck, Trash2 } from 'lucide-react';
+import { Settings, Shield, RefreshCw, Key, ShieldAlert, CheckCircle2, UserCheck, Trash2, Eye, EyeOff } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
   const { currentUser, updateProfile, changePassword, deleteAccount } = useApp();
@@ -15,6 +15,8 @@ export const SettingsPage: React.FC = () => {
   // Password fields
   const [oldPw, setOldPw] = useState('');
   const [newPw, setNewPw] = useState('');
+  const [showOldPw, setShowOldPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
   const [pwSuccess, setPwSuccess] = useState(false);
   const [pwError, setPwError] = useState<string | null>(null);
 
@@ -181,23 +183,43 @@ export const SettingsPage: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Old Password</label>
-                  <input 
-                    type="password" 
-                    value={oldPw}
-                    onChange={(e) => setOldPw(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-3 py-2.5 rounded-xl"
-                  />
+                  <div className="relative">
+                    <input 
+                      type={showOldPw ? "text" : "password"} 
+                      value={oldPw}
+                      onChange={(e) => setOldPw(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full text-xs text-white bg-zinc-950 border border-white/5 pl-3 pr-10 py-2.5 rounded-xl focus:outline-none focus:border-purple-500 transition-colors"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowOldPw(!showOldPw)}
+                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+                      title={showOldPw ? "Hide password" : "Show password"}
+                    >
+                      {showOldPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">New Password</label>
-                  <input 
-                    type="password" 
-                    value={newPw}
-                    onChange={(e) => setNewPw(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-3 py-2.5 rounded-xl"
-                  />
+                  <div className="relative">
+                    <input 
+                      type={showNewPw ? "text" : "password"} 
+                      value={newPw}
+                      onChange={(e) => setNewPw(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full text-xs text-white bg-zinc-950 border border-white/5 pl-3 pr-10 py-2.5 rounded-xl focus:outline-none focus:border-purple-500 transition-colors"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPw(!showNewPw)}
+                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+                      title={showNewPw ? "Hide password" : "Show password"}
+                    >
+                      {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
               </div>
 

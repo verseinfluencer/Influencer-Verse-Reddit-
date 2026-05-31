@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { ShieldCheck, User as UserIcon, Mail, Lock, CheckCircle2, XCircle, AlertCircle, Clock, Send, Loader2 } from 'lucide-react';
+import { ShieldCheck, User as UserIcon, Mail, Lock, CheckCircle2, XCircle, AlertCircle, Clock, Send, Loader2, Eye, EyeOff } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { auth } from '../utils/firebase';
 import { sendEmailVerification } from 'firebase/auth';
@@ -17,6 +17,8 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [redditUsername, setRedditUsername] = useState('');
   const [redditProfileLink, setRedditProfileLink] = useState('');
   const [referralCode, setReferralCode] = useState('');
@@ -368,12 +370,20 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
                   <Lock className="w-4 h-4" />
                 </span>
                 <input 
-                  type="password" 
+                  type={showPassword ? "text" : "password"} 
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••" 
-                  className="w-full text-xs text-white bg-zinc-950 border border-white/5 pl-10 pr-4 py-3 rounded-xl focus:border-purple-500 focus:outline-none transition-colors"
+                  className="w-full text-xs text-white bg-zinc-950 border border-white/5 pl-10 pr-10 py-3 rounded-xl focus:border-purple-500 focus:outline-none transition-colors"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+                  title={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
 
@@ -384,12 +394,20 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
                   <Lock className="w-4 h-4" />
                 </span>
                 <input 
-                  type="password" 
+                  type={showConfirmPassword ? "text" : "password"} 
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••" 
-                  className="w-full text-xs text-white bg-zinc-950 border border-white/5 pl-10 pr-4 py-3 rounded-xl focus:border-purple-500 focus:outline-none transition-colors"
+                  className="w-full text-xs text-white bg-zinc-950 border border-white/5 pl-10 pr-10 py-3 rounded-xl focus:border-purple-500 focus:outline-none transition-colors"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+                  title={showConfirmPassword ? "Hide password" : "Show password"}
+                >
+                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
           </div>
