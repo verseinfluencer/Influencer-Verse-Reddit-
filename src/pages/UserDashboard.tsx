@@ -14,6 +14,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
   const [isSyncing, setIsSyncing] = React.useState(false);
   const [syncSuccess, setSyncSuccess] = React.useState(false);
   const [syncError, setSyncError] = React.useState<string | null>(null);
+  const [toastMessage, setToastMessage] = React.useState<string | null>(null);
 
   if (!currentUser) return null;
 
@@ -26,19 +27,27 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
     setSyncSuccess(false);
     setSyncError(null);
     try {
-      await syncRedditKarma();
+      const newKarma = await syncRedditKarma();
       setSyncSuccess(true);
-      setSyncError(null); // Clear any and all Sync Failed warnings on success
+      setSyncError(null); 
+      setToastMessage(`Success! Your Reddit Karma has been synced. Total Karma: ${newKarma.toLocaleString()}`);
+      setTimeout(() => setToastMessage(null), 5000);
       setTimeout(() => setSyncSuccess(false), 3000);
     } catch (err: any) {
       console.error("[DASHBOARD SYNC ERROR]", err);
       const msg = err?.message || "";
-      if (msg.includes("Please add your Reddit username")) {
+      if (msg === "RATE_LIMIT_REACHED") {
+        setSyncError("Reddit API rate limit hit (60 requests per minute). Please wait a moment before trying again.");
+      } else if (msg === "DELETED_OR_SUSPENDED") {
+        setSyncError("This Reddit profile is deactivated, suspended, or deleted.");
+      } else if (msg === "PRIVATE_PROFILE") {
+        setSyncError("This Reddit profile is private or restricted.");
+      } else if (msg === "USER_NOT_FOUND") {
+        setSyncError("Reddit user not found. Please ensure the username is spelled correctly.");
+      } else if (msg.includes("Please add your Reddit username")) {
         setSyncError("Please add your Reddit username in profile settings.");
-      } else if (msg) {
-        setSyncError(msg);
       } else {
-        setSyncError("Unable to fetch latest Reddit karma. Displaying last synced value.");
+        setSyncError("Live Reddit sync temporarily unavailable. Displaying last synced karma.");
       }
       setTimeout(() => setSyncError(null), 12000);
     } finally {
@@ -414,6 +423,21 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
         </div>
 
       </div>
+
+      {/* Floating Animated Toast Feedback Container */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 bg-zinc-950 border border-emerald-500/30 text-white rounded-2xl p-4 shadow-2xl flex items-center gap-3.5 animate-slide-up-fade-in font-bold text-xs select-none">
+          <span className="p-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl font-bold">✅ Synced</span>
+          <span>{toastMessage}</span>
+          <button 
+            type="button" 
+            onClick={() => setToastMessage(null)}
+            className="text-zinc-500 hover:text-white ml-2 cursor-pointer transition-colors p-1 text-xs"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
     </div>
   );

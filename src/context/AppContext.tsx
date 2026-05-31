@@ -640,6 +640,46 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (isAdminEmail) {
         updatedUser.role = 'admin';
       }
+
+      try {
+        const cleanUser = u.redditUsername ? u.redditUsername.replace(/^\/?u\//i, '').replace(/^\/user\//i, '').replace(/^\//, '').trim() : '';
+        if (cleanUser && cleanUser.trim()) {
+          console.log(`[AUTH LOGIN COGNIZANCE] Automatically fetching fresh Reddit Karma on login for @${cleanUser}...`);
+          const karmaResp = await fetch(`/api/reddit/karma?username=${encodeURIComponent(cleanUser)}&t=${Date.now()}`);
+          if (karmaResp.ok) {
+            const karmaBody = await karmaResp.json();
+            if (karmaBody && typeof karmaBody.total_karma === 'number') {
+              const link_karma = karmaBody.link_karma || 0;
+              const comment_karma = karmaBody.comment_karma || 0;
+              const awarder_karma = karmaBody.awarder_karma || 0;
+              const awardee_karma = karmaBody.awardee_karma || 0;
+              const totalKarma = link_karma + comment_karma + awarder_karma + awardee_karma;
+
+              updatedUser.karma = totalKarma;
+              updatedUser.redditKarma = totalKarma;
+              updatedUser.total_karma = totalKarma;
+              updatedUser.link_karma = link_karma;
+              updatedUser.comment_karma = comment_karma;
+              updatedUser.awarder_karma = awarder_karma;
+              updatedUser.awardee_karma = awardee_karma;
+              updatedUser.linkKarma = link_karma;
+              updatedUser.commentKarma = comment_karma;
+              updatedUser.redditLinkKarma = link_karma;
+              updatedUser.redditCommentKarma = comment_karma;
+              updatedUser.karmaLastSynced = nowISO;
+              updatedUser.lastRedditSync = nowISO;
+              
+              const tier = getKarmaTier(totalKarma);
+              updatedUser.karmaBadge = tier.name;
+              updatedUser.karmaTier = tier.name;
+              console.log(`[AUTH LOGIN COGNIZANCE] Successfully synced fresh login karma for @${cleanUser}: ${totalKarma}`);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[AUTH LOGIN COGNIZANCE] Failed to auto-sync Reddit karma upon user login:', err);
+      }
+
       await setDoc(userRef, updatedUser, { merge: true });
       return updatedUser as User;
     } catch (err: any) {
@@ -2719,16 +2759,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const fetchRedditKarma = async (cleanUser: string): Promise<number> => {
-    // 1. Primary: Query the secure local backend server proxy (CORS-free, direct request, OAuth-enabled, rate-limit protected)
     try {
       console.log(`[REDDIT SYNC ENGINE] Resolving Karma for u/${cleanUser} via server API /api/reddit/karma...`);
-      const res = await fetch(`/api/reddit/karma?username=${encodeURIComponent(cleanUser)}`);
+      const res = await fetch(`/api/reddit/karma?username=${encodeURIComponent(cleanUser)}&t=${Date.now()}`);
       const payload = await res.json();
 
       console.log(`[REDDIT SYNC ENGINE] Server API response payload:`, payload);
 
       if (res.status === 404 || payload.error === "USER_NOT_FOUND") {
         throw new Error("USER_NOT_FOUND");
+      }
+      if (payload.error === "DELETED_OR_SUSPENDED") {
+        throw new Error("DELETED_OR_SUSPENDED");
+      }
+      if (payload.error === "PRIVATE_PROFILE") {
+        throw new Error("PRIVATE_PROFILE");
       }
       if (res.status === 429 || payload.error === "RATE_LIMIT_REACHED") {
         throw new Error("RATE_LIMIT_REACHED");
@@ -2745,97 +2790,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.error(`[REDDIT SYNC ENGINE] Server proxy fetch failed for user @${cleanUser}:`, e.message || e);
       throw e;
     }
-
-    // 2. Secondary fallback via direct client-side proxies
-    const urls = [
-      `https://api.allorigins.win/get?url=${encodeURIComponent(`https://www.reddit.com/user/${cleanUser}/about.json`)}`,
-      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(`https://www.reddit.com/user/${cleanUser}/about.json`)}`,
-      `https://corsproxy.io/?${encodeURIComponent(`https://www.reddit.com/user/${cleanUser}/about.json`)}`,
-      `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://www.reddit.com/user/${cleanUser}/about.json`)}`,
-      `https://www.reddit.com/user/${cleanUser}/about.json`
-    ];
-
-    let lastError: any = null;
-    let isRateLimited = false;
-
-    for (const url of urls) {
-      try {
-        console.log(`[REDDIT SYNC ENGINE] Client proxy backup fetch: ${url}`);
-        const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-        
-        if (res.status === 404) {
-          throw new Error("USER_NOT_FOUND");
-        }
-
-        if (res.status === 429) {
-          isRateLimited = true;
-          throw new Error("RATE_LIMIT_REACHED");
-        }
-
-        if (!res.ok) {
-          throw new Error(`HTTP_STATUS_${res.status}`);
-        }
-
-        let data = await res.json();
-        
-        // Handle AllOrigins wrapped payload format
-        if (data && typeof data.contents === 'string') {
-          try {
-            data = JSON.parse(data.contents);
-          } catch (e) {
-            console.warn("[REDDIT SYNC ENGINE] Failed to parse wrapped contents from AllOrigins wrapper.", e);
-          }
-        }
-
-        // Check if error information was wrapped inside successful response
-        if (data && (data.error === 404 || data.message === "Not Found")) {
-          throw new Error("USER_NOT_FOUND");
-        }
-        if (data && (data.error === 429 || data.message === "Too Many Requests")) {
-          isRateLimited = true;
-          throw new Error("RATE_LIMIT_REACHED");
-        }
-
-        const dataObj = data?.data || data;
-
-        if (dataObj && typeof dataObj.total_karma === 'number') {
-          return dataObj.total_karma;
-        }
-      } catch (e: any) {
-        console.warn(`[REDDIT SYNC ENGINE] Client backup URL failed: ${url}`, e);
-        if (e.message === 'USER_NOT_FOUND') {
-          throw new Error("USER_NOT_FOUND");
-        }
-        if (e.message === 'RATE_LIMIT_REACHED') {
-          isRateLimited = true;
-        }
-        lastError = e;
-      }
-    }
-
-    if (isRateLimited) {
-      throw new Error("RATE_LIMIT_REACHED");
-    }
-
-    throw lastError || new Error("API_FAILURE");
+    throw new Error("API_UNAVAILABLE");
   };
 
-  const syncRedditKarma = async () => {
+  const syncRedditKarma = async (): Promise<number> => {
     if (!currentUser) {
       console.error("[REDDIT SYNC LOGS] No currentUser is logged in.");
-      return;
+      throw new Error("No logged in user found to sync.");
     }
     const uid = currentUser.id;
     const username = currentUser.redditUsername || '';
     const cleanUser = username.replace(/^\/?u\//i, '').replace(/^\/user\//i, '').replace(/^\//, '').trim();
 
-    // 1. Is redditUsername being loaded from Firebase correctly?
     console.log(`[REDDIT SYNC LOGS] STEP 1: Firebase state check.`);
     console.log(` - userId: "${uid}"`);
     console.log(` - redditUsername: "${username}"`);
     console.log(` - cleanUser parsed: "${cleanUser}"`);
 
-    // 8. If redditUsername is missing: Show custom prompt, disable Sync Button in UI
     if (!username.trim() || !cleanUser) {
       console.warn("[REDDIT SYNC LOGS] Aborted: Reddit username is empty.");
       throw new Error("Please add your Reddit username in profile settings.");
@@ -2853,12 +2824,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let responseBodyText = "";
     let syncErrorMsg = "";
 
-    // 2. Log exact proxy URL
-    const proxyUrl = `/api/reddit/karma?username=${encodeURIComponent(cleanUser)}`;
+    const proxyUrl = `/api/reddit/karma?username=${encodeURIComponent(cleanUser)}&t=${Date.now()}`;
     console.log(`[REDDIT SYNC LOGS] STEP 2: Request sent (Backend server proxy exclusively).`);
     console.log(` - Request URL: ${proxyUrl}`);
 
-    // Add timeout protection: Abort request after 12 seconds
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
       controller.abort();
@@ -2876,24 +2845,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       status = res.status;
       responseBodyText = await res.text();
 
-      // Convert headers to a loggable dictionary
       const headersMap: Record<string, string> = {};
       res.headers.forEach((val, key) => {
         headersMap[key] = val;
       });
 
-      // 3. Log HTTP status code, response headers, response body
       console.log(`[REDDIT SYNC LOGS] STEP 3: Server response received.`);
       console.log(` - HTTP Status Code: ${status}`);
       console.log(` - Response Headers:`, JSON.stringify(headersMap, null, 2));
       console.log(` - Response body text length: ${responseBodyText.length}`);
 
-      // Verify server returned JSON and not anything weird
       const contentType = res.headers.get("content-type") || "";
       if (res.ok) {
         if (!contentType.toLowerCase().includes("application/json")) {
           console.error(`[REDDIT SYNC LOGS] Invalid response content-type: ${contentType}`);
-          syncErrorMsg = `Server proxy returned non-JSON type: ${contentType}`;
+          syncErrorMsg = "API_UNAVAILABLE";
         } else {
           try {
             const parsedJson = JSON.parse(responseBodyText);
@@ -2901,7 +2867,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             
             if (trimmed.startsWith("<") || trimmed.toLowerCase().includes("<!doctype")) {
               console.error("[REDDIT SYNC LOGS] HTML response detected in body text.");
-              syncErrorMsg = "Server proxy returned HTML instead of expected JSON API response.";
+              syncErrorMsg = "API_UNAVAILABLE";
             } else if (parsedJson && typeof parsedJson.total_karma === 'number') {
               parsedTotalKarma = parsedJson.total_karma;
               parsedLinkKarma = typeof parsedJson.link_karma === 'number' ? parsedJson.link_karma : 0;
@@ -2909,52 +2875,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               success = true;
               console.log(`[REDDIT SYNC LOGS] Backend fetch succeeded! Parsed total_karma: ${parsedTotalKarma}`);
             } else if (parsedJson && parsedJson.error) {
-              syncErrorMsg = parsedJson.message || parsedJson.error;
+              syncErrorMsg = parsedJson.error;
             } else {
               syncErrorMsg = "Required JSON fields like total_karma are missing from API response.";
             }
           } catch (jsonErr: any) {
-            syncErrorMsg = `JSON syntax decoding error: ${jsonErr.message || jsonErr}`;
+            syncErrorMsg = "API_UNAVAILABLE";
           }
         }
       } else {
         try {
           const errorJson = JSON.parse(responseBodyText);
-          syncErrorMsg = errorJson.message || errorJson.error || `HTTP Error ${status}`;
+          syncErrorMsg = errorJson.error || `HTTP_Error_${status}`;
         } catch (e) {
-          syncErrorMsg = `HTTP Error ${status}`;
+          syncErrorMsg = `HTTP_Error_${status}`;
         }
       }
     } catch (err: any) {
       clearTimeout(timeoutId);
       const isTimeout = err.name === 'AbortError';
-      syncErrorMsg = isTimeout ? "Connection timed out (12s limit)." : (err.message || String(err));
+      syncErrorMsg = isTimeout ? "RATE_LIMIT_REACHED" : (err.message || "API_UNAVAILABLE");
       console.error(`[REDDIT SYNC LOGS] Server-side request network/failure error:`, err);
     }
 
     if (!success) {
       console.error(`[REDDIT SYNC LOGS] Sync critically failed: ${syncErrorMsg}`);
-      // Requirement 8: If server-side sync fails, show explicit friendly message:
-      throw new Error("Live Reddit sync temporarily unavailable. Displaying last synced karma.");
+      throw new Error(syncErrorMsg || "API_UNAVAILABLE");
     }
 
-    // Clear failure tracking on success
     localStorage.removeItem(`reddit_sync_failed_count_${uid}`);
     localStorage.removeItem(`reddit_sync_next_attempt_${uid}`);
 
-    // Calculate tiers:
     const tier = getKarmaTier(parsedTotalKarma);
-    const b = tier.name; // Bronze, Silver, Gold, Platinum
+    const b = tier.name;
     const lastSynced = new Date().toISOString();
 
     console.log(`[REDDIT SYNC LOGS] STEP 4: Writing updated variables to Firebase Firestore.`);
     console.log(` - Collection: 'users', docId: '${uid}'`);
 
-    // 6. Update Firebase with:
-    // - total_karma
-    // - comment_karma
-    // - link_karma
-    // - lastRedditSync
     await updateDoc(doc(db, 'users', uid), {
       karma: parsedTotalKarma,
       redditKarma: parsedTotalKarma,
@@ -2974,7 +2932,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     console.log(`[REDDIT SYNC LOGS] STEP 5: Firebase update complete! Propagating values to React Application Context...`);
 
-    // 6. Verify the dashboard is reading the updated Firebase values after sync (React State Update):
     setCurrentUser(prev => {
       if (!prev || prev.id !== uid) return prev;
       const updatedUser = {
@@ -3005,6 +2962,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       return updatedUser;
     });
+
+    return parsedTotalKarma;
   };
 
   const adminDeleteUserAccount = async (userId: string) => {

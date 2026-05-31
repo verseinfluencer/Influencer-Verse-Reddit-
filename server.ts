@@ -20,7 +20,7 @@ async function startServer() {
 
     const cleanUser = usernameQuery.replace(/^\/?u\//i, '').replace(/^\/user\//i, '').replace(/^\//, '').trim();
     if (!/^[a-zA-Z0-9_-]{3,20}$/.test(cleanUser)) {
-      return res.status(400).json({ error: "Invalid Reddit username format. Standard Reddit usernames are 3-20 alphanumeric characters." });
+      return res.status(400).json({ error: "USER_NOT_FOUND", message: "Invalid Reddit username format. Standard Reddit usernames are 3-20 alphanumeric characters." });
     }
 
     const clientId = process.env.REDDIT_CLIENT_ID;
@@ -28,44 +28,28 @@ async function startServer() {
 
     console.log(`[REDDIT SERVER API] Request username: @${cleanUser}. OAuth client provided: ${!!clientId}`);
 
-    // Helper to validate and parse standard JSON fetch
-    const safeFetchRedditJson = async (url: string, options: any) => {
-      const response = await fetch(url, options);
-      const contentType = response.headers.get("content-type") || "";
-
-      console.log(`[REDDIT SERVER API] Fetched: ${url} | Status: ${response.status} | Content-Type: ${contentType}`);
-
-      // If non-ok status for user not found
-      if (response.status === 404) {
-        throw new Error("USER_NOT_FOUND");
-      }
-      if (response.status === 429) {
-        throw new Error("RATE_LIMIT_REACHED");
-      }
-      if (!response.ok) {
-        throw new Error(`HTTP_STATUS_${response.status}`);
-      }
-
-      // 5. Add validation: Verify content-type is application/json
-      if (!contentType.toLowerCase().includes("application/json")) {
-        const responseText = await response.text();
-        console.error(`[REDDIT SERVER API ERROR] Content-Type for ${url} is not application/json. Got "${contentType}". HTML signature: ${responseText.slice(0, 150)}`);
-        throw new Error(`Invalid content-type: ${contentType}. Server returned non-JSON payload.`);
-      }
-
-      const responseText = await response.text();
-      const trimmed = responseText.trim();
-      if (trimmed.startsWith("<") || trimmed.toLowerCase().includes("<!doctype")) {
-        console.error(`[REDDIT SERVER API ERROR] HTML content detected in response from ${url}: ${trimmed.slice(0, 150)}`);
-        throw new Error("HTML content-type spoof/misclassification on Reddit payload.");
-      }
-
+    // Helper to evaluate error from response status & body text
+    const inspectResponseError = (status: number, text: string): string => {
+      if (status === 429) return "RATE_LIMIT_REACHED";
+      if (status === 403) return "PRIVATE_PROFILE";
+      
+      let parsed: any = null;
       try {
-        return JSON.parse(responseText);
-      } catch (jsonErr: any) {
-         console.error(`[REDDIT SERVER API ERROR] Failed to parse JSON from ${url}: ${jsonErr.message}`);
-         throw new Error(`JSON parse error: ${jsonErr.message}`);
+        parsed = JSON.parse(text);
+      } catch (e) {}
+
+      if (parsed?.error === 404 || status === 404) {
+        if (parsed?.reason === "suspended" || parsed?.reason === "deleted" || 
+            (parsed?.message && /suspended|deleted|deactivated/i.test(parsed.message))) {
+          return "DELETED_OR_SUSPENDED";
+        }
+        return "USER_NOT_FOUND";
       }
+
+      if (parsed?.error === 403) return "PRIVATE_PROFILE";
+      if (parsed?.error === 429) return "RATE_LIMIT_REACHED";
+
+      return "API_UNAVAILABLE";
     };
 
     // Approach 1: If Reddit credentials are provided, use Reddit OAuth client_credentials flow
@@ -87,76 +71,107 @@ async function startServer() {
           const tokenData: any = await tokenRes.json();
           const accessToken = tokenData.access_token;
           if (accessToken) {
-            console.log(`[REDDIT SERVER API] OAuth token acquired. Fetching user info...`);
-            const userData = await safeFetchRedditJson(`https://oauth.reddit.com/user/${cleanUser}/about`, {
+            const targetUrl = `https://oauth.reddit.com/user/${cleanUser}/about?raw_json=1&t=${Date.now()}`;
+            console.log(`[REDDIT SERVER API] OAuth token acquired. Fetching: ${targetUrl}`);
+            const userRes = await fetch(targetUrl, {
               headers: {
                 "Authorization": `Bearer ${accessToken}`,
                 "User-Agent": "InfluencerVerseRedditSync/1.0.0 (by /u/kallol_admin)"
               }
             });
 
+            const text = await userRes.text();
+            if (!userRes.ok) {
+              const errCode = inspectResponseError(userRes.status, text);
+              throw new Error(errCode);
+            }
+
+            const userData = JSON.parse(text);
             const d = userData?.data;
-            const totalKarma = d?.total_karma;
-            if (typeof totalKarma === 'number') {
-              console.log(`[REDDIT SERVER API] Successfully fetched karma via OAuth: ${totalKarma}`);
+            if (d) {
+              if (d.is_suspended === true) {
+                return res.status(404).json({ error: "DELETED_OR_SUSPENDED", message: "This Reddit profile is deactivated, suspended, or deleted." });
+              }
+              const link_karma = typeof d.link_karma === 'number' ? d.link_karma : 0;
+              const comment_karma = typeof d.comment_karma === 'number' ? d.comment_karma : 0;
+              const awarder_karma = typeof d.awarder_karma === 'number' ? d.awarder_karma : 0;
+              const awardee_karma = typeof d.awardee_karma === 'number' ? d.awardee_karma : 0;
+              const calculatedTotal = link_karma + comment_karma + awarder_karma + awardee_karma;
+
+              console.log(`[REDDIT SERVER API] Successfully fetched karma via OAuth: ${calculatedTotal}`);
               return res.json({
-                total_karma: totalKarma,
-                link_karma: typeof d?.link_karma === 'number' ? d.link_karma : 0,
-                comment_karma: typeof d?.comment_karma === 'number' ? d.comment_karma : 0,
+                total_karma: calculatedTotal,
+                link_karma,
+                comment_karma,
+                awarder_karma,
+                awardee_karma,
                 method: "OAuth"
               });
             }
           }
-        } else {
-          console.warn(`[REDDIT SERVER API] OAuth token exchange returned status: ${tokenRes.status}`);
         }
       } catch (err: any) {
-        if (err.message === "USER_NOT_FOUND") {
-          return res.status(404).json({ error: "USER_NOT_FOUND", message: `The Reddit username @${cleanUser} does not exist.` });
+        const errStr = err.message || "";
+        if (["USER_NOT_FOUND", "DELETED_OR_SUSPENDED", "PRIVATE_PROFILE", "RATE_LIMIT_REACHED"].includes(errStr)) {
+          return res.status(errStr === "RATE_LIMIT_REACHED" ? 429 : errStr === "PRIVATE_PROFILE" ? 403 : 404).json({ error: errStr });
         }
-        if (err.message === "RATE_LIMIT_REACHED") {
-          return res.status(429).json({ error: "RATE_LIMIT_REACHED", message: "Reddit API rate limit reached." });
-        }
-        console.error(`[REDDIT SERVER API] OAuth flow failed, fallback to next method`, err.message || err);
+        console.error(`[REDDIT SERVER API] OAuth flow failed, fallback to direct fetch method.`, errStr);
       }
     }
 
-    // Approach 2: Direct public Reddit API (Server-side fetch, not browser)
+    // Approach 2: Direct public Reddit API (Server-side fetch with raw_json=1 and anti-caching timestamp)
+    const directUrl = `https://www.reddit.com/user/${cleanUser}/about.json?raw_json=1&t=${Date.now()}`;
     try {
-      console.log(`[REDDIT SERVER API] Fetching from direct public about.json...`);
-      const data = await safeFetchRedditJson(`https://www.reddit.com/user/${cleanUser}/about.json`, {
+      console.log(`[REDDIT SERVER API] Fetching from direct public: ${directUrl}`);
+      const response = await fetch(directUrl, {
         headers: {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 (InfluencerVerseRedditSyncClient/1.0; contact: admin@example.com)",
           "Accept": "application/json"
         }
       });
 
-      const d = data?.data;
-      const totalKarma = d?.total_karma;
-      if (typeof totalKarma === 'number') {
-        console.log(`[REDDIT SERVER API] Successfully fetched karma directly: ${totalKarma}`);
+      const text = await response.text();
+      if (!response.ok) {
+        const errCode = inspectResponseError(response.status, text);
+        throw new Error(errCode);
+      }
+
+      const parsed = JSON.parse(text);
+      const d = parsed?.data;
+      if (d) {
+        if (d.is_suspended === true) {
+          return res.status(404).json({ error: "DELETED_OR_SUSPENDED", message: "This Reddit profile is deactivated, suspended, or deleted." });
+        }
+        const link_karma = typeof d.link_karma === 'number' ? d.link_karma : 0;
+        const comment_karma = typeof d.comment_karma === 'number' ? d.comment_karma : 0;
+        const awarder_karma = typeof d.awarder_karma === 'number' ? d.awarder_karma : 0;
+        const awardee_karma = typeof d.awardee_karma === 'number' ? d.awardee_karma : 0;
+        const calculatedTotal = link_karma + comment_karma + awarder_karma + awardee_karma;
+
+        console.log(`[REDDIT SERVER API] Successfully fetched karma directly: ${calculatedTotal}`);
         return res.json({
-          total_karma: totalKarma,
-          link_karma: typeof d?.link_karma === 'number' ? d.link_karma : 0,
-          comment_karma: typeof d?.comment_karma === 'number' ? d.comment_karma : 0,
+          total_karma: calculatedTotal,
+          link_karma,
+          comment_karma,
+          awarder_karma,
+          awardee_karma,
           method: "Direct"
         });
       }
     } catch (err: any) {
-      if (err.message === "USER_NOT_FOUND") {
-        return res.status(404).json({ error: "USER_NOT_FOUND", message: `The Reddit username @${cleanUser} does not exist.` });
+      const errStr = err.message || "";
+      if (["USER_NOT_FOUND", "DELETED_OR_SUSPENDED", "PRIVATE_PROFILE", "RATE_LIMIT_REACHED"].includes(errStr)) {
+        return res.status(errStr === "RATE_LIMIT_REACHED" ? 429 : errStr === "PRIVATE_PROFILE" ? 403 : 404).json({ error: errStr });
       }
-      if (err.message === "RATE_LIMIT_REACHED") {
-        return res.status(429).json({ error: "RATE_LIMIT_REACHED", message: "Reddit API rate limit reached." });
-      }
-      console.error(`[REDDIT SERVER API] Direct fetch failed, trying proxy fallbacks:`, err.message || err);
+      console.error(`[REDDIT SERVER API] Direct fetch failed, trying proxy fallbacks:`, errStr);
     }
 
-    // Approach 3: CORS/IP-rotation Fallback Proxies (Fetch as standard JSON, then check content)
+    // Approach 3: CORS/IP-rotation Fallback Proxies (Fetch and enforce computed total karma)
+    const targetQueryUrl = `https://www.reddit.com/user/${cleanUser}/about.json?raw_json=1&t=${Date.now()}`;
     const proxyUrls = [
-      `https://api.allorigins.win/get?url=${encodeURIComponent(`https://www.reddit.com/user/${cleanUser}/about.json`)}`,
-      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(`https://www.reddit.com/user/${cleanUser}/about.json`)}`,
-      `https://corsproxy.io/?${encodeURIComponent(`https://www.reddit.com/user/${cleanUser}/about.json`)}`
+      `https://api.allorigins.win/get?url=${encodeURIComponent(targetQueryUrl)}`,
+      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetQueryUrl)}`,
+      `https://corsproxy.io/?${encodeURIComponent(targetQueryUrl)}`
     ];
 
     for (const proxyUrl of proxyUrls) {
@@ -169,39 +184,59 @@ async function startServer() {
           }
         });
 
-        const contentType = response.headers.get("content-type") || "";
         if (!response.ok) continue;
 
-        // Verify JSON content type
-        if (!contentType.toLowerCase().includes("application/json")) {
-          console.warn(`[REDDIT SERVER API] Skipping proxy ${proxyUrl} - returned non-JSON Content-Type: ${contentType}`);
+        const bodyText = await response.text();
+        let payload: any = null;
+        try {
+          payload = JSON.parse(bodyText);
+        } catch (e) {
           continue;
         }
 
-        let payload = await response.json();
         // If AllOrigins wrapped response
         if (payload && typeof payload.contents === 'string') {
           const contentsStr = payload.contents.trim();
           if (contentsStr.startsWith("<") || contentsStr.toLowerCase().includes("<!doctype")) {
-            console.warn(`[REDDIT SERVER API] Skip proxy ${proxyUrl} - wrapped content is HTML structure.`);
             continue;
           }
           try {
             payload = JSON.parse(contentsStr);
           } catch (e) {
-            console.warn(`[REDDIT SERVER API] Skip proxy ${proxyUrl} - nested contents parsing failed.`);
             continue;
           }
         }
 
+        // Verify nested responses and codes wrapping inside success responses
+        if (payload && (payload.error === 404 || payload.message === "Not Found")) {
+          const errCode = inspectResponseError(payload.error || 404, JSON.stringify(payload));
+          return res.status(404).json({ error: errCode });
+        }
+        if (payload && (payload.error === 403 || payload.message === "Forbidden" || payload.reason === "private")) {
+          return res.status(403).json({ error: "PRIVATE_PROFILE" });
+        }
+        if (payload && (payload.error === 429 || payload.message === "Too Many Requests")) {
+          return res.status(429).json({ error: "RATE_LIMIT_REACHED" });
+        }
+
         const dataObj = payload?.data || payload;
-        const totalKarma = dataObj?.total_karma;
-        if (typeof totalKarma === 'number') {
-          console.log(`[REDDIT SERVER API] Successfully sync via proxy: ${totalKarma}`);
+        if (dataObj) {
+          if (dataObj.is_suspended === true) {
+            return res.status(404).json({ error: "DELETED_OR_SUSPENDED" });
+          }
+          const link_karma = typeof dataObj.link_karma === 'number' ? dataObj.link_karma : 0;
+          const comment_karma = typeof dataObj.comment_karma === 'number' ? dataObj.comment_karma : 0;
+          const awarder_karma = typeof dataObj.awarder_karma === 'number' ? dataObj.awarder_karma : 0;
+          const awardee_karma = typeof dataObj.awardee_karma === 'number' ? dataObj.awardee_karma : 0;
+          const calculatedTotal = link_karma + comment_karma + awarder_karma + awardee_karma;
+
+          console.log(`[REDDIT SERVER API] Successfully fetched karma via proxy: ${calculatedTotal}`);
           return res.json({
-            total_karma: totalKarma,
-            link_karma: typeof dataObj?.link_karma === 'number' ? dataObj.link_karma : 0,
-            comment_karma: typeof dataObj?.comment_karma === 'number' ? dataObj.comment_karma : 0,
+            total_karma: calculatedTotal,
+            link_karma,
+            comment_karma,
+            awarder_karma,
+            awardee_karma,
             method: "Proxy"
           });
         }
@@ -210,8 +245,8 @@ async function startServer() {
       }
     }
 
-    // All failed
-    res.status(503).json({ error: "API_UNAVAILABLE", message: "Reddit API and all available proxies are currently offline." });
+    // All resources failed
+    res.status(503).json({ error: "RATE_LIMIT_REACHED", message: "Reddit API and all available proxies are temporarily offline or rate-limited. Please retry shortly." });
   });
 
   // Vite middleware / SPA serving
