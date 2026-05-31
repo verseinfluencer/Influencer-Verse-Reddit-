@@ -2742,10 +2742,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return payload.total_karma;
       }
     } catch (e: any) {
-      console.warn(`[REDDIT SYNC ENGINE] Primary backend API fetch failed. Swapping to public CORS proxies. Detail:`, e);
-      if (e.message === "USER_NOT_FOUND" || e.message === "RATE_LIMIT_REACHED") {
-        throw e;
-      }
+      console.error(`[REDDIT SYNC ENGINE] Server proxy fetch failed for user @${cleanUser}:`, e.message || e);
+      throw e;
     }
 
     // 2. Secondary fallback via direct client-side proxies
@@ -2853,27 +2851,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let success = false;
     let status = 0;
     let responseBodyText = "";
-    
-    let directErrReason = "";
-    let proxyErrReason = "";
+    let syncErrorMsg = "";
 
-    // 2. Log exact request URL
-    const targetUrl = `https://www.reddit.com/user/${cleanUser}/about.json`;
-    console.log(`[REDDIT SYNC LOGS] STEP 2: Client request sent.`);
-    console.log(` - Request URL: ${targetUrl}`);
+    // 2. Log exact proxy URL
+    const proxyUrl = `/api/reddit/karma?username=${encodeURIComponent(cleanUser)}`;
+    console.log(`[REDDIT SYNC LOGS] STEP 2: Request sent (Backend server proxy exclusively).`);
+    console.log(` - Request URL: ${proxyUrl}`);
 
-    // 9. Add timeout protection: Abort request after 10 seconds
+    // Add timeout protection: Abort request after 12 seconds
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
       controller.abort();
-    }, 10000);
+    }, 12000);
 
     try {
-      const res = await fetch(targetUrl, {
+      const res = await fetch(proxyUrl, {
         signal: controller.signal,
         headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 (InfluencerVerseRedditSyncClient/1.0)'
+          'Accept': 'application/json'
         }
       });
       clearTimeout(timeoutId);
@@ -2888,151 +2883,84 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
 
       // 3. Log HTTP status code, response headers, response body
-      console.log(`[REDDIT SYNC LOGS] STEP 3: Client response received.`);
+      console.log(`[REDDIT SYNC LOGS] STEP 3: Server response received.`);
       console.log(` - HTTP Status Code: ${status}`);
       console.log(` - Response Headers:`, JSON.stringify(headersMap, null, 2));
-      console.log(` - Response body length: ${responseBodyText.length}`);
-      console.log(` - Response body:`, responseBodyText);
+      console.log(` - Response body text length: ${responseBodyText.length}`);
 
+      // Verify server returned JSON and not anything weird
+      const contentType = res.headers.get("content-type") || "";
       if (res.ok) {
-        try {
-          const parsedJson = JSON.parse(responseBodyText);
-          const data = parsedJson?.data;
-          if (data && typeof data.total_karma === 'number') {
-            parsedTotalKarma = data.total_karma;
-            parsedLinkKarma = typeof data.link_karma === 'number' ? data.link_karma : 0;
-            parsedCommentKarma = typeof data.comment_karma === 'number' ? data.comment_karma : 0;
-            success = true;
-            console.log(`[REDDIT SYNC LOGS] Direct client fetch succeeded! Parsed total_karma: ${parsedTotalKarma}`);
-          } else {
-            directErrReason = "Data block or total_karma missing in response body JSON structure.";
-          }
-        } catch (jsonErr: any) {
-          directErrReason = `JSON parse error: ${jsonErr.message || jsonErr}`;
-        }
-      } else {
-        directErrReason = `Request failed with non-200 HTTP status code: ${status}`;
-      }
-    } catch (directErr: any) {
-      clearTimeout(timeoutId);
-      
-      // 4. If direct fetch fails (e.g., CORS system error / network / timeout)
-      const isCorsError = directErr instanceof TypeError || (directErr.message && directErr.message.toLowerCase().includes("failed to fetch"));
-      const isTimeout = directErr.name === 'AbortError';
-
-      if (isCorsError) {
-        directErrReason = "Browser CORS protection blocked direct connection to reddit.com.";
-        // 7. Explicitly report if browser CORS blocks client-side requests
-        console.warn("[REDDIT SYNC LOGS] [CORS ALERT] The browser blocked direct client-side requests to Reddit due to CORS restrictions. System is rolling over to CORS-free server fallback.");
-      } else if (isTimeout) {
-        directErrReason = "Timeout error (Request took longer than 10 seconds).";
-      } else {
-        directErrReason = `${directErr.name || 'Network Error'}: ${directErr.message || directErr}`;
-      }
-      console.error(`[REDDIT SYNC LOGS] STEP 3: Client response error.`, directErr);
-    }
-
-    // Fallback path: If direct browser-side fetch fails (e.g., CORS/Network), query the local proxy backend
-    if (!success) {
-      const fallbackController = new AbortController();
-      const fallbackTimeoutId = setTimeout(() => fallbackController.abort(), 10000);
-      try {
-        const proxyUrl = `/api/reddit/karma?username=${encodeURIComponent(cleanUser)}`;
-        console.log(`[REDDIT SYNC LOGS] STEP 3 [FALLBACK]: Requesting CORS-free server-side proxy.`);
-        console.log(` - Proxy Request URL: ${proxyUrl}`);
-
-        const res = await fetch(proxyUrl, {
-          signal: fallbackController.signal
-        });
-        clearTimeout(fallbackTimeoutId);
-
-        status = res.status;
-        responseBodyText = await res.text();
-
-        const proxyHeadersMap: Record<string, string> = {};
-        res.headers.forEach((val, key) => {
-          proxyHeadersMap[key] = val;
-        });
-
-        console.log(`[REDDIT SYNC LOGS] STEP 3 [FALLBACK]: Proxy response received.`);
-        console.log(` - HTTP Status Code: ${status}`);
-        console.log(` - Headers:`, JSON.stringify(proxyHeadersMap, null, 2));
-        console.log(` - Response body text:`, responseBodyText);
-
-        if (res.ok) {
+        if (!contentType.toLowerCase().includes("application/json")) {
+          console.error(`[REDDIT SYNC LOGS] Invalid response content-type: ${contentType}`);
+          syncErrorMsg = `Server proxy returned non-JSON type: ${contentType}`;
+        } else {
           try {
             const parsedJson = JSON.parse(responseBodyText);
-            if (parsedJson && typeof parsedJson.total_karma === 'number') {
+            const trimmed = responseBodyText.trim();
+            
+            if (trimmed.startsWith("<") || trimmed.toLowerCase().includes("<!doctype")) {
+              console.error("[REDDIT SYNC LOGS] HTML response detected in body text.");
+              syncErrorMsg = "Server proxy returned HTML instead of expected JSON API response.";
+            } else if (parsedJson && typeof parsedJson.total_karma === 'number') {
               parsedTotalKarma = parsedJson.total_karma;
               parsedLinkKarma = typeof parsedJson.link_karma === 'number' ? parsedJson.link_karma : 0;
               parsedCommentKarma = typeof parsedJson.comment_karma === 'number' ? parsedJson.comment_karma : 0;
               success = true;
-              console.log(`[REDDIT SYNC LOGS] Proxy server endpoint fetch succeeded! Parsed total_karma: ${parsedTotalKarma}`);
+              console.log(`[REDDIT SYNC LOGS] Backend fetch succeeded! Parsed total_karma: ${parsedTotalKarma}`);
             } else if (parsedJson && parsedJson.error) {
-              proxyErrReason = `Proxy returned error: ${parsedJson.error}. ${parsedJson.message || ''}`;
+              syncErrorMsg = parsedJson.message || parsedJson.error;
             } else {
-              proxyErrReason = "Data block or total_karma missing in proxy response.";
+              syncErrorMsg = "Required JSON fields like total_karma are missing from API response.";
             }
           } catch (jsonErr: any) {
-            proxyErrReason = `JSON parse error of proxy response: ${jsonErr.message || jsonErr}`;
-          }
-        } else {
-          try {
-            const parsedJson = JSON.parse(responseBodyText);
-            proxyErrReason = parsedJson?.message || parsedJson?.error || `Proxy failed with status ${status}.`;
-          } catch (e) {
-            proxyErrReason = `Proxy failed with HTTP status ${status}.`;
+            syncErrorMsg = `JSON syntax decoding error: ${jsonErr.message || jsonErr}`;
           }
         }
-      } catch (fallbackErr: any) {
-        clearTimeout(fallbackTimeoutId);
-        const isTimeout = fallbackErr.name === 'AbortError';
-        proxyErrReason = isTimeout ? "Proxy API sync connection timed out after 10s." : `Proxy network error: ${fallbackErr.message || fallbackErr}`;
-        console.error(`[REDDIT SYNC LOGS] STEP 3 [FALLBACK]: Proxy query error.`, fallbackErr);
+      } else {
+        try {
+          const errorJson = JSON.parse(responseBodyText);
+          syncErrorMsg = errorJson.message || errorJson.error || `HTTP Error ${status}`;
+        } catch (e) {
+          syncErrorMsg = `HTTP Error ${status}`;
+        }
       }
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      const isTimeout = err.name === 'AbortError';
+      syncErrorMsg = isTimeout ? "Connection timed out (12s limit)." : (err.message || String(err));
+      console.error(`[REDDIT SYNC LOGS] Server-side request network/failure error:`, err);
     }
 
     if (!success) {
-      // Construction of descriptive explicit failure trace for the warning card
-      let customFailureDetails = "";
-      if (directErrReason.includes("CORS")) {
-        customFailureDetails = `Browser CORS blocked connection. System proxy fallback error: ${proxyErrReason || 'All endpoints offline'}.`;
-      } else {
-        customFailureDetails = `Direct client fetch: ${directErrReason || 'failed'}. Backend proxy: ${proxyErrReason || 'failed'}.`;
-      }
-      
-      console.error(`[REDDIT SYNC LOGS] SYNC CRITICALLY FAILED. ${customFailureDetails}`);
-      throw new Error(`Unable to fetch latest Reddit karma. Reason: ${customFailureDetails} Displaying last synced value.`);
+      console.error(`[REDDIT SYNC LOGS] Sync critically failed: ${syncErrorMsg}`);
+      // Requirement 8: If server-side sync fails, show explicit friendly message:
+      throw new Error("Live Reddit sync temporarily unavailable. Displaying last synced karma.");
     }
 
-    // Clear local attempts on success
+    // Clear failure tracking on success
     localStorage.removeItem(`reddit_sync_failed_count_${uid}`);
     localStorage.removeItem(`reddit_sync_next_attempt_${uid}`);
 
     // Calculate tiers:
-    // Bronze: 400-999, Silver: 1000-4999, Gold: 5000-9999, Platinum: 10000+
     const tier = getKarmaTier(parsedTotalKarma);
     const b = tier.name; // Bronze, Silver, Gold, Platinum
     const lastSynced = new Date().toISOString();
 
     console.log(`[REDDIT SYNC LOGS] STEP 4: Writing updated variables to Firebase Firestore.`);
     console.log(` - Collection: 'users', docId: '${uid}'`);
-    console.log(` - Fields mapped for writing:`, {
-      userId: uid,
-      redditKarma: parsedTotalKarma,
-      link_karma: parsedLinkKarma,
-      comment_karma: parsedCommentKarma,
-      lastRedditSync: lastSynced,
-      karmaTier: b,
-      karmaYesterday: currentUser.karma ?? parsedTotalKarma,
-      karmaLastSynced: lastSynced
-    });
 
-    // 5. Verify the fetched karma values are actually written to Firebase:
-    // This updates the Firestore DB document to synchronize across browsers and backend audits
+    // 6. Update Firebase with:
+    // - total_karma
+    // - comment_karma
+    // - link_karma
+    // - lastRedditSync
     await updateDoc(doc(db, 'users', uid), {
       karma: parsedTotalKarma,
       redditKarma: parsedTotalKarma,
+      total_karma: parsedTotalKarma,
+      comment_karma: parsedCommentKarma,
+      link_karma: parsedLinkKarma,
       karmaBadge: b,
       karmaTier: b,
       karmaYesterday: currentUser.karma ?? parsedTotalKarma,
@@ -3053,6 +2981,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ...prev,
         karma: parsedTotalKarma,
         redditKarma: parsedTotalKarma,
+        total_karma: parsedTotalKarma,
+        comment_karma: parsedCommentKarma,
+        link_karma: parsedLinkKarma,
         karmaBadge: b,
         karmaTier: b,
         karmaYesterday: prev.karma ?? parsedTotalKarma,
