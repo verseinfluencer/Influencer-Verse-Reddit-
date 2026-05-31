@@ -178,6 +178,31 @@ export const AdminDashboard: React.FC = () => {
   // Client management status filter & search states
   const [selectedClientStatusFilter, setSelectedClientStatusFilter] = useState<string>('active_pending');
   const [userSearchQuery, setUserSearchQuery] = useState('');
+
+  // Manual edit states for user's Karma and Tier
+  const [editingUsers, setEditingUsers] = useState<{[key: string]: { karma: number, tier: string }}>({});
+
+  const handleSaveUserKarmaAndTier = async (userId: string, karmaVal: number, tierVal: string) => {
+    try {
+      const uRef = doc(db, 'users', userId);
+      await updateDoc(uRef, {
+        karma: karmaVal,
+        redditKarma: karmaVal,
+        karmaTier: tierVal,
+        karmaBadge: tierVal,
+        total_karma: karmaVal
+      });
+      // Also update local editing state
+      setEditingUsers(prev => {
+        const copy = { ...prev };
+        delete copy[userId];
+        return copy;
+      });
+    } catch (err: any) {
+      console.error("[ADMIN UPDATE ERROR]", err);
+      alert("Error updating user: " + err.message);
+    }
+  };
   const [clientSearchQuery, setClientSearchQuery] = useState('');
 
   // Permanent account deletion state
@@ -2118,37 +2143,112 @@ export const AdminDashboard: React.FC = () => {
                           <span className="text-purple-400 font-bold">{u.redditUsername}</span>
                         </td>
                         <td className="py-4 px-2">
-                          <div className="text-[11px] space-y-0.5 min-w-[120px] select-text">
-                            <div className="font-extrabold text-white flex items-center gap-1.5">
-                              <span>{(u.karma || 0).toLocaleString()}</span>
-                              <span className="text-[8px] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-1.5 py-0.2 rounded font-black uppercase tracking-wider">{u.karmaBadge || 'Bronze'}</span>
+                          {editingUsers[u.id] ? (
+                            <div className="space-y-1.5 min-w-[130px] p-1.5 bg-zinc-900 rounded-lg border border-white/5">
+                              <div>
+                                <label className="text-[9px] text-zinc-500 font-bold block">KARMA</label>
+                                <input 
+                                  type="number"
+                                  value={editingUsers[u.id].karma}
+                                  onChange={(e) => {
+                                    const val = parseInt(e.target.value) || 0;
+                                    setEditingUsers(prev => ({
+                                      ...prev,
+                                      [u.id]: { ...prev[u.id], karma: val }
+                                    }));
+                                  }}
+                                  className="bg-black text-[10px] text-white p-1 rounded border border-white/10 w-full focus:outline-none"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[9px] text-zinc-500 font-bold block">TIER</label>
+                                <select
+                                  value={editingUsers[u.id].tier}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setEditingUsers(prev => ({
+                                      ...prev,
+                                      [u.id]: { ...prev[u.id], tier: val }
+                                    }));
+                                  }}
+                                  className="bg-black text-[10px] text-white p-1 rounded border border-white/10 w-full focus:outline-none cursor-pointer font-sans"
+                                >
+                                  <option value="Bronze">🥉 Bronze</option>
+                                  <option value="Silver">🥈 Silver</option>
+                                  <option value="Gold">⭐ Gold</option>
+                                  <option value="Platinum">💎 Platinum</option>
+                                </select>
+                              </div>
+                              <div className="flex gap-1 pt-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveUserKarmaAndTier(u.id, editingUsers[u.id].karma, editingUsers[u.id].tier)}
+                                  className="text-[9px] px-2 py-0.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded flex-1 transition-all cursor-pointer"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingUsers(prev => {
+                                      const copy = { ...prev };
+                                      delete copy[u.id];
+                                      return copy;
+                                    });
+                                  }}
+                                  className="text-[9px] px-2 py-0.5 bg-zinc-700 hover:bg-zinc-600 text-white font-bold rounded transition-all cursor-pointer"
+                                >
+                                  Close
+                                </button>
+                              </div>
                             </div>
-                            {u.karmaYesterday !== undefined && (
-                              <div className={`text-[9px] font-bold font-mono ${(u.karma || 0) - (u.karmaYesterday || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                {(u.karma || 0) - (u.karmaYesterday || 0) >= 0 ? '▲ +' : '▼ '}
-                                {((u.karma || 0) - (u.karmaYesterday || 0)).toLocaleString()} yesterday
-                              </div>
-                            )}
-                            {/* Easy buttons to adjust Karma for admin sandbox testing */}
-                            {u.role !== 'admin' && (
-                              <div className="flex gap-1.5 items-center pt-1.5 select-none pointer-events-auto">
-                                <button 
-                                  onClick={() => adminUpdateUserKarma(u.id, (u.karma || 0) + 1000)}
-                                  className="text-[8px] font-extrabold text-zinc-400 bg-zinc-950 px-1.5 py-0.5 rounded border border-white/5 hover:text-white"
-                                  title="Add 1,000 Karma"
+                          ) : (
+                            <div className="text-[11px] space-y-0.5 min-w-[120px] select-text">
+                              <div className="font-extrabold text-white flex items-center gap-1.5 flex-wrap">
+                                <span>{(u.karma || 0).toLocaleString()}</span>
+                                <span className="text-[8px] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-1.5 py-0.2 rounded font-black uppercase tracking-wider">{u.karmaBadge || u.karmaTier || 'Bronze'}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingUsers(prev => ({
+                                      ...prev,
+                                      [u.id]: { karma: u.karma || 0, tier: u.karmaBadge || u.karmaTier || 'Bronze' }
+                                    }));
+                                  }}
+                                  className="text-[10px] text-purple-400 hover:text-purple-300 ml-1 cursor-pointer font-sans"
+                                  title="Edit Karma and Tier manually"
                                 >
-                                  +1K
-                                </button>
-                                <button 
-                                  onClick={() => adminUpdateUserKarma(u.id, Math.max(0, (u.karma || 0) - 1000))}
-                                  className="text-[8px] font-extrabold text-zinc-400 bg-zinc-950 px-1.5 py-0.5 rounded border border-white/5 hover:text-white"
-                                  title="Subtract 1,000 Karma"
-                                >
-                                  -1K
+                                  ✏️ Edit
                                 </button>
                               </div>
-                            )}
-                          </div>
+                              {u.karmaYesterday !== undefined && (
+                                <div className={`text-[9px] font-bold font-mono ${(u.karma || 0) - (u.karmaYesterday || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                  {(u.karma || 0) - (u.karmaYesterday || 0) >= 0 ? '▲ +' : '▼ '}
+                                  {((u.karma || 0) - (u.karmaYesterday || 0)).toLocaleString()} yesterday
+                                </div>
+                              )}
+                              {u.role !== 'admin' && (
+                                <div className="flex gap-1.5 items-center pt-1.5 select-none pointer-events-auto">
+                                  <button 
+                                    type="button"
+                                    onClick={() => handleSaveUserKarmaAndTier(u.id, (u.karma || 0) + 1000, getKarmaTier((u.karma || 0) + 1000).name)}
+                                    className="text-[8px] font-extrabold text-zinc-400 bg-zinc-950 px-1.5 py-0.5 rounded border border-white/5 hover:text-white cursor-pointer"
+                                    title="Add 1,000 Karma"
+                                  >
+                                    +1K
+                                  </button>
+                                  <button 
+                                    type="button"
+                                    onClick={() => handleSaveUserKarmaAndTier(u.id, Math.max(0, (u.karma || 0) - 1000), getKarmaTier(Math.max(0, (u.karma || 0) - 1000)).name)}
+                                    className="text-[8px] font-extrabold text-zinc-400 bg-zinc-950 px-1.5 py-0.5 rounded border border-white/5 hover:text-white cursor-pointer"
+                                    title="Subtract 1,000 Karma"
+                                  >
+                                    -1K
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </td>
                         <td className="py-4 px-2">
                           <a 

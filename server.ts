@@ -146,151 +146,28 @@ async function startServer() {
 
   // 1. Pure HTTP Proxy GET endpoint (preserves backwards compatibility)
   app.get("/api/reddit/karma", async (req, res) => {
-    const usernameQuery = req.query.username as string;
-    if (!usernameQuery) {
-      return res.status(400).json({ error: "Missing username" });
-    }
-
-    const cleanUser = usernameQuery.replace(/^\/?u\//i, '').replace(/^\/user\//i, '').replace(/^\//, '').trim();
-    if (!/^[a-zA-Z0-9_-]{3,20}$/.test(cleanUser)) {
-      return res.status(400).json({ error: "USER_NOT_FOUND", message: "Invalid Reddit username format." });
-    }
-
-    try {
-      const result = await fetchRedditKarmaInternal(cleanUser);
-      return res.json(result);
-    } catch (err: any) {
-      const errStr = err.message || "API_UNAVAILABLE";
-      const statusCode = errStr === "RATE_LIMIT_REACHED" ? 429 : errStr === "PRIVATE_PROFILE" ? 403 : 404;
-      return res.status(statusCode).json({ error: errStr, message: `Sync failed: ${errStr}` });
-    }
+    console.log("[REDDIT PROXY] Reddit api sync is temporarily disabled.");
+    return res.status(503).json({ error: "DISABLED", message: "Reddit karma live sync is temporarily disabled." });
   });
 
   // 2. Pure Cloud Function Endpoint (called syncRedditKarma on Server side)
   // Fetches, saves correct karma directly to Firebase, and returns payload to frontend
   app.post("/api/syncRedditKarma", async (req, res) => {
-    const { userId } = req.body;
-    if (!userId) {
-      return res.status(400).json({ error: "Missing userId parameter." });
-    }
-
-    try {
-      console.log(`[CLOUD FUNCTION RECEIVED] Syncing Reddit Karma for user: ${userId}`);
-      const userRef = doc(db, "users", userId);
-      const userSnap = await getDoc(userRef);
-
-      if (!userSnap.exists()) {
-        return res.status(404).json({ error: "USER_NOT_FOUND", message: "Your user profile does not exist in the database." });
-      }
-
-      const userData = userSnap.data();
-      const rawUser = userData.redditUsername || "";
-      const cleanUser = rawUser.replace(/^\/?u\//i, '').replace(/^\/user\//i, '').replace(/^\//, '').trim();
-
-      if (!rawUser.trim() || !cleanUser) {
-        return res.status(400).json({ error: "USERNAME_REQUIRED", message: "Please enter your Reddit username in profile settings." });
-      }
-
-      if (!/^[a-zA-Z0-9_-]{3,20}$/.test(cleanUser)) {
-        return res.status(400).json({ error: "USERNAME_INVALID", message: "Invalid Reddit username format. Standard Reddit usernames are 3-20 characters." });
-      }
-
-      // Fetch Reddit stats
-      const result = await fetchRedditKarmaInternal(cleanUser);
-
-      // Save the correct karma properties directly to Firebase Firestore
-      const tier = getKarmaTier(result.total_karma);
-      const badgeName = tier.name;
-      const timestampIso = new Date().toISOString();
-
-      await updateDoc(userRef, {
-        karma: result.total_karma,
-        redditKarma: result.total_karma,
-        total_karma: result.total_karma,
-        comment_karma: result.comment_karma,
-        link_karma: result.link_karma,
-        karmaBadge: badgeName,
-        karmaTier: badgeName,
-        karmaYesterday: userData.karma ?? result.total_karma,
-        karmaLastSynced: timestampIso,
-        lastRedditSync: timestampIso,
-        linkKarma: result.link_karma,
-        commentKarma: result.comment_karma,
-        redditLinkKarma: result.link_karma,
-        redditCommentKarma: result.comment_karma
-      });
-
-      console.log(`[CLOUD FUNCTION COMPLETED] Updated user ${userId} to total karma: ${result.total_karma}`);
-      return res.json({
-        total_karma: result.total_karma,
-        link_karma: result.link_karma,
-        comment_karma: result.comment_karma,
-        awarder_karma: result.awarder_karma,
-        awardee_karma: result.awardee_karma,
-        karmaBadge: badgeName,
-        karmaTier: badgeName,
-        karmaLastSynced: timestampIso,
-        method: result.method
-      });
-
-    } catch (err: any) {
-      const errStr = err.message || "API_UNAVAILABLE";
-      const statusCode = errStr === "RATE_LIMIT_REACHED" ? 429 : errStr === "PRIVATE_PROFILE" ? 403 : 404;
-      return res.status(statusCode).json({ error: errStr, message: `Sync failed: ${errStr}` });
-    }
+    console.log("[REDDIT SYNC] Reddit api sync is temporarily disabled.");
+    return res.status(503).json({ error: "DISABLED", message: "Reddit karma live sync is temporarily disabled." });
   });
 
   // Scheduled 24-Hours Auto Sync Task Loop (simulates Firebase active scheduler in Express container bounds)
   const runScheduledKarmaSync = async () => {
-    console.log("[SCHEDULED SYNC TRIGGER] Starting 24-hour routine sync of all active Reddit profiles...");
-    try {
-      const usersSnap = await getDocs(collection(db, "users"));
-      for (const uDoc of usersSnap.docs) {
-        const u = uDoc.data();
-        const rawUser = u.redditUsername;
-        if (rawUser && rawUser.trim()) {
-          const cleanUser = rawUser.replace(/^\/?u\//i, '').replace(/^\/user\//i, '').replace(/^\//, '').trim();
-          if (/^[a-zA-Z0-9_-]{3,20}$/.test(cleanUser)) {
-            try {
-              const res = await fetchRedditKarmaInternal(cleanUser);
-              const tier = getKarmaTier(res.total_karma);
-              const badgeName = tier.name;
-              const dateIso = new Date().toISOString();
-
-              await updateDoc(doc(db, "users", uDoc.id), {
-                karma: res.total_karma,
-                redditKarma: res.total_karma,
-                total_karma: res.total_karma,
-                comment_karma: res.comment_karma,
-                link_karma: res.link_karma,
-                karmaBadge: badgeName,
-                karmaTier: badgeName,
-                karmaLastSynced: dateIso,
-                lastRedditSync: dateIso,
-                linkKarma: res.link_karma,
-                commentKarma: res.comment_karma,
-                redditLinkKarma: res.link_karma,
-                redditCommentKarma: res.comment_karma
-              });
-              console.log(`[SCHEDULED AUTOMATION] Successfully auto-synced u/${cleanUser} karma to ${res.total_karma}`);
-            } catch (autoErr: any) {
-              console.error(`[SCHEDULED AUTOMATION] Skip u/${cleanUser} failures:`, autoErr.message || autoErr);
-            }
-          }
-        }
-      }
-      console.log("[SCHEDULED SYNC RECONCILIATION] Completed successfully.");
-    } catch (schedErr: any) {
-      console.error("[SCHEDULED CRIT] Unable to pull database list for scheduler:", schedErr.message || schedErr);
-    }
+    console.log("[SCHEDULED SYNC TRIGGER] Live Reddit sync is disabled. Skipping automations.");
   };
 
-  // Run automatically every 24 hours
+  // Run automatically every 24 hours (No-Op)
   const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
-  setInterval(runScheduledKarmaSync, TWENTY_FOUR_HOURS_MS);
+  // setInterval(runScheduledKarmaSync, TWENTY_FOUR_HOURS_MS);
 
-  // Run initial test sync 30s after server booted up to verify runtime stability 
-  setTimeout(runScheduledKarmaSync, 30000);
+  // Run initial test sync 30s after server booted up (No-Op)
+  // setTimeout(runScheduledKarmaSync, 30000);
 
   // Vite middleware / SPA serving
   if (process.env.NODE_ENV !== "production") {
