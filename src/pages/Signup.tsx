@@ -25,6 +25,74 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [websiteUrl, setWebsiteUrl] = useState('');
 
+  // Discord Verification state
+  const [discordVerified, setDiscordVerified] = useState(false);
+  const [discordUserId, setDiscordUserId] = useState<string | null>(null);
+  const [discordUsername, setDiscordUsername] = useState<string | null>(null);
+  const [discordVerifiedAt, setDiscordVerifiedAt] = useState<string | null>(null);
+  const [discordFeedback, setDiscordFeedback] = useState<{ success: boolean; message: string } | null>(null);
+  const [discordVerifying, setDiscordVerifying] = useState(false);
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      const origin = event.origin;
+      if (!origin.endsWith('.run.app') && !origin.includes('localhost') && !origin.includes('influencerverse.online')) {
+        return;
+      }
+      
+      if (event.data?.type === 'DISCORD_VERIFICATION_RESULT') {
+        const { success, discordUserId, discordUsername, discordVerifiedAt, error, fallbackText } = event.data;
+        setDiscordVerifying(false);
+        if (success) {
+          setDiscordVerified(true);
+          setDiscordUserId(discordUserId);
+          setDiscordUsername(discordUsername);
+          setDiscordVerifiedAt(discordVerifiedAt);
+          setDiscordFeedback({ success: true, message: "Discord verified successfully." });
+        } else {
+          setDiscordVerified(false);
+          setDiscordFeedback({
+            success: false,
+            message: fallbackText || error || "Please join our Discord server and verify again."
+          });
+        }
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  const handleVerifyDiscord = async () => {
+    if (discordVerifying) return;
+    setDiscordVerifying(true);
+    setDiscordFeedback(null);
+    try {
+      const response = await fetch('/api/auth/discord/url');
+      if (!response.ok) {
+        throw new Error('Failed to retrieve Discord authorization URL.');
+      }
+      const { url } = await response.json();
+      
+      const authWindow = window.open(
+        url,
+        'discord_oauth_popup',
+        'width=600,height=750'
+      );
+
+      if (!authWindow) {
+        alert('Please allow popups for this site to complete your Discord verification.');
+        setDiscordVerifying(false);
+      }
+    } catch (err: any) {
+      console.error('Discord authorization initialization failed:', err);
+      setDiscordFeedback({
+        success: false,
+        message: err.message || 'Unable to connect to Discord authentication services.'
+      });
+      setDiscordVerifying(false);
+    }
+  };
+
   // States
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -191,6 +259,11 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
       return;
     }
 
+    if (!discordVerified) {
+      setErrorMsg('Please pre-verify your active Discord server membership first.');
+      return;
+    }
+
     setLoading(true);
     try {
       const canonicalUsername = trimmedRedditUsername.startsWith('u/') ? trimmedRedditUsername : `u/${trimmedRedditUsername}`;
@@ -201,7 +274,11 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
         redditUsername: canonicalUsername,
         redditProfileLink: trimmedProfileLink,
         referralCode: referralCode.trim() || undefined,
-        honeypotFilled: !!websiteUrl
+        honeypotFilled: !!websiteUrl,
+        discordVerified: true,
+        discordUserId: discordUserId || undefined,
+        discordUsername: discordUsername || undefined,
+        discordVerifiedAt: discordVerifiedAt || undefined
       });
       
       // Save draft user object in localStorage and userDraft state
@@ -461,6 +538,66 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
             </div>
           </div>
 
+          {/* Discord Server Verification */}
+          <div className="pt-4 pb-4 border-t border-b border-white/5 space-y-3">
+            <div className="flex justify-between items-center">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+                Discord Server Verification <span className="text-red-500">*</span>
+              </label>
+              {discordVerified ? (
+                <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Discord Verified
+                </span>
+              ) : (
+                <span className="text-[10px] text-amber-500 font-bold flex items-center gap-1 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                  <AlertCircle className="w-3.5 h-3.5" /> Mandatory Verification
+                </span>
+              )}
+            </div>
+
+            <p className="text-[11px] text-zinc-400 leading-relaxed font-semibold">
+              To complete registration on Influencer Verse, you must verify your membership in our official Discord server. Please click the button below to link and verify.
+            </p>
+
+            <button
+              type="button"
+              onClick={handleVerifyDiscord}
+              disabled={discordVerifying}
+              className={`w-full py-3 flex items-center justify-center gap-2 text-xs font-bold rounded-xl transition-all ${
+                discordVerified 
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' 
+                  : 'bg-[#5865F2] text-white hover:bg-[#4752C4] shadow-md cursor-pointer'
+              } disabled:opacity-50`}
+            >
+              {discordVerifying ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Verifying Discord Membership...
+                </>
+              ) : discordVerified ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  Verified as: {discordUsername}
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  Verify Discord Membership
+                </>
+              )}
+            </button>
+
+            {discordFeedback && (
+              <div id="discord-feedback-msg" className={`p-3 rounded-lg text-xs leading-relaxed border ${
+                discordFeedback.success 
+                  ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 font-semibold' 
+                  : 'bg-red-500/10 border-red-500/20 text-red-400 font-semibold'
+              }`}>
+                {discordFeedback.message}
+              </div>
+            )}
+          </div>
+
           {/* Invitation and Terms */}
           <div className="pt-2 grid grid-cols-1 gap-4">
             <div>
@@ -492,7 +629,7 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
 
           <button 
             type="submit"
-            disabled={loading}
+            disabled={loading || !discordVerified}
             className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-blue-500 text-xs font-bold rounded-xl text-white hover:opacity-95 shadow-lg flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
           >
             {loading ? 'Creating Wallet Account...' : 'Agree & Create Account'} <ShieldCheck className="w-4 h-4" />

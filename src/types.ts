@@ -56,6 +56,10 @@ export interface User {
   banReason?: string | null;
   isSimulatedData?: boolean;
   lastWalletUpdate?: string | null;
+  discordVerified?: boolean;
+  discordUserId?: string;
+  discordUsername?: string;
+  discordVerifiedAt?: string | null;
 }
 
 export type TaskType = 'post' | 'comment';

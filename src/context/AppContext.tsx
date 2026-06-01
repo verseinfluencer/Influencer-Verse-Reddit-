@@ -69,6 +69,10 @@ interface AppContextType {
     redditProfileLink: string;
     referralCode?: string;
     password?: string;
+    discordVerified?: boolean;
+    discordUserId?: string;
+    discordUsername?: string;
+    discordVerifiedAt?: string | null;
   }) => Promise<User>;
   logout: () => void;
   updateProfile: (fullName: string, redditUsername: string, redditProfileLink: string, gender?: 'Male' | 'Female' | 'Non-binary' | 'Prefer not to say') => Promise<void>;
@@ -733,6 +737,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     redditProfileLink: string;
     referralCode?: string;
     password?: string;
+    discordVerified?: boolean;
+    discordUserId?: string;
+    discordUsername?: string;
+    discordVerifiedAt?: string | null;
   }): Promise<User> => {
     const realIP = await getRealIP();
     if (realIP && blacklistedIPs.includes(realIP)) {
@@ -835,7 +843,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isSuspended: false,
         suspensionReason: null,
         isBanned: false,
-        banReason: null
+        banReason: null,
+        discordVerified: userData.discordVerified || false,
+        discordUserId: userData.discordUserId || null,
+        discordUsername: userData.discordUsername || null,
+        discordVerifiedAt: userData.discordVerifiedAt || null
       };
 
       // NOTE: EXPLICIT MANDATE MET: We DO NOT save the user to Firestore or write notifications until email is verified!

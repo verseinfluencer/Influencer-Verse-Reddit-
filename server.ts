@@ -261,6 +261,266 @@ async function startServer() {
     res.redirect(`/api/reddit-karma?username=${encodeURIComponent(String(req.query.username || ''))}`);
   });
 
+  // ================= DISCORD CLIENT MANDATORY VERIFICATION =================
+  // HTML template generator for communicating callback result to opener window
+  function generateDiscordHTMLResponse(data: {
+    success: boolean;
+    discordUserId?: string;
+    discordUsername?: string;
+    discordVerifiedAt?: string;
+    error?: string;
+    fallbackText?: string;
+  }) {
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Discord Server Verification</title>
+        <style>
+          body {
+            background-color: #09090b;
+            color: #f4f4f5;
+            font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji";
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+            padding: 16px;
+          }
+          .container {
+            background-color: #181124;
+            border: 1px solid rgba(147, 51, 234, 0.2);
+            border-radius: 20px;
+            padding: 36px 24px;
+            max-width: 420px;
+            width: 100%;
+            box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 15px rgba(147, 51, 234, 0.15);
+          }
+          .icon {
+            font-size: 40px;
+            line-height: 1;
+            margin-bottom: 16px;
+          }
+          h2 {
+            margin-top: 0;
+            margin-bottom: 12px;
+            color: ${data.success ? '#34d399' : '#f87171'};
+            font-weight: 900;
+            font-size: 22px;
+            letter-spacing: -0.025em;
+          }
+          p {
+            color: #d4d4d8;
+            font-size: 13.5px;
+            line-height: 1.6;
+            margin-bottom: 24px;
+            font-weight: 500;
+          }
+          .spinner {
+            border: 3.5px solid rgba(255, 255, 255, 0.08);
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border-left-color: #a855f7;
+            animation: spin 0.8s linear infinite;
+            margin: 8px auto;
+          }
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="icon">${data.success ? '✅' : '❌'}</div>
+          <h2>${data.success ? 'Discord Verified' : 'Verification Denied'}</h2>
+          <p>${data.success ? 'Your Discord account was successfully linked. This secure window will exit shortly...' : (data.error || 'Failed to authenticate membership.')}</p>
+          <div class="spinner"></div>
+          <script>
+            if (window.opener) {
+              window.opener.postMessage({
+                type: 'DISCORD_VERIFICATION_RESULT',
+                success: ${data.success},
+                discordUserId: ${data.discordUserId ? `'${data.discordUserId}'` : 'null'},
+                discordUsername: ${data.discordUsername ? `'${data.discordUsername.replace(/'/g, "\\'")}'` : 'null'},
+                discordVerifiedAt: ${data.discordVerifiedAt ? `'${data.discordVerifiedAt}'` : 'null'},
+                error: ${data.error ? `'${data.error.replace(/'/g, "\\'")}'` : 'null'},
+                fallbackText: ${data.fallbackText ? `'${data.fallbackText.replace(/'/g, "\\'")}'` : 'null'}
+              }, '*');
+              setTimeout(() => {
+                window.close();
+              }, 1600);
+            } else {
+              document.querySelector('.spinner').style.display = 'none';
+              const fallback = document.createElement('p');
+              fallback.style.color = '#71717a';
+              fallback.style.fontSize = '12px';
+              fallback.innerHTML = 'Secure session ended. Please re-verify inside the main application tab.';
+              document.querySelector('.container').appendChild(fallback);
+            }
+          </script>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  // Discord Authorization URL request endpoint
+  app.get("/api/auth/discord/url", (req, res) => {
+    const clientId = process.env.DISCORD_CLIENT_ID;
+    const redirectUri = process.env.DISCORD_REDIRECT_URI;
+    
+    if (!clientId || !redirectUri) {
+      return res.status(500).json({ error: "Discord authentication is not fully configured in environment variables (missing DISCORD_CLIENT_ID or DISCORD_REDIRECT_URI)." });
+    }
+    
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: "code",
+      scope: "identify"
+    });
+    
+    const authUrl = `https://discord.com/api/oauth2/authorize?${params.toString()}`;
+    return res.json({ url: authUrl });
+  });
+
+  // Discord OAuth Redirect & Callback verification
+  app.get(["/auth/discord/callback", "/auth/discord/callback/"], async (req, res) => {
+    const { code } = req.query;
+    if (!code || typeof code !== "string") {
+      return res.send(generateDiscordHTMLResponse({
+        success: false,
+        error: "Missing login verification code from Discord authentication response."
+      }));
+    }
+
+    const clientId = process.env.DISCORD_CLIENT_ID;
+    const clientSecret = process.env.DISCORD_CLIENT_SECRET;
+    const botToken = process.env.DISCORD_BOT_TOKEN;
+    const guildId = process.env.DISCORD_GUILD_ID;
+    const redirectUri = process.env.DISCORD_REDIRECT_URI;
+
+    if (!clientId || !clientSecret || !botToken || !guildId || !redirectUri) {
+      return res.send(generateDiscordHTMLResponse({
+        success: false,
+        error: "Discord authentication is not fully configured on the server (missing environment variables)."
+      }));
+    }
+
+    try {
+      console.log("[DISCORD CALLBACK] Initiating Token Exchange for code...");
+      
+      // 1. Exchange OAuth code for an access token
+      const tokenResponse = await fetch("https://discord.com/api/oauth2/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: new URLSearchParams({
+          client_id: clientId,
+          client_secret: clientSecret,
+          grant_type: "authorization_code",
+          code: code,
+          redirect_uri: redirectUri
+        }).toString()
+      });
+
+      if (!tokenResponse.ok) {
+        const errText = await tokenResponse.text();
+        console.error("[DISCORD CALLBACK] Token exchange failed with status:", tokenResponse.status, errText);
+        return res.send(generateDiscordHTMLResponse({
+          success: false,
+          error: "Failed to exchange authorization code with Discord."
+        }));
+      }
+
+      const tokenData = await tokenResponse.json() as any;
+      const accessToken = tokenData.access_token;
+      if (!accessToken) {
+        return res.send(generateDiscordHTMLResponse({
+          success: false,
+          error: "Token request succeeded but returned no access token from Discord."
+        }));
+      }
+
+      console.log("[DISCORD CALLBACK] Retrieving user profile...");
+      // 2. Fetch the user's Discord identity profile
+      const userResponse = await fetch("https://discord.com/api/users/@me", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
+
+      if (!userResponse.ok) {
+        const errText = await userResponse.text();
+        console.error("[DISCORD CALLBACK] Profile retrieval failed with status:", userResponse.status, errText);
+        return res.send(generateDiscordHTMLResponse({
+          success: false,
+          error: "Failed to fetch user metadata from Discord API."
+        }));
+      }
+
+      const userData = await userResponse.json() as any;
+      const discordUserId = userData.id;
+      const discordUsername = userData.username || userData.global_name;
+
+      if (!discordUserId || !discordUsername) {
+        return res.send(generateDiscordHTMLResponse({
+          success: false,
+          error: "Unable to retrieve unique Discord ID or username."
+        }));
+      }
+
+      console.log(`[DISCORD CALLBACK] Verifying membership in guild ID ${guildId} for User: ${discordUsername} (${discordUserId})...`);
+      // 3. Request Guild Membership status using our BOT Token
+      const memberResponse = await fetch(`https://discord.com/api/guilds/${guildId}/members/${discordUserId}`, {
+        headers: {
+          Authorization: `Bot ${botToken}`
+        }
+      });
+
+      if (memberResponse.status === 404) {
+        console.warn(`[DISCORD CALLBACK] User NOT found in Guild ID ${guildId}`);
+        return res.send(generateDiscordHTMLResponse({
+          success: false,
+          error: "Please join our Discord server before creating an account.",
+          fallbackText: "Please join our Discord server and verify again."
+        }));
+      }
+
+      if (!memberResponse.ok) {
+        const errText = await memberResponse.text();
+        console.error("[DISCORD CALLBACK] Guild member check returned error:", memberResponse.status, errText);
+        return res.send(generateDiscordHTMLResponse({
+          success: false,
+          error: "Error verifying Discord server membership status."
+        }));
+      }
+
+      // Verification fully successful!
+      console.log(`[DISCORD SERVER] Access verification confirmed. User: ${discordUsername}`);
+      return res.send(generateDiscordHTMLResponse({
+        success: true,
+        discordUserId,
+        discordUsername,
+        discordVerifiedAt: new Date().toISOString()
+      }));
+
+    } catch (err: any) {
+      console.error("[DISCORD CALLBACK] Critical verification exception:", err);
+      return res.send(generateDiscordHTMLResponse({
+        success: false,
+        error: `Core server error: ${err.message || err}`
+      }));
+    }
+  });
+
   // 2. Pure Cloud Function Endpoint (called syncRedditKarma on Server side)
   // Fetches, saves correct karma directly to Firebase, and returns payload to frontend
   app.post("/api/syncRedditKarma", async (req, res) => {
