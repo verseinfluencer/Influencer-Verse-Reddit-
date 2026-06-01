@@ -49,8 +49,17 @@ export const Leaderboard: React.FC = () => {
   const [selectedTierFilter, setSelectedTierFilter] = useState<string>('all');
   const [leaderboardType, setLeaderboardType] = useState<'earners' | 'karma'>('earners');
 
-  // Filter out admins/banned accounts from leaderboard
-  const legitimateUsers = users.filter(u => u.role !== 'admin' && u.status !== 'Banned');
+  // Filter out admins/banned accounts and clients from leaderboard
+  const legitimateUsers = users.filter(u => {
+    const isClient = 
+      u.role === 'client' || 
+      u.role === 'brand' || 
+      u.role === 'agency' || 
+      (u as any).accountType === 'client' || 
+      (u as any).userType === 'client' || 
+      (u as any).isClient === true;
+    return u.role !== 'admin' && u.status !== 'Banned' && !isClient;
+  });
 
   const isAdmin = currentUser?.role === 'admin';
 

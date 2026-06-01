@@ -15,7 +15,7 @@ import {
 export const AdminDashboard: React.FC = () => {
   const { 
     currentUser,
-    users, tasks, submissions, withdrawals, transactions, settings,
+    users: rawUsers, tasks, submissions, withdrawals, transactions, settings,
     adminApproveUser, adminRejectUser, adminBanUser, adminSuspendUser, adminUnbanUser, adminUnsuspendUser,
     adminDeleteUserAccount, adminDeleteClientAccount,
     adminCreateTask, adminEditTask, adminDeleteTask,
@@ -24,7 +24,7 @@ export const AdminDashboard: React.FC = () => {
     resetCooldown, adminUpdateUserKarma, adminAdjustUserBalance, forceUnclaimTask, extendUserDeadline,
     
     // New Client Hooks and Properties from AppContext
-    clients, clientTasks, clientPayments, clientPaymentProofs, clientChats,
+    clients: rawClients, clientTasks, clientPayments, clientPaymentProofs, clientChats,
     adminReviewClient, adminToggleTaskUpload, adminToggleGlobalTaskUpload, adminReviewClientTask,
     adminResolveDispute, adminConfirmClientPayment, adminVerifyPaymentProof, adminRejectPaymentProof, adminReviewPayout, adminRemoveCompletedTask, adminDeductMember,
     adminSendMessage, adminToggleChatResolution,
@@ -39,6 +39,27 @@ export const AdminDashboard: React.FC = () => {
     notifications,
     tickets
   } = useApp();
+
+  const users = (rawUsers || []).filter(u => {
+    const isClient = 
+      u.role === 'client' || 
+      u.role === 'brand' || 
+      u.role === 'agency' || 
+      (u as any).accountType === 'client' || 
+      (u as any).userType === 'client' || 
+      (u as any).isClient === true;
+    return !isClient;
+  });
+
+  const clients = (rawClients || []).filter(c => {
+    const role = (c as any).role;
+    const isMemberOrAdmin = role === 'user' || role === 'member' || role === 'moderator' || role === 'admin';
+    
+    const roleIsClient = role === 'client' || role === 'brand' || role === 'agency';
+    const hasClientType = (c as any).accountType === 'client' || (c as any).userType === 'client' || (c as any).isClient === true;
+    
+    return (roleIsClient || hasClientType || !isMemberOrAdmin);
+  });
 
   const [activeTab, setActiveTab] = useState<'users' | 'clients' | 'client-tasks' | 'client-payments' | 'client-chats' | 'tasks' | 'submissions' | 'withdrawals' | 'announcements' | 'settings' | 'security' | 'track-data' | 'audit-log' | 'deleted-tasks' | 'live-wallet' | 'deleted-history'>('users');
   const [showPermissionRestrictedModal, setShowPermissionRestrictedModal] = useState<string | null>(null);
