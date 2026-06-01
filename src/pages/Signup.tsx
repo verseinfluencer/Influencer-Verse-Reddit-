@@ -67,11 +67,41 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
     setDiscordVerifying(true);
     setDiscordFeedback(null);
     try {
-      const response = await fetch('/api/auth/discord/url');
+      const requestUrl = '/api/auth/discord/url';
+      console.log(`[DISCORD FETCH] Requesting: ${requestUrl}`);
+      const response = await fetch(requestUrl);
+      console.log(`[DISCORD FETCH] Response status: ${response.status} ${response.statusText}`);
+      
+      const contentType = response.headers.get('content-type') || '';
+      console.log(`[DISCORD FETCH] Response Content-Type:`, contentType);
+
+      const responseText = await response.text();
+      console.log(`[DISCORD FETCH] Response body:`, responseText);
+
       if (!response.ok) {
-        throw new Error('Failed to retrieve Discord authorization URL.');
+        throw new Error(`Failed to retrieve Discord authorization URL. Server returned status: ${response.status} ${response.statusText}`);
       }
-      const { url } = await response.json();
+
+      if (!contentType.toLowerCase().includes('application/json')) {
+        console.error(`[DISCORD FETCH] Invalid media type: "${contentType}". Expected: application/json.`);
+        if (responseText.trim().startsWith('<') || responseText.toLowerCase().includes('<!doctype') || responseText.toLowerCase().includes('<html')) {
+          throw new Error('The API returned HTML markup (likely index.html from a single-page app router fallback or static hosting host) instead of the expected JSON configurations.');
+        }
+        throw new Error(`The API request succeeded but returned non-JSON data (Content-Type: "${contentType}").`);
+      }
+
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (jsonErr: any) {
+        console.error("[DISCORD FETCH] JSON parsing failed:", jsonErr);
+        throw new Error(`Unable to parse the Discord response as JSON: ${jsonErr.message || jsonErr}`);
+      }
+
+      const { url } = data;
+      if (!url) {
+        throw new Error('The verification API responded successfully but the URL config was missing or empty.');
+      }
       
       const authWindow = window.open(
         url,
