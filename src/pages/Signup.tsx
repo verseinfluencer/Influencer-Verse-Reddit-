@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { ShieldCheck, User as UserIcon, Mail, Lock, CheckCircle2, XCircle, AlertCircle, Clock, Send, Loader2, Eye, EyeOff } from 'lucide-react';
+import { ShieldCheck, User as UserIcon, Mail, Lock, CheckCircle2, XCircle, AlertCircle, Clock, Send, Loader2, Eye, EyeOff, MessageSquare } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { auth } from '../utils/firebase';
 import { sendEmailVerification } from 'firebase/auth';
@@ -586,36 +586,48 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
             </div>
 
             <p className="text-[11px] text-zinc-400 leading-relaxed font-semibold">
-              To complete registration on Influencer Verse, you must verify your membership in our official Discord server. Please click the button below to link and verify.
+              To complete registration on Influencer Verse, you must verify your membership in our official Discord server. First join the Discord using the button below, then complete verification.
             </p>
 
-            <button
-              type="button"
-              onClick={handleVerifyDiscord}
-              disabled={discordVerifying}
-              className={`w-full py-3 flex items-center justify-center gap-2 text-xs font-bold rounded-xl transition-all ${
-                discordVerified 
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' 
-                  : 'bg-[#5865F2] text-white hover:bg-[#4752C4] shadow-md cursor-pointer'
-              } disabled:opacity-50`}
-            >
-              {discordVerifying ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Verifying Discord Membership...
-                </>
-              ) : discordVerified ? (
-                <>
-                  <CheckCircle2 className="w-4 h-4" />
-                  Verified as: {discordUsername}
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4" />
-                  Verify Discord Membership
-                </>
-              )}
-            </button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <a
+                href="https://discord.gg/fFPT58H9kd"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-3 flex items-center justify-center gap-2 text-xs font-bold rounded-xl bg-gradient-to-r from-purple-700/30 to-indigo-700/30 text-purple-200 hover:from-purple-700/45 hover:to-indigo-700/45 hover:text-white border border-purple-500/30 shadow-md hover:border-purple-500/50 transition-all text-center cursor-pointer"
+              >
+                <MessageSquare className="w-4 h-4 text-purple-300 shrink-0" />
+                Join Our Discord
+              </a>
+
+              <button
+                type="button"
+                onClick={handleVerifyDiscord}
+                disabled={discordVerifying}
+                className={`w-full py-3 flex items-center justify-center gap-2 text-xs font-bold rounded-xl transition-all ${
+                  discordVerified 
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' 
+                    : 'bg-[#5865F2] text-white hover:bg-[#4752C4] shadow-md cursor-pointer'
+                } disabled:opacity-50`}
+              >
+                {discordVerifying ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                    Verifying membership...
+                  </>
+                ) : discordVerified ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
+                    Verified: {discordUsername}
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4 shrink-0" />
+                    Verify Discord Membership
+                  </>
+                )}
+              </button>
+            </div>
 
             {discordFeedback && (
               <div id="discord-feedback-msg" className={`p-3 rounded-lg text-xs leading-relaxed border ${
