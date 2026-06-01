@@ -161,10 +161,104 @@ async function startServer() {
     return res.json({ ip });
   });
 
+  // Requirement 1: Create a backend endpoint /api/reddit-karma?username={redditUsername}
+  app.get("/api/reddit-karma", async (req, res) => {
+    const rawUsername = req.query.username;
+    if (!rawUsername || typeof rawUsername !== 'string') {
+      return res.status(400).json({ success: false, message: "Username query parameter is required." });
+    }
+
+    const username = rawUsername.trim().replace(/^u\//, "");
+    const targetUrl = `https://www.reddit.com/user/${username}/about.json`;
+
+    console.log(`[REDDIT KARMA PROXY] Received sync request. Username: "${username}", Request URL: "${targetUrl}"`);
+
+    try {
+      const response = await fetch(targetUrl, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+          "Accept": "application/json"
+        }
+      });
+
+      const statusCode = response.status;
+      const contentType = response.headers.get("content-type") || "";
+
+      console.log(`[REDDIT KARMA PROXY] Fetch complete. Status: ${statusCode}, Content-Type: "${contentType}"`);
+
+      if (statusCode === 404) {
+        return res.status(404).json({ success: false, message: "Reddit account not found." });
+      }
+
+      if (statusCode === 429) {
+        return res.status(429).json({ success: false, message: "Reddit temporarily unavailable. Please try again later." });
+      }
+
+      if (statusCode !== 200) {
+        return res.status(statusCode).json({ success: false, message: "Unable to sync Reddit karma." });
+      }
+
+      const isContentTypeJson = contentType.toLowerCase().includes("application/json");
+      if (!isContentTypeJson) {
+        console.warn(`[REDDIT KARMA PROXY] Rejected: Content-Type does not contain application/json: "${contentType}"`);
+        return res.status(415).json({ success: false, message: "Unable to sync Reddit karma." });
+      }
+
+      const bodyText = await response.text();
+      const isHtmlResponse = bodyText.trim().startsWith("<") || 
+                             bodyText.toLowerCase().includes("<!doctype") || 
+                             bodyText.toLowerCase().includes("<html");
+
+      if (isHtmlResponse) {
+        console.warn(`[REDDIT KARMA PROXY] Rejected: Extracted HTML content instead of expected JSON.`);
+        return res.status(415).json({ success: false, message: "Unable to sync Reddit karma." });
+      }
+
+      let parsed: any;
+      try {
+        parsed = JSON.parse(bodyText);
+      } catch (jsonErr) {
+        console.error(`[REDDIT KARMA PROXY] Failed to parse JSON response:`, jsonErr);
+        return res.status(500).json({ success: false, message: "Unable to sync Reddit karma." });
+      }
+
+      const data = parsed?.data;
+      if (!data) {
+        console.warn(`[REDDIT KARMA PROXY] Missing data segment in parsed payload.`);
+        return res.status(500).json({ success: false, message: "Reddit account not found." });
+      }
+
+      if (data.is_suspended === true) {
+        console.warn(`[REDDIT KARMA PROXY] User profile is suspended or inactive.`);
+        return res.status(404).json({ success: false, message: "Reddit account not found." });
+      }
+
+      const totalKarma = typeof data.total_karma === 'number' ? data.total_karma : 
+                         (typeof data.link_karma === 'number' ? data.link_karma : 0) + 
+                         (typeof data.comment_karma === 'number' ? data.comment_karma : 0);
+      const commentKarma = typeof data.comment_karma === 'number' ? data.comment_karma : 0;
+      const linkKarma = typeof data.link_karma === 'number' ? data.link_karma : 0;
+      const createdUtc = data.created_utc || null;
+
+      console.log(`[REDDIT KARMA PROXY] Successfully processed. Username: "${username}", total_karma: ${totalKarma}, comment_karma: ${commentKarma}, link_karma: ${linkKarma}, created_utc: ${createdUtc}`);
+
+      return res.json({
+        success: true,
+        totalKarma,
+        commentKarma,
+        linkKarma,
+        lastSync: new Date().toISOString()
+      });
+
+    } catch (fetchErr) {
+      console.error(`[REDDIT KARMA PROXY] Network error during request dispatch:`, fetchErr);
+      return res.status(500).json({ success: false, message: "Unable to sync Reddit karma." });
+    }
+  });
+
   // 1. Pure HTTP Proxy GET endpoint (preserves backwards compatibility)
-  app.get("/api/reddit/karma", async (req, res) => {
-    console.log("[REDDIT PROXY] Reddit api sync is temporarily disabled.");
-    return res.status(503).json({ error: "DISABLED", message: "Reddit karma live sync is temporarily disabled." });
+  app.get("/api/reddit/karma", (req, res) => {
+    res.redirect(`/api/reddit-karma?username=${encodeURIComponent(String(req.query.username || ''))}`);
   });
 
   // 2. Pure Cloud Function Endpoint (called syncRedditKarma on Server side)

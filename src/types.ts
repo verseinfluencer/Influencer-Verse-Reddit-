@@ -28,6 +28,8 @@ export interface User {
   karmaBadge?: string | null;
   karmaLastSynced?: string | null; // ISO string for when Reddit karma was last updated
   redditKarma?: number;
+  commentKarma?: number;
+  postKarma?: number;
   lastRedditSync?: string | null;
   karmaTier?: string | null;
 
@@ -53,6 +55,7 @@ export interface User {
   isBanned?: boolean | null;
   banReason?: string | null;
   isSimulatedData?: boolean;
+  lastWalletUpdate?: string | null;
 }
 
 export type TaskType = 'post' | 'comment';
@@ -166,7 +169,7 @@ export interface ArchivedWithdrawal {
 export interface Transaction {
   id: string;
   userId: string;
-  type: 'earning' | 'withdrawal' | 'referral_bonus' | 'deduction';
+  type: 'earning' | 'withdrawal' | 'referral_bonus' | 'deduction' | 'balance_adjustment';
   amount: number;
   description: string;
   date: string;
@@ -207,6 +210,7 @@ export interface SystemSettings {
   dailyTaskLimit: number;
   referralBonus: number; // USDT for inviter
   disableAllClientUploads?: boolean; // Global block toggle
+  allowModeratorsEditWallets?: boolean;
 }
 
 // Client specific types

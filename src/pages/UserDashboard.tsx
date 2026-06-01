@@ -15,6 +15,32 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
   const [syncSuccess, setSyncSuccess] = React.useState(false);
   const [syncError, setSyncError] = React.useState<string | null>(null);
   const [toastMessage, setToastMessage] = React.useState<string | null>(null);
+  const [isProxyAvailable, setIsProxyAvailable] = React.useState<boolean | null>(null);
+
+  React.useEffect(() => {
+    let active = true;
+    const probeProxy = async () => {
+      try {
+        const res = await fetch('/api/reddit-karma?username=test_health_probe');
+        const contentType = res.headers.get("content-type") || "";
+        if (!active) return;
+        
+        // If content-type is text/html, the backend endpoint is not implemented (wildcard SPA fallback served index.html)
+        if (contentType.toLowerCase().includes("html")) {
+          setIsProxyAvailable(false);
+        } else {
+          setIsProxyAvailable(true);
+        }
+      } catch (err) {
+        console.warn("[PROBE PROXY FAILED]", err);
+        if (active) setIsProxyAvailable(false);
+      }
+    };
+    probeProxy();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   if (!currentUser) return null;
 
@@ -36,18 +62,14 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
     } catch (err: any) {
       console.error("[DASHBOARD SYNC ERROR]", err);
       const msg = err?.message || "";
-      if (msg === "RATE_LIMIT_REACHED") {
-        setSyncError("Reddit API rate limit hit (60 requests per minute). Please wait a moment before trying again.");
-      } else if (msg === "DELETED_OR_SUSPENDED") {
-        setSyncError("This Reddit profile is deactivated, suspended, or deleted.");
-      } else if (msg === "PRIVATE_PROFILE") {
-        setSyncError("This Reddit profile is private or restricted.");
-      } else if (msg === "USER_NOT_FOUND") {
-        setSyncError("Reddit user not found. Please ensure the username is spelled correctly.");
+      if (msg === "Reddit account not found." || msg === "USER_NOT_FOUND") {
+        setSyncError("Reddit account not found.");
+      } else if (msg === "Reddit temporarily unavailable. Please try again later." || msg === "RATE_LIMIT_REACHED") {
+        setSyncError("Reddit temporarily unavailable. Please try again later.");
       } else if (msg.includes("Please add your Reddit username")) {
         setSyncError("Please add your Reddit username in profile settings.");
       } else {
-        setSyncError(`Sync failed: ${msg || "Remote interface was unresponsive"}`);
+        setSyncError("Unable to sync Reddit karma.");
       }
       setTimeout(() => setSyncError(null), 12000);
     } finally {
@@ -196,22 +218,46 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
             </span>
             <div className="flex items-center gap-3">
               <div className="flex flex-col text-right">
-                <span className="text-white font-black font-mono">{currentUser.karma?.toLocaleString() || 0} Reddit Karma</span>
-                {currentUser.linkKarma !== undefined && currentUser.commentKarma !== undefined && (
-                  <span className="text-[9px] text-zinc-400 font-mono">
-                    (Link: {currentUser.linkKarma.toLocaleString()} | Comment: {currentUser.commentKarma.toLocaleString()})
+                <span className="text-white font-black font-mono">{(currentUser.redditKarma ?? currentUser.karma)?.toLocaleString() || 0} Reddit Karma</span>
+                {((currentUser.linkKarma !== undefined && currentUser.commentKarma !== undefined) || (currentUser.postKarma !== undefined && currentUser.commentKarma !== undefined)) && (
+                  <span className="text-[9px] text-zinc-400 font-mono block">
+                    (Post: {(currentUser.postKarma ?? currentUser.linkKarma ?? 0).toLocaleString()} | Comment: {(currentUser.commentKarma ?? 0).toLocaleString()})
+                  </span>
+                )}
+                {(currentUser.lastRedditSync || currentUser.karmaLastSynced) && (
+                  <span className="text-[8px] text-zinc-500 font-mono block mt-0.5">
+                    Last Synced: {formatSyncedDate(currentUser.lastRedditSync || currentUser.karmaLastSynced || undefined)}
                   </span>
                 )}
               </div>
-              <button
-                id="sync-reddit-karma-btn"
-                disabled={true}
-                className="flex items-center justify-center gap-2 px-3.5 py-2.5 md:py-1 md:px-2.5 text-xs md:text-[10px] font-black uppercase tracking-wider rounded-xl md:rounded-lg border bg-zinc-900 text-zinc-500 border-zinc-800 cursor-not-allowed opacity-80 min-h-[44px] md:min-h-0 font-sans"
-                title="Karma Tier is managed manually by administrators"
-              >
-                <UserCheck className="w-3.5 h-3.5 md:w-3 md:h-3" />
-                <span>Manual Verification</span>
-              </button>
+              {isProxyAvailable === false ? (
+                <button
+                  id="sync-reddit-karma-btn"
+                  disabled={true}
+                  className="flex items-center justify-center gap-2 px-3.5 py-2.5 md:py-1.5 md:px-3 text-xs md:text-[10px] font-black uppercase tracking-wider rounded-xl md:rounded-lg border bg-amber-500/10 text-amber-400 border-amber-500/20 cursor-not-allowed min-h-[44px] md:min-h-0 font-sans"
+                  title="Live Reddit sync is currently unavailable"
+                >
+                  <UserCheck className="w-3.5 h-3.5 md:w-3 md:h-3" />
+                  <span>Live Reddit sync unavailable. Manual verification mode active.</span>
+                </button>
+              ) : (
+                <button
+                  id="sync-reddit-karma-btn"
+                  disabled={isSyncing || !currentUser.redditUsername}
+                  onClick={handleSyncKarma}
+                  className={`flex items-center justify-center gap-2 px-3.5 py-2.5 md:py-1.5 md:px-3 text-xs md:text-[10px] font-black uppercase tracking-wider rounded-xl md:rounded-lg border transition-all duration-205 min-h-[44px] md:min-h-0 font-sans ${
+                    isSyncing 
+                      ? 'bg-zinc-900 text-zinc-500 border-zinc-850 cursor-not-allowed'
+                      : !currentUser.redditUsername
+                        ? 'bg-zinc-900 text-zinc-500 border-zinc-850 cursor-not-allowed opacity-50'
+                        : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20 active:scale-95 cursor-pointer'
+                  }`}
+                  title={currentUser.redditUsername ? "Sync Reddit Karma Now" : "Please add Reddit username in profile settings"}
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 md:w-3 md:h-3 ${isSyncing ? 'animate-spin' : ''}`} />
+                  <span>{isSyncing ? 'Syncing...' : 'Sync Now'}</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -415,6 +461,20 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
           <button 
             type="button" 
             onClick={() => setToastMessage(null)}
+            className="text-zinc-500 hover:text-white ml-2 cursor-pointer transition-colors p-1 text-xs"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {syncError && (
+        <div className="fixed bottom-6 right-6 z-50 bg-zinc-950 border border-red-500/30 text-white rounded-2xl p-4 shadow-2xl flex items-center gap-3.5 animate-slide-up-fade-in font-bold text-xs select-none">
+          <span className="p-2 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl font-bold">❌ Error</span>
+          <span>{syncError}</span>
+          <button 
+            type="button" 
+            onClick={() => setSyncError(null)}
             className="text-zinc-500 hover:text-white ml-2 cursor-pointer transition-colors p-1 text-xs"
           >
             ✕

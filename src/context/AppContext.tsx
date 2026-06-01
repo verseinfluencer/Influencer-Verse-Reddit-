@@ -171,6 +171,7 @@ interface AppContextType {
   extendUserDeadline: (taskId: string, operator: User) => Promise<void>;
   resetCooldown: (userId: string) => void;
   adminUpdateUserKarma: (userId: string, targetKarma: number) => void;
+  adminAdjustUserBalance: (userId: string, newBalance: number) => Promise<void>;
   syncRedditKarma: () => Promise<void>;
 
   // Anti-Cheat tracking states and actions
@@ -687,23 +688,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const cleanUser = u.redditUsername ? u.redditUsername.replace(/^\/?u\//i, '').replace(/^\/user\//i, '').replace(/^\//, '').trim() : '';
         if (cleanUser && cleanUser.trim()) {
           console.log(`[AUTH LOGIN COGNIZANCE] Automatically fetching fresh Reddit Karma on login for @${cleanUser}...`);
-          const karmaResp = await fetch(`/api/reddit/karma?username=${encodeURIComponent(cleanUser)}&t=${Date.now()}`);
+          const karmaResp = await fetch(`/api/reddit-karma?username=${encodeURIComponent(cleanUser)}&t=${Date.now()}`);
           if (karmaResp.ok) {
             const karmaBody = await karmaResp.json();
-            if (karmaBody && typeof karmaBody.total_karma === 'number') {
-              const link_karma = karmaBody.link_karma || 0;
-              const comment_karma = karmaBody.comment_karma || 0;
-              const awarder_karma = karmaBody.awarder_karma || 0;
-              const awardee_karma = karmaBody.awardee_karma || 0;
-              const totalKarma = link_karma + comment_karma + awarder_karma + awardee_karma;
+            if (karmaBody && karmaBody.success && typeof karmaBody.totalKarma === 'number') {
+              const totalKarma = karmaBody.totalKarma;
+              const link_karma = karmaBody.linkKarma || 0;
+              const comment_karma = karmaBody.commentKarma || 0;
 
               updatedUser.karma = totalKarma;
               updatedUser.redditKarma = totalKarma;
               updatedUser.total_karma = totalKarma;
               updatedUser.link_karma = link_karma;
               updatedUser.comment_karma = comment_karma;
-              updatedUser.awarder_karma = awarder_karma;
-              updatedUser.awardee_karma = awardee_karma;
               updatedUser.linkKarma = link_karma;
               updatedUser.commentKarma = comment_karma;
               updatedUser.redditLinkKarma = link_karma;
@@ -782,11 +779,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       let initialKarma = 450;
       try {
-        const resp = await fetch(`/api/reddit/karma?username=${encodeURIComponent(cleanNewReddit)}`);
+        const resp = await fetch(`/api/reddit-karma?username=${encodeURIComponent(cleanNewReddit)}`);
         if (resp.ok) {
           const body = await resp.json();
-          if (body && typeof body.total_karma === 'number') {
-            initialKarma = body.total_karma;
+          if (body && body.success && typeof body.totalKarma === 'number') {
+            initialKarma = body.totalKarma;
           }
         }
       } catch (err) {
@@ -1187,7 +1184,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               balance: u.balance + pendingSub.reward,
               pendingBalance: Math.max(0, u.pendingBalance - pendingSub.reward),
               totalEarned: u.totalEarned + pendingSub.reward,
-              xp: u.xp + 100
+              xp: u.xp + 100,
+              lastWalletUpdate: new Date().toISOString()
             });
 
             const tx: Transaction = {
@@ -1448,7 +1446,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               balance: u.balance + pendingSub.reward,
               pendingBalance: Math.max(0, u.pendingBalance - pendingSub.reward),
               totalEarned: u.totalEarned + pendingSub.reward,
-              xp: u.xp + 100
+              xp: u.xp + 100,
+              lastWalletUpdate: new Date().toISOString()
             });
 
             const tx: Transaction = {
@@ -1697,7 +1696,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     await updateDoc(uRef, {
       balance: Math.max(0, u.balance - amount),
-      deductionHistory: [newDec, ...(u.deductionHistory || [])]
+      deductionHistory: [newDec, ...(u.deductionHistory || [])],
+      lastWalletUpdate: new Date().toISOString()
     });
 
     const dedTransaction: Transaction = {
@@ -2264,7 +2264,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await setDoc(doc(db, 'withdrawals', newW.id), newW);
 
     await updateDoc(doc(db, 'users', currentUser.id), {
-      balance: currentUser.balance - amount
+      balance: currentUser.balance - amount,
+      lastWalletUpdate: new Date().toISOString()
     });
   };
 
@@ -2582,7 +2583,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           balance: u.balance + sub.reward,
           pendingBalance: Math.max(0, u.pendingBalance - sub.reward),
           totalEarned: u.totalEarned + sub.reward,
-          xp: u.xp + 100
+          xp: u.xp + 100,
+          lastWalletUpdate: new Date().toISOString()
         });
 
         const tx: Transaction = {
@@ -2724,7 +2726,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
       } else if (status === 'Rejected') {
         await updateDoc(uRef, {
-          balance: (u.balance || 0) + w.amount
+          balance: (u.balance || 0) + w.amount,
+          lastWalletUpdate: new Date().toISOString()
         });
       }
     }
@@ -2821,6 +2824,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
+  const adminAdjustUserBalance = async (userId: string, newBalance: number) => {
+    if (newBalance < 0) {
+      throw new Error("Balance cannot be negative.");
+    }
+    const uRef = doc(db, 'users', userId);
+    const uSnap = await getDoc(uRef);
+    if (!uSnap.exists()) {
+      throw new Error("User does not exist.");
+    }
+    const u = uSnap.data() as User;
+
+    await updateDoc(uRef, {
+      balance: newBalance,
+      lastWalletUpdate: new Date().toISOString()
+    });
+
+    const tx: Transaction = {
+      id: `tx-${Date.now()}`,
+      userId,
+      type: 'balance_adjustment',
+      amount: Math.abs(newBalance - u.balance),
+      description: `Wallet balance adjusted manually from $${(u.balance || 0).toFixed(2)} to $${newBalance.toFixed(2)} by an administrator.`,
+      date: new Date().toISOString(),
+      status: 'Completed'
+    };
+    await setDoc(doc(db, 'transactions', tx.id), tx);
+  };
+
   const adminUpdateUserKarma = async (userId: string, targetKarma: number) => {
     const uRef = doc(db, 'users', userId);
     const uSnap = await getDoc(uRef);
@@ -2845,34 +2876,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const fetchRedditKarma = async (cleanUser: string): Promise<number> => {
     try {
-      console.log(`[REDDIT SYNC ENGINE] Resolving Karma for u/${cleanUser} via server API /api/reddit/karma...`);
-      const res = await fetch(`/api/reddit/karma?username=${encodeURIComponent(cleanUser)}&t=${Date.now()}`);
-      const payload = await res.json();
-
-      console.log(`[REDDIT SYNC ENGINE] Server API response payload:`, payload);
-
-      if (res.status === 404 || payload.error === "USER_NOT_FOUND") {
+      console.log(`[REDDIT SYNC ENGINE] Resolving Karma for u/${cleanUser} via server API /api/reddit-karma...`);
+      const res = await fetch(`/api/reddit-karma?username=${encodeURIComponent(cleanUser)}&t=${Date.now()}`);
+      
+      if (res.status === 404) {
         throw new Error("USER_NOT_FOUND");
       }
-      if (payload.error === "DELETED_OR_SUSPENDED") {
-        throw new Error("DELETED_OR_SUSPENDED");
-      }
-      if (payload.error === "PRIVATE_PROFILE") {
-        throw new Error("PRIVATE_PROFILE");
-      }
-      if (res.status === 429 || payload.error === "RATE_LIMIT_REACHED") {
+      if (res.status === 429) {
         throw new Error("RATE_LIMIT_REACHED");
       }
       if (!res.ok) {
-        throw new Error(payload.message || `API_FAILURE_HTTP_STATUS_${res.status}`);
+        throw new Error(`API_FAILURE_HTTP_STATUS_${res.status}`);
       }
 
-      if (payload && typeof payload.total_karma === 'number') {
-        console.log(`[REDDIT SYNC ENGINE] Successfully fetched u/${cleanUser} karma directly from server API: ${payload.total_karma} (Method: ${payload.method || 'Direct'})`);
-        return payload.total_karma;
+      const payload = await res.json();
+      if (payload && payload.success && typeof payload.totalKarma === 'number') {
+        console.log(`[REDDIT SYNC ENGINE] Successfully fetched u/${cleanUser} karma directly from server API: ${payload.totalKarma}`);
+        return payload.totalKarma;
       }
     } catch (e: any) {
       console.error(`[REDDIT SYNC ENGINE] Server proxy fetch failed for user @${cleanUser}:`, e.message || e);
+      if (e.message === "USER_NOT_FOUND" || e.message === "RATE_LIMIT_REACHED") {
+        throw e;
+      }
       throw e;
     }
     throw new Error("API_UNAVAILABLE");
@@ -2883,7 +2909,69 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.error("[REDDIT SYNC LOGS] No currentUser is logged in.");
       throw new Error("No logged in user found to sync.");
     }
-    return currentUser.karma || 0;
+    
+    const redditUser = currentUser.redditUsername;
+    if (!redditUser || !redditUser.trim()) {
+      throw new Error("Please add your Reddit username in profile settings.");
+    }
+
+    const cleanUser = redditUser.trim().replace(/^u\//, "");
+    console.log(`[REDDIT SYNC ENGINE] Syncing u/${cleanUser} via server API /api/reddit-karma...`);
+
+    let payload: any;
+    try {
+      const res = await fetch(`/api/reddit-karma?username=${encodeURIComponent(cleanUser)}&t=${Date.now()}`);
+      
+      if (res.status === 404) {
+        throw new Error("Reddit account not found.");
+      }
+      if (res.status === 429) {
+        throw new Error("Reddit temporarily unavailable. Please try again later.");
+      }
+      if (!res.ok) {
+        throw new Error("Unable to sync Reddit karma.");
+      }
+
+      payload = await res.json();
+    } catch (e: any) {
+      console.error(`[REDDIT SYNC ENGINE] Server proxy fetch failed for user @${cleanUser}:`, e.message || e);
+      if (e.message === "Reddit account not found." || e.message === "Reddit temporarily unavailable. Please try again later.") {
+        throw e;
+      }
+      throw new Error("Unable to sync Reddit karma.");
+    }
+
+    if (!payload || !payload.success) {
+      throw new Error(payload?.message || "Unable to sync Reddit karma.");
+    }
+
+    const totalKarma = payload.totalKarma;
+    const commentKarma = payload.commentKarma;
+    const postKarma = payload.linkKarma; // linkKarma represents postKarma
+    const lastRedditSync = payload.lastSync;
+
+    const tier = getKarmaTier(totalKarma);
+
+    try {
+      const uRef = doc(db, 'users', currentUser.id);
+      await updateDoc(uRef, {
+        redditKarma: totalKarma,
+        commentKarma: commentKarma,
+        postKarma: postKarma,
+        lastRedditSync: lastRedditSync,
+        karma: totalKarma,
+        karmaYesterday: currentUser.karmaYesterday ?? totalKarma,
+        karmaLastSynced: lastRedditSync,
+        karmaBadge: tier.name,
+        karmaTier: tier.name
+      });
+      console.log(`[REDDIT SYNC ENGINE] Successfully saved to Firebase u/${cleanUser} totalKarma: ${totalKarma}`);
+    } catch (firebaseErr: any) {
+      console.error(`[REDDIT SYNC ENGINE] Error updating Firebase fields:`, firebaseErr);
+      throw new Error("Unable to sync Reddit karma.");
+    }
+
+    return totalKarma;
   };
 
   const adminDeleteUserAccount = async (userId: string) => {
@@ -3199,6 +3287,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       extendUserDeadline,
       resetCooldown,
       adminUpdateUserKarma,
+      adminAdjustUserBalance,
       syncRedditKarma,
       
       blacklistedIPs,

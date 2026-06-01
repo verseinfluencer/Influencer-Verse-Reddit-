@@ -9,7 +9,7 @@ import {
   Trash2, Edit, CheckCircle2, XCircle, AlertCircle, Send, Plus, 
   Settings, Link, ExternalLink, MessageCircle, BarChart2, ShieldAlert,
   Building, CreditCard, MessageSquare, PlusCircle, CheckSquare, Shield, ToggleLeft, ToggleRight, AlertTriangle, Eye, SendHorizontal,
-  Archive
+  Archive, Search, ArrowUpDown, Coins
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
@@ -21,7 +21,7 @@ export const AdminDashboard: React.FC = () => {
     adminCreateTask, adminEditTask, adminDeleteTask,
     adminReviewSubmission, adminFinalReleasePayment, adminReviewWithdrawal,
     adminCreateAnnouncement, adminUpdateSettings,
-    resetCooldown, adminUpdateUserKarma, forceUnclaimTask, extendUserDeadline,
+    resetCooldown, adminUpdateUserKarma, adminAdjustUserBalance, forceUnclaimTask, extendUserDeadline,
     
     // New Client Hooks and Properties from AppContext
     clients, clientTasks, clientPayments, clientPaymentProofs, clientChats,
@@ -40,7 +40,7 @@ export const AdminDashboard: React.FC = () => {
     tickets
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'users' | 'clients' | 'client-tasks' | 'client-payments' | 'client-chats' | 'tasks' | 'submissions' | 'withdrawals' | 'announcements' | 'settings' | 'security' | 'track-data' | 'audit-log' | 'deleted-tasks'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'clients' | 'client-tasks' | 'client-payments' | 'client-chats' | 'tasks' | 'submissions' | 'withdrawals' | 'announcements' | 'settings' | 'security' | 'track-data' | 'audit-log' | 'deleted-tasks' | 'live-wallet' | 'deleted-history'>('users');
   const [showPermissionRestrictedModal, setShowPermissionRestrictedModal] = useState<string | null>(null);
 
   // Deleted tasks list & filter states
@@ -228,6 +228,13 @@ export const AdminDashboard: React.FC = () => {
   const [deductReasonInput, setDeductReasonInput] = useState<string>('');
   const [deductTaskNameInput, setDeductTaskNameInput] = useState<string>('');
   const [deductionHistoryUser, setDeductionHistoryUser] = useState<User | null>(null);
+  const [adjustTargetUser, setAdjustTargetUser] = useState<User | null>(null);
+  const [adjustAmountInput, setAdjustAmountInput] = useState<string>('');
+
+  // Live Wallet balances states
+  const [walletSearchQuery, setWalletSearchQuery] = useState('');
+  const [walletSortBy, setWalletSortBy] = useState<'highest' | 'lowest' | 'recently'>('highest');
+  const [walletFilterStatus, setWalletFilterStatus] = useState<'all' | 'active' | 'suspended' | 'zero' | 'nonzero'>('all');
 
   // Task extension custom states
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -731,6 +738,7 @@ export const AdminDashboard: React.FC = () => {
         <div className="flex flex-wrap gap-1 bg-zinc-900 grid-cols-2 p-1.5 rounded-2xl border border-white/5 w-full md:w-auto">
           {[
             { id: 'users', label: 'Users Map', count: usersBadgeCount },
+            { id: 'live-wallet', label: '💳 Live Wallet Balances', count: null },
             { id: 'clients', label: 'Clients Registry', count: clientsBadgeCount },
             { id: 'client-tasks', label: 'Client Approvals', count: clientTasksBadgeCount },
             { id: 'client-payments', label: 'Agency Payments', count: paymentsBadgeCount },
@@ -2468,6 +2476,248 @@ export const AdminDashboard: React.FC = () => {
                     </tr>
                     );
                   })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ================= LIVE WALLET BALANCES SECTION ================= */}
+        {activeTab === 'live-wallet' && (
+          <div className="space-y-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-white/5">
+              <div>
+                <h2 className="text-base font-black flex items-center gap-2 text-purple-400">
+                  💳 Live Wallet Balances
+                </h2>
+                <p className="text-xs text-zinc-400">
+                  Real-time auditing of current available user balances. No transactions or lifetime records are exposed here.
+                </p>
+              </div>
+
+              {/* Action/Indicator card */}
+              <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                <div className="bg-zinc-950/60 px-4 py-2 border border-white/5 rounded-2xl flex flex-col justify-center min-w-[160px]">
+                  <span className="text-[9px] font-extrabold uppercase tracking-widest text-zinc-400">Total Network Holding</span>
+                  <span className="text-sm font-black text-emerald-400 font-mono">
+                    ${(users || []).reduce((sum, u) => sum + (u.balance || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT
+                  </span>
+                </div>
+
+                {currentUser?.role === 'admin' && (
+                  <div className="bg-zinc-950/60 px-4 py-2 border border-white/5 rounded-2xl flex items-center justify-between gap-4 min-w-[280px]">
+                    <div>
+                      <span className="text-[9px] font-extrabold uppercase tracking-widest text-zinc-400 block">Mod Wallet Edit</span>
+                      <span className="text-[10px] text-zinc-500 font-medium font-sans">Allow moderators to edit balances</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        adminUpdateSettings({
+                          ...settings,
+                          allowModeratorsEditWallets: !settings?.allowModeratorsEditWallets
+                        });
+                        setToastMessage(settings?.allowModeratorsEditWallets ? "Disabled moderator wallet modifications" : "Enabled moderator wallet modifications");
+                      }}
+                      className={`p-1 rounded-lg border text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                        settings?.allowModeratorsEditWallets
+                          ? 'bg-purple-500/20 text-purple-400 border-purple-500/30'
+                          : 'bg-zinc-900 text-zinc-500 border-zinc-800'
+                      }`}
+                    >
+                      {settings?.allowModeratorsEditWallets ? 'Allowed' : 'Locked'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Filter and Search Bar */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 bg-zinc-950/60 p-4 rounded-2xl border border-white/5 items-center">
+              {/* Search input */}
+              <div className="md:col-span-5 space-y-1">
+                <label className="text-[9px] font-extrabold uppercase tracking-widest text-zinc-400 block">Search Members</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={walletSearchQuery}
+                    onChange={(e) => setWalletSearchQuery(e.target.value)}
+                    placeholder="Search by name, email, account ID..."
+                    className="w-full text-xs font-semibold bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500/50"
+                  />
+                  {walletSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setWalletSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white text-xs px-1 cursor-pointer font-bold"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Sort by selection */}
+              <div className="md:col-span-3 space-y-1">
+                <label className="text-[9px] font-extrabold uppercase tracking-widest text-zinc-400 block">Sort By</label>
+                <select
+                  value={walletSortBy}
+                  onChange={(e: any) => setWalletSortBy(e.target.value)}
+                  className="w-full text-xs font-semibold bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-purple-500/50"
+                >
+                  <option value="highest">Highest Balance</option>
+                  <option value="lowest">Lowest Balance</option>
+                  <option value="recently">Recently Updated</option>
+                </select>
+              </div>
+
+              {/* Filtering selection */}
+              <div className="md:col-span-4 space-y-1">
+                <label className="text-[9px] font-extrabold uppercase tracking-widest text-zinc-400 block">Account status / Balance level</label>
+                <select
+                  value={walletFilterStatus}
+                  onChange={(e: any) => setWalletFilterStatus(e.target.value)}
+                  className="w-full text-xs font-semibold bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-purple-500/50"
+                >
+                  <option value="all">All Network Members</option>
+                  <option value="active">Active Members Only</option>
+                  <option value="suspended">Suspended/Banned Members</option>
+                  <option value="zero font-sans">Zero Balance ($0.00)</option>
+                  <option value="nonzero font-sans">Non-Zero Balance (&gt; $0.00)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Results Table */}
+            <div className="overflow-x-auto rounded-2xl border border-white/5 bg-zinc-950/20">
+              <table className="w-full text-[11px] text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-white/5 bg-zinc-950/40 text-[9px] tracking-widest uppercase text-zinc-400 font-extrabold">
+                    <th className="px-4 py-3">Member Name</th>
+                    <th className="px-4 py-3">Email Address</th>
+                    <th className="px-4 py-3">User ID</th>
+                    <th className="px-4 py-3 text-right">Available Balance</th>
+                    <th className="px-4 py-3 text-center">Last Wallet Update</th>
+                    <th className="px-4 py-3 text-center">Status</th>
+                    <th className="px-4 py-3 text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {(() => {
+                    const filtered = (users || [])
+                      .filter(u => {
+                        const q = walletSearchQuery.toLowerCase().trim();
+                        const matchSearch = !q || 
+                          (u.fullName || '').toLowerCase().includes(q) ||
+                          (u.email || '').toLowerCase().includes(q) ||
+                          (u.id || '').toLowerCase().includes(q);
+
+                        let matchFilter = true;
+                        if (walletFilterStatus === 'active') {
+                          matchFilter = !u.isSuspended && !u.isBanned;
+                        } else if (walletFilterStatus === 'suspended') {
+                          matchFilter = !!u.isSuspended || !!u.isBanned;
+                        } else if (walletFilterStatus === 'zero') {
+                          matchFilter = (u.balance || 0) === 0;
+                        } else if (walletFilterStatus === 'nonzero') {
+                          matchFilter = (u.balance || 0) > 0;
+                        }
+                        return matchSearch && matchFilter;
+                      })
+                      .sort((a, b) => {
+                        if (walletSortBy === 'highest') {
+                          return (b.balance || 0) - (a.balance || 0);
+                        } else if (walletSortBy === 'lowest') {
+                          return (a.balance || 0) - (b.balance || 0);
+                        } else if (walletSortBy === 'recently') {
+                          const dateA = a.lastWalletUpdate ? new Date(a.lastWalletUpdate).getTime() : 0;
+                          const dateB = b.lastWalletUpdate ? new Date(b.lastWalletUpdate).getTime() : 0;
+                          return dateB - dateA;
+                        }
+                        return 0;
+                      });
+
+                    if (filtered.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={7} className="px-4 py-12 text-center text-zinc-500 font-normal italic">
+                            No member available balances matching the selected criteria.
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    return filtered.map(u => {
+                      const isOwner = u.email?.toLowerCase() === 'kalloldeyprivate20@gmail.com';
+                      const isSuspended = !!u.isSuspended;
+                      const isBanned = !!u.isBanned;
+                      let statusBadge = (
+                        <span className="inline-flex px-2 py-0.5 rounded text-[8px] font-black tracking-wide uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                          Active
+                        </span>
+                      );
+                      if (isBanned) {
+                        statusBadge = (
+                          <span className="inline-flex px-2 py-0.5 rounded text-[8px] font-black tracking-wide uppercase bg-red-500/10 text-red-500 border border-red-500/30">
+                            Banned
+                          </span>
+                        );
+                      } else if (isSuspended) {
+                        statusBadge = (
+                          <span className="inline-flex px-2 py-0.5 rounded text-[8px] font-black tracking-wide uppercase bg-amber-500/10 text-amber-500 border border-amber-500/30">
+                            Suspended
+                          </span>
+                        );
+                      }
+
+                      return (
+                        <tr key={u.id} className="hover:bg-white/[0.02]">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full bg-purple-500/10 border border-purple-500/20 text-[9px] font-black uppercase text-purple-400 flex items-center justify-center">
+                                {(u.fullName || 'C')[0]}
+                              </div>
+                              <div>
+                                <span className="font-extrabold text-zinc-200 block">{u.fullName || 'Anonymous Account'}</span>
+                                <span className="text-[8px] text-zinc-500 uppercase tracking-widest font-black">Member Node</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-zinc-400 max-w-[180px] truncate">{u.email}</td>
+                          <td className="px-4 py-3 text-zinc-500 font-mono text-[9px]">{u.id}</td>
+                          <td className="px-4 py-3 text-right font-bold text-emerald-400 text-xs font-mono">
+                            ${(u.balance || 0).toFixed(2)} USDT
+                          </td>
+                          <td className="px-4 py-3 text-center text-zinc-400 font-mono text-[9px]">
+                            {u.lastWalletUpdate ? new Date(u.lastWalletUpdate).toLocaleString() : 'Never Updated'}
+                          </td>
+                          <td className="px-4 py-3 text-center">{statusBadge}</td>
+                          <td className="px-4 py-3 text-center">
+                            {isOwner ? (
+                              <span className="text-[8px] font-black text-emerald-400 uppercase tracking-wider bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20">
+                                Protected
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (currentUser?.role === 'moderator' && !settings?.allowModeratorsEditWallets) {
+                                    setShowPermissionRestrictedModal("Adjusting user available balances requires senior Platform Administrator privileges or explicit permission enabling.");
+                                    return;
+                                  }
+                                  setAdjustTargetUser(u);
+                                  setAdjustAmountInput(String(u.balance || 0));
+                                }}
+                                className="px-2.5 py-1 bg-white/5 hover:bg-white/15 border border-white/10 hover:border-purple-500/30 text-zinc-300 hover:text-purple-400 text-[9px] font-extrabold rounded-lg cursor-pointer transition-all uppercase tracking-wider flex items-center gap-1 mx-auto"
+                              >
+                                ✏️ Adjust Balance
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    });
+                  })()}
                 </tbody>
               </table>
             </div>
@@ -4547,6 +4797,93 @@ export const AdminDashboard: React.FC = () => {
                   }`}
                 >
                   Confirm Deduction
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Adjust Wallet Balance Modal Overlay */}
+      {adjustTargetUser && (() => {
+        const amt = parseFloat(adjustAmountInput);
+        const isNegative = !isNaN(amt) && amt < 0;
+        const isInputError = isNegative || adjustAmountInput === '';
+        const canSubmit = adjustAmountInput.trim() !== '' && !isNaN(amt) && amt >= 0;
+
+        return (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 select-none animate-fade-in">
+            <div className="bg-zinc-950 border border-purple-500/20 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+              <div>
+                <h3 className="text-lg font-black text-white flex items-center gap-2">
+                  💳 Adjust Available Balance
+                </h3>
+                <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                  You are manually setting a brand-new Available Balance for <span className="text-purple-400 font-extrabold">{adjustTargetUser.fullName}</span>. Their current available balance is <span className="text-emerald-400 font-bold">${(adjustTargetUser.balance || 0).toFixed(2)} USDT</span>.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block">
+                    New Wallet Balance (USDT)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="e.g., 25.50"
+                    value={adjustAmountInput}
+                    onChange={(e) => setAdjustAmountInput(e.target.value)}
+                    className={`w-full bg-zinc-900 border text-white text-xs px-3 py-2.5 rounded-xl focus:outline-none focus:border-purple-500 font-semibold font-mono ${
+                      isInputError ? 'border-red-500' : 'border-white/10'
+                    }`}
+                  />
+                  {isNegative && (
+                    <p className="text-[10px] text-red-500 font-black tracking-wide animate-pulse mt-1.5 uppercase">
+                      ⚠️ Balance cannot be negative
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex gap-2.5 justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAdjustTargetUser(null);
+                    setAdjustAmountInput('');
+                  }}
+                  className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-350 hover:text-white rounded-xl text-xs font-black cursor-pointer transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!canSubmit}
+                  onClick={async () => {
+                    if (isNaN(amt) || amt < 0) {
+                      alert("Please enter a valid balance.");
+                      return;
+                    }
+
+                    try {
+                      await adminAdjustUserBalance(adjustTargetUser.id, amt);
+                      setToastMessage(`Successfully set balance to $${amt.toFixed(2)} USDT for user.`);
+                      setAdjustTargetUser(null);
+                      setAdjustAmountInput('');
+                    } catch (err: any) {
+                      console.error("Error adjusting balance", err);
+                      alert(`Failed to adjust balance: ${err.message || err}`);
+                    }
+                  }}
+                  className={`px-4 py-2 rounded-xl text-xs font-black text-white cursor-pointer transition-all ${
+                    canSubmit
+                      ? 'bg-purple-600 hover:bg-purple-500 shadow-md shadow-purple-950/40'
+                      : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                  }`}
+                >
+                  Save New Balance
                 </button>
               </div>
             </div>
