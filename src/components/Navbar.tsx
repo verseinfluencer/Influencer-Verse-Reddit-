@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { Bell, LogOut, User as UserIcon, Settings, BarChart, FileText, Gift, Award, Menu, X, Wallet, ShieldAlert, HeartHandshake } from 'lucide-react';
 import { AppNotification } from '../types';
 import { Logo } from './Logo';
+import { motion } from 'motion/react';
 
 interface NavbarProps {
   onNavigate: (page: string) => void;
@@ -14,6 +15,23 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Unified public navigation items defined for SaaS consistency
+  const publicNavItems = [
+    { label: 'Home', page: 'home' },
+    { label: 'About Us', page: 'about' },
+    { label: 'Trust & Payouts', page: 'trust' },
+    { label: 'FAQ', page: 'faq' },
+    { label: 'Contact', page: 'contact' },
+    { label: 'Client Portal', page: 'client-login' }
+  ];
+
+  const isNavActive = (page: string) => {
+    if (page === 'client-login') {
+      return currentPage === 'client-login' || currentPage === 'client-register';
+    }
+    return currentPage === page;
+  };
 
   // Filter notifications relevant to this user or "all"
   const userNotifications = notifications.filter(n => 
@@ -44,9 +62,19 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
   };
 
   const isPendingUser = currentUser?.status === 'Pending';
+  const isPublic = !currentUser;
+  const isLightHeader = ['home', 'about', 'faq', 'contact', 'trust', 'terms', 'referrals', 'login', 'signup', 'client-login', 'client-register'].includes(currentPage);
+
+  const navBgClass = isLightHeader
+    ? 'sticky top-0 z-50 w-full border-b backdrop-blur-md bg-white/90 border-slate-100 text-zinc-900 shadow-[0_2px_15px_rgba(0,0,0,0.02)] select-none transition-all duration-300'
+    : 'sticky top-0 z-50 w-full border-b backdrop-blur-md bg-[#050505]/80 border-white/10 text-white select-none transition-all duration-300';
+
+  const mobileMenuBgClass = isLightHeader
+    ? 'md:hidden border-t border-slate-100 bg-white/95 backdrop-blur-lg p-5 space-y-3 shadow-lg'
+    : 'md:hidden border-t border-white/10 bg-zinc-950 p-4 space-y-3';
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b backdrop-blur-md bg-[#050505]/80 border-white/10 text-white select-none transition-all duration-300">
+    <nav className={navBgClass}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
@@ -55,7 +83,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
             className="cursor-pointer"
             id="nav-logo"
           >
-            <Logo size="sm" withText={true} />
+            <Logo size="sm" withText={true} textClassName={isLightHeader ? "text-black font-black" : "text-white font-black"} />
           </div>
 
           {/* Center Links - Desktop */}
@@ -113,13 +141,32 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
           )}
 
           {!currentUser && (
-            <div className="hidden md:flex items-center gap-6 text-sm text-zinc-300">
-              <button onClick={() => onNavigate('home')} className="hover:text-white cursor-pointer">Home</button>
-              <button onClick={() => onNavigate('about')} className="hover:text-white cursor-pointer">About Us</button>
-              <button onClick={() => onNavigate('trust')} className="text-purple-400 hover:text-purple-300 font-bold cursor-pointer flex items-center gap-1.5 transition-colors">Trust & Payouts</button>
-              <button onClick={() => onNavigate('faq')} className="hover:text-white cursor-pointer">FAQ</button>
-              <button onClick={() => onNavigate('contact')} className="hover:text-white cursor-pointer">Contact</button>
-              <button onClick={() => onNavigate('client-login')} className="text-indigo-400 hover:text-indigo-300 font-bold cursor-pointer">Client Portal</button>
+            <div className="hidden md:flex items-center gap-7 text-sm">
+              {publicNavItems.map((item) => {
+                const isActive = isNavActive(item.page);
+                return (
+                  <button
+                    key={item.page}
+                    onClick={() => onNavigate(item.page)}
+                    className={`relative py-1.5 px-0.5 text-xs font-semibold cursor-pointer transition-all duration-300 transform hover:-translate-y-[2px] flex items-center bg-transparent border-none outline-none ${
+                      isActive
+                        ? isLightHeader
+                          ? 'text-purple-600 font-bold'
+                          : 'text-[#D8B4FE] font-bold'
+                        : isLightHeader
+                          ? 'text-zinc-600 hover:text-purple-600'
+                          : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    <span>{item.label}</span>
+                    {isActive && (
+                      <span className={`absolute bottom-[-2px] left-0 right-0 h-[2px] rounded-full transition-all duration-300 ${
+                        isLightHeader ? 'bg-purple-600' : 'bg-purple-400'
+                      }`} />
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
 
@@ -281,36 +328,53 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
                 </div>
               </>
             ) : (
-              <div className="hidden sm:flex items-center gap-2">
-                <button 
+              <div className="hidden sm:flex items-center gap-3">
+                <motion.button 
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => onNavigate('login')} 
-                  className="px-4 py-2 border border-zinc-800 bg-zinc-900/40 hover:bg-zinc-800 text-xs font-semibold rounded-xl text-zinc-300 hover:text-white cursor-pointer transition-all"
+                  className={`px-5 py-2 font-extrabold text-xs rounded-full cursor-pointer transition-all shadow-sm flex items-center justify-center ${
+                    isLightHeader 
+                      ? 'bg-white border border-slate-200 hover:bg-slate-50 text-slate-800' 
+                      : 'bg-zinc-900 border border-zinc-850 hover:bg-zinc-800 text-zinc-200 hover:border-zinc-700'
+                  }`}
                 >
                   Sign In
-                </button>
-                <button 
+                </motion.button>
+                <motion.button 
+                  whileHover={{ scale: 1.05, boxShadow: isLightHeader ? '0 4px 15px rgba(124, 58, 237, 0.25)' : '0 4px 15px rgba(124, 58, 237, 0.4)' }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => onNavigate('signup')} 
-                  className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-500 hover:opacity-95 text-xs font-bold rounded-xl text-white cursor-pointer shadow-lg shadow-purple-500/20 active:scale-[0.98] transition-all"
+                  className={`px-5 py-2 text-xs font-black rounded-full text-white cursor-pointer shadow-md transition-all flex items-center justify-center ${
+                    isLightHeader 
+                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500' 
+                      : 'bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-400 hover:to-indigo-400'
+                  }`}
                 >
                   Register
-                </button>
+                </motion.button>
               </div>
             )}
 
             {/* Mobile Hamburger Menu */}
-            <button 
+            <motion.button 
+              whileTap={{ scale: 0.9 }}
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)} 
-              className="md:hidden p-2 rounded-xl border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
+              className={`md:hidden p-2 rounded-xl border transition-all ${
+                isLightHeader
+                  ? 'border-slate-200 bg-slate-50 hover:bg-slate-100 text-zinc-700 hover:text-zinc-950'
+                  : 'border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200'
+              }`}
             >
               {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
-            </button>
+            </motion.button>
           </div>
         </div>
       </div>
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-white/10 bg-zinc-950 p-4 space-y-3">
+        <div className={mobileMenuBgClass}>
           {currentUser ? (
             (currentUser.role === 'admin' || currentUser.role === 'moderator') ? (
               <>
@@ -345,15 +409,48 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
               </>
             )
           ) : (
-            <div className="space-y-2">
-              <button onClick={() => { onNavigate('home'); setMobileMenuOpen(false); }} className="block w-full text-left py-2 px-3 bg-zinc-900 rounded-lg text-sm">Home Page</button>
-              <button onClick={() => { onNavigate('about'); setMobileMenuOpen(false); }} className="block w-full text-left py-2 px-3 bg-zinc-900 rounded-lg text-sm">About Us</button>
-              <button onClick={() => { onNavigate('trust'); setMobileMenuOpen(false); }} className="block w-full text-left py-2 px-3 bg-purple-950/40 text-purple-300 border border-purple-900/20 rounded-lg text-sm font-semibold">Trust & Payouts</button>
-              <button onClick={() => { onNavigate('faq'); setMobileMenuOpen(false); }} className="block w-full text-left py-2 px-3 bg-zinc-900 rounded-lg text-sm">FAQ</button>
-              <button onClick={() => { onNavigate('contact'); setMobileMenuOpen(false); }} className="block w-full text-left py-2 px-3 bg-zinc-900 rounded-lg text-sm">Contact Us</button>
-              <div className="flex gap-2 pt-2 border-t border-white/5">
-                <button onClick={() => { onNavigate('login'); setMobileMenuOpen(false); }} className="w-1/2 py-2 border border-zinc-800 text-sm font-semibold rounded-lg text-zinc-300 text-center">Login</button>
-                <button onClick={() => { onNavigate('signup'); setMobileMenuOpen(false); }} className="w-1/2 py-2 bg-purple-600 text-sm font-bold rounded-lg text-white text-center">Register</button>
+            <div className="space-y-1.5 font-sans">
+              {publicNavItems.map((item) => {
+                const isActive = isNavActive(item.page);
+                return (
+                  <button
+                    key={item.page}
+                    onClick={() => { onNavigate(item.page); setMobileMenuOpen(false); }}
+                    className={`block w-full text-left py-2.5 px-3.5 rounded-xl text-xs font-semibold transition-all active:scale-95 outline-none ${
+                      isActive
+                        ? isLightHeader
+                          ? 'text-purple-600 bg-purple-50/50 font-bold border-l-2 border-purple-600 rounded-l-none'
+                          : 'text-[#D8B4FE] bg-purple-500/10 font-bold border-l-2 border-[#D8B4FE] rounded-l-none'
+                        : isLightHeader
+                          ? 'text-zinc-650 hover:text-purple-600 hover:bg-slate-50'
+                          : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+              <div className={`flex gap-2.5 pt-3.5 text-center border-t ${isLightHeader ? 'border-slate-100' : 'border-white/10'}`}>
+                <button 
+                  onClick={() => { onNavigate('login'); setMobileMenuOpen(false); }} 
+                  className={`w-1/2 py-2.5 text-xs font-extrabold rounded-full active:scale-95 transition-all cursor-pointer ${
+                    isLightHeader 
+                      ? 'border border-slate-200 text-zinc-700 bg-slate-50' 
+                      : 'border border-zinc-800 text-zinc-200 bg-zinc-900'
+                  }`}
+                >
+                  Login
+                </button>
+                <button 
+                  onClick={() => { onNavigate('signup'); setMobileMenuOpen(false); }} 
+                  className={`w-1/2 py-2.5 text-xs font-extrabold rounded-full active:scale-95 transition-all cursor-pointer shadow-md ${
+                    isLightHeader
+                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white'
+                      : 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white'
+                  }`}
+                >
+                  Register
+                </button>
               </div>
             </div>
           )}

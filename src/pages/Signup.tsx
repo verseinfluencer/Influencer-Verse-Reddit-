@@ -325,27 +325,27 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
 
   if (isEmailVerificationPending) {
     return (
-      <div className="w-full min-h-[90vh] flex items-center justify-center bg-zinc-950 py-12 px-4 select-none" id="verification-panel">
-        <div className="w-full max-w-md bg-zinc-900/40 border border-white/10 rounded-3xl p-8 backdrop-blur-md shadow-2xl relative overflow-hidden flex flex-col items-center text-center">
-          <div className="absolute top-0 left-0 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl"></div>
+      <div className="w-full min-h-[85vh] flex items-center justify-center py-12 px-4 select-none" id="verification-panel">
+        <div className="w-full max-w-md bg-white border border-slate-100 rounded-3xl p-8 shadow-xl relative overflow-hidden flex flex-col items-center text-center">
+          <div className="absolute top-0 left-0 w-32 h-32 bg-purple-500/5 rounded-full blur-3xl"></div>
           
-          <div className="w-16 h-16 bg-purple-500/10 border border-purple-500/20 rounded-full flex items-center justify-center text-purple-400 mb-6">
+          <div className="w-16 h-16 bg-purple-50 text-purple-600 border border-purple-100 rounded-full flex items-center justify-center mb-6">
             <Mail className="w-8 h-8" />
           </div>
 
-          <h2 className="text-2.5xl font-black text-white mb-2">Verify Your Email</h2>
-          <p className="text-zinc-400 text-sm mb-6">
+          <h2 className="text-2xl font-black text-zinc-900 mb-2 font-display tracking-tight">Verify Your Email</h2>
+          <p className="text-zinc-500 text-sm mb-6 leading-relaxed">
             We sent a verification link to:<br />
-            <span className="font-semibold text-purple-300 break-all">{email}</span>
+            <span className="font-semibold text-purple-600 break-all">{email}</span>
           </p>
 
-          <p className="text-zinc-400 text-xs leading-relaxed mb-6">
+          <p className="text-zinc-500 text-xs leading-relaxed mb-6">
             Please check your inbox and spam folder. Click the link in the email to complete your registration.
           </p>
 
-          <div className="w-full bg-zinc-950/60 border border-white/5 rounded-2xl p-4 text-left mb-6">
-            <h4 className="text-white text-xs font-semibold mb-1">Didn't receive the email?</h4>
-            <p className="text-zinc-400 text-[11px] leading-relaxed">
+          <div className="w-full bg-slate-50 border border-slate-200/60 rounded-2xl p-4 text-left mb-6">
+            <h4 className="text-zinc-900 text-xs font-semibold mb-1">Didn't receive the email?</h4>
+            <p className="text-zinc-505 text-[11px] leading-relaxed">
               Please check your Spam, Junk, or Promotions folder. Verification emails may sometimes be filtered there. If you still can't find it, wait a few minutes and try resending.
             </p>
           </div>
@@ -353,7 +353,7 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
           <button
             onClick={handleCheckEmailVerification}
             disabled={isCheckingEmail}
-            className="w-full h-12 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl transition duration-300 flex items-center justify-center gap-2 mb-4 font-sans disabled:opacity-50"
+            className="w-full h-12 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-95 text-white font-extrabold rounded-xl transition duration-200 shadow-lg shadow-purple-600/10 flex items-center justify-center gap-2 mb-4 font-sans disabled:opacity-50 cursor-pointer hover:scale-[1.01]"
           >
             {isCheckingEmail ? (
               <>
@@ -363,7 +363,7 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
             ) : (
               <>
                 <CheckCircle2 className="w-5 h-5" />
-                <span>✅ I've Verified My Email</span>
+                <span>I've Verified My Email</span>
               </>
             )}
           </button>
@@ -371,11 +371,11 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
           <button
             onClick={handleResendEmail}
             disabled={resendCooldown > 0 || resendCount >= 3}
-            className="w-full h-11 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold rounded-xl text-sm transition duration-300 mb-6 disabled:opacity-40"
+            className="w-full h-11 bg-slate-100 hover:bg-slate-200 text-zinc-700 font-bold border border-slate-200/65 rounded-xl text-xs uppercase tracking-wider transition duration-200 mb-6 disabled:opacity-40 cursor-pointer"
           >
             {resendCooldown > 0 ? (
-              <span className="flex items-center justify-center gap-2 text-zinc-400 font-mono">
-                <Clock className="w-4 h-4 animate-spin text-purple-400" />
+              <span className="flex items-center justify-center gap-2 text-zinc-500 font-mono">
+                <Clock className="w-4 h-4 animate-spin text-purple-600" />
                 Resend in {resendCooldown}s
               </span>
             ) : (
@@ -384,14 +384,14 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
           </button>
 
           {resendMessage && (
-            <p className={`text-xs font-semibold mb-6 ${resendMessage.includes('❌') ? 'text-red-400' : 'text-emerald-400'}`}>
+            <p className={`text-xs font-semibold mb-6 ${resendMessage.includes('❌') ? 'text-red-650' : 'text-emerald-705'}`}>
               {resendMessage}
             </p>
           )}
 
           <button
             onClick={handleGoBackWrongEmail}
-            className="text-zinc-500 hover:text-zinc-300 text-sm underline transition duration-200"
+            className="text-zinc-400 hover:text-zinc-650 text-xs font-bold underline transition duration-200 cursor-pointer"
           >
             Wrong email? Go back
           </button>
@@ -401,20 +401,20 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
   }
 
   return (
-    <div className="w-full min-h-[90vh] flex items-center justify-center bg-zinc-950 py-12 px-4 select-none" id="signup-panel">
-      <div className="w-full max-w-lg bg-zinc-900/40 border border-white/10 rounded-3xl p-8 backdrop-blur-md shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl"></div>
+    <div className="w-full min-h-[85vh] flex items-center justify-center py-12 px-4 select-none" id="signup-panel">
+      <div className="w-full max-w-lg bg-white border border-slate-100 rounded-3xl p-8 shadow-xl relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-32 h-32 bg-purple-500/5 rounded-full blur-3xl"></div>
 
         <div className="text-center space-y-4 mb-8 flex flex-col items-center">
           <Logo size="md" />
           <div>
-            <h2 className="text-2.5xl font-black text-white">Register Creator</h2>
-            <p className="text-zinc-400 text-xs font-semibold mt-1">Join the Reddit influencer task network</p>
+            <h2 className="text-2xl font-black text-zinc-900 font-display tracking-tight">Register Creator</h2>
+            <p className="text-zinc-500 text-xs font-semibold mt-1">Join the Reddit influencer task network</p>
           </div>
         </div>
 
         {errorMsg && (
-          <div className="p-3.5 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-xl flex items-center gap-2 mb-5">
+          <div className="p-3.5 bg-red-500/5 border border-red-500/15 text-red-600 text-xs rounded-xl flex items-center gap-2 mb-5">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{errorMsg}</span>
           </div>
@@ -436,9 +436,9 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
           {/* General Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">Full Name</label>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1.5">Full Name</label>
               <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-zinc-500">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-zinc-400">
                   <UserIcon className="w-4 h-4" />
                 </span>
                 <input 
@@ -446,15 +446,15 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Alex Rivera" 
-                  className="w-full text-xs text-white bg-zinc-950 border border-white/5 pl-10 pr-4 py-3 rounded-xl focus:border-purple-500 focus:outline-none transition-colors"
+                  className="w-full text-xs text-zinc-900 bg-slate-50 border border-slate-200 pl-10 pr-4 py-3 rounded-xl focus:border-purple-500 focus:outline-none focus:bg-white hover:border-slate-300 transition-all"
                 />
               </div>
             </div>
 
             <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">Email Address</label>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1.5">Email Address</label>
               <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-zinc-500">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-zinc-400">
                   <Mail className="w-4 h-4" />
                 </span>
                 <input 
@@ -462,7 +462,7 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="alex@gmail.com" 
-                  className="w-full text-xs text-white bg-zinc-950 border border-white/5 pl-10 pr-4 py-3 rounded-xl focus:border-purple-500 focus:outline-none transition-colors"
+                  className="w-full text-xs text-zinc-900 bg-slate-50 border border-slate-200 pl-10 pr-4 py-3 rounded-xl focus:border-purple-500 focus:outline-none focus:bg-white hover:border-slate-300 transition-all"
                 />
               </div>
             </div>
@@ -471,9 +471,9 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
           {/* Passwords */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">Password</label>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1.5">Password</label>
               <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-zinc-500">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-zinc-400">
                   <Lock className="w-4 h-4" />
                 </span>
                 <input 
@@ -481,12 +481,12 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••" 
-                  className="w-full text-xs text-white bg-zinc-950 border border-white/5 pl-10 pr-10 py-3 rounded-xl focus:border-purple-500 focus:outline-none transition-colors"
+                  className="w-full text-xs text-zinc-900 bg-slate-50 border border-slate-200 pl-10 pr-10 py-3 rounded-xl focus:border-purple-500 focus:outline-none focus:bg-white hover:border-slate-300 transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-400 hover:text-zinc-650 transition-colors cursor-pointer"
                   title={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -495,9 +495,9 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
             </div>
 
             <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">Confirm Password</label>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1.5">Confirm Password</label>
               <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-zinc-500">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-zinc-400">
                   <Lock className="w-4 h-4" />
                 </span>
                 <input 
@@ -505,12 +505,12 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••" 
-                  className="w-full text-xs text-white bg-zinc-950 border border-white/5 pl-10 pr-10 py-3 rounded-xl focus:border-purple-500 focus:outline-none transition-colors"
+                  className="w-full text-xs text-zinc-900 bg-slate-50 border border-slate-200 pl-10 pr-10 py-3 rounded-xl focus:border-purple-500 focus:outline-none focus:bg-white hover:border-slate-300 transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-400 hover:text-zinc-650 transition-colors cursor-pointer"
                   title={showConfirmPassword ? "Hide password" : "Show password"}
                 >
                   {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -520,34 +520,34 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
           </div>
 
           {/* Divider with Reddit */}
-          <div className="border-t border-white/5 my-4 pt-4">
-            <h3 className="text-xs font-extrabold text-purple-400 uppercase tracking-wider mb-3">Reddit Account Binding</h3>
+          <div className="border-t border-slate-100 my-4 pt-4">
+            <h3 className="text-xs font-extrabold text-purple-600 uppercase tracking-wider mb-3">Reddit Account Binding</h3>
           </div>
 
           <div className="space-y-4">
             <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">Reddit Username</label>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1.5">Reddit Username</label>
               <input 
                 type="text" 
                 value={redditUsername}
                 onChange={(e) => setRedditUsername(e.target.value)}
                 placeholder="u/alex_rivera" 
-                className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-4 py-3 rounded-xl focus:border-purple-500 focus:outline-none transition-colors"
+                className="w-full text-xs text-zinc-900 bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl focus:border-purple-500 focus:outline-none focus:bg-white hover:border-slate-300 transition-all"
               />
             </div>
 
             <div>
               <div className="flex justify-between items-center mb-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Reddit Profile Link</label>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block">Reddit Profile Link</label>
                 {/* Visual Validator Checkmark or Error indicator */}
                 {linkValid !== null && (
                   linkValid ? (
-                    <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
+                    <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
                       <CheckCircle2 className="w-3.5 h-3.5" /> Link Matches & Valid
                     </span>
                   ) : (
                     <span className="text-[10px] text-red-500 font-bold flex items-center gap-1">
-                      <XCircle className="w-3.5 h-3.5" /> Mismatch / Invalid Link format
+                      <XCircle className="w-3.5 h-3.5" /> Username Mismatch / Invalid Link format
                     </span>
                   )
                 )}
@@ -557,35 +557,35 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
                 value={redditProfileLink}
                 onChange={(e) => setRedditProfileLink(e.target.value)}
                 placeholder="https://www.reddit.com/user/Extension-Chef-7943" 
-                className={`w-full text-xs text-white bg-zinc-950 border pl-4 pr-4 py-3 rounded-xl focus:outline-none transition-colors ${
-                  linkValid === true ? 'border-emerald-500/50 focus:border-emerald-500' : 
-                  linkValid === false ? 'border-red-500/50 focus:border-red-500' : 'border-white/5 focus:border-purple-500'
+                className={`w-full text-xs text-zinc-900 bg-slate-50 border pl-4 pr-4 py-3 rounded-xl focus:outline-none focus:bg-white transition-all ${
+                  linkValid === true ? 'border-emerald-500 focus:border-emerald-500' : 
+                  linkValid === false ? 'border-red-400 focus:border-red-450' : 'border-slate-200 focus:border-purple-500 hover:border-slate-300'
                 }`}
               />
-              <p className="text-[10px] text-zinc-500 font-semibold mt-1 leading-normal text-balance">
-                Format: <strong className="text-zinc-400">https://www.reddit.com/user/[username]</strong>. The username segment in url must match your Username field exactly (case-insensitive).
+              <p className="text-[10px] text-zinc-450 font-semibold mt-1 leading-normal text-balance">
+                Format: <strong className="text-zinc-650">https://www.reddit.com/user/[username]</strong>. The username segment in url must match your Username field exactly (case-insensitive).
               </p>
             </div>
           </div>
 
           {/* Discord Server Verification */}
-          <div className="pt-4 pb-4 border-t border-b border-white/5 space-y-3">
+          <div className="pt-4 pb-4 border-t border-b border-slate-100 space-y-3">
             <div className="flex justify-between items-center">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block">
                 Discord Server Verification <span className="text-red-500">*</span>
               </label>
               {discordVerified ? (
-                <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1 bg-emerald-50 border border-emerald-100 px-2.5 py-0.5 rounded-full">
                   <CheckCircle2 className="w-3.5 h-3.5" /> Discord Verified
                 </span>
               ) : (
-                <span className="text-[10px] text-amber-500 font-bold flex items-center gap-1 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                <span className="text-[10px] text-amber-600 font-bold flex items-center gap-1 bg-amber-50 border border-amber-100 px-2.5 py-0.5 rounded-full">
                   <AlertCircle className="w-3.5 h-3.5" /> Mandatory Verification
                 </span>
               )}
             </div>
 
-            <p className="text-[11px] text-zinc-400 leading-relaxed font-semibold">
+            <p className="text-[11px] text-zinc-500 leading-relaxed font-semibold">
               To complete registration on Influencer Verse, you must verify your membership in our official Discord server. First join the Discord using the button below, then complete verification.
             </p>
 
@@ -594,9 +594,9 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
                 href="https://discord.gg/fFPT58H9kd"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full py-3 flex items-center justify-center gap-2 text-xs font-bold rounded-xl bg-gradient-to-r from-purple-700/30 to-indigo-700/30 text-purple-200 hover:from-purple-700/45 hover:to-indigo-700/45 hover:text-white border border-purple-500/30 shadow-md hover:border-purple-500/50 transition-all text-center cursor-pointer"
+                className="w-full py-3 flex items-center justify-center gap-2 text-xs font-bold rounded-xl bg-purple-50 text-purple-700 hover:bg-purple-100/80 hover:text-purple-800 border border-purple-200 hover:scale-[1.01] transition-all text-center cursor-pointer shadow-sm"
               >
-                <MessageSquare className="w-4 h-4 text-purple-300 shrink-0" />
+                <MessageSquare className="w-4 h-4 text-purple-650 shrink-0" />
                 Join Our Discord
               </a>
 
@@ -604,9 +604,9 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
                 type="button"
                 onClick={handleVerifyDiscord}
                 disabled={discordVerifying}
-                className={`w-full py-3 flex items-center justify-center gap-2 text-xs font-bold rounded-xl transition-all ${
+                className={`w-full py-3 flex items-center justify-center gap-2 text-xs font-bold rounded-xl transition-all hover:scale-[1.01] ${
                   discordVerified 
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' 
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
                     : 'bg-[#5865F2] text-white hover:bg-[#4752C4] shadow-md cursor-pointer'
                 } disabled:opacity-50`}
               >
@@ -632,8 +632,8 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
             {discordFeedback && (
               <div id="discord-feedback-msg" className={`p-3 rounded-lg text-xs leading-relaxed border ${
                 discordFeedback.success 
-                  ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 font-semibold' 
-                  : 'bg-red-500/10 border-red-500/20 text-red-400 font-semibold'
+                  ? 'bg-emerald-50 border-emerald-100 text-emerald-700 font-semibold' 
+                  : 'bg-red-50 border-red-105 text-red-650 font-semibold'
               }`}>
                 {discordFeedback.message}
               </div>
@@ -643,13 +643,13 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
           {/* Invitation and Terms */}
           <div className="pt-2 grid grid-cols-1 gap-4">
             <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">Referral Code (Optional)</label>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1.5">Referral Code (Optional)</label>
               <input 
                 type="text" 
                 value={referralCode}
                 onChange={(e) => setReferralCode(e.target.value)}
                 placeholder="SARAHTECH" 
-                className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-4 py-2.5 rounded-xl focus:border-purple-500 focus:outline-none transition-colors uppercase"
+                className="w-full text-xs text-zinc-900 bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl focus:border-purple-500 focus:outline-none focus:bg-white hover:border-slate-300 transition-all uppercase"
               />
             </div>
 
@@ -661,9 +661,9 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
                 onChange={(e) => setAgreeTerms(e.target.checked)}
                 className="mt-1 accent-purple-600 rounded"
               />
-              <label htmlFor="agreeTerms" className="text-xs text-zinc-400 leading-snug cursor-pointer">
+              <label htmlFor="agreeTerms" className="text-xs text-zinc-500 leading-snug cursor-pointer">
                 I hereby declare all Reddit account statistics entered are completely authentic. I agree to comply with the{' '}
-                <button type="button" onClick={() => onNavigate('terms')} className="text-purple-400 hover:underline font-bold">Terms of Service</button>{' '}
+                <button type="button" onClick={() => onNavigate('terms')} className="text-purple-600 hover:underline font-bold bg-transparent border-0 p-0 cursor-pointer">Terms of Service</button>{' '}
                 and understand duplicate submissions result in a network ban.
               </label>
             </div>
@@ -672,15 +672,15 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
           <button 
             type="submit"
             disabled={loading || !discordVerified}
-            className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-blue-500 text-xs font-bold rounded-xl text-white hover:opacity-95 shadow-lg flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+            className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-xs font-bold rounded-xl text-white hover:opacity-95 shadow-lg shadow-purple-600/10 flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
           >
             {loading ? 'Creating Wallet Account...' : 'Agree & Create Account'} <ShieldCheck className="w-4 h-4" />
           </button>
         </form>
 
-        <p className="text-center text-[11px] text-zinc-400 mt-6 select-none font-semibold">
-          ALready have an account?{' '}
-          <button onClick={() => onNavigate('login')} className="text-purple-400 hover:text-purple-300 font-bold hover:underline cursor-pointer">
+        <p className="text-center text-[11px] text-zinc-500 mt-6 select-none font-semibold">
+          Already have an account?{' '}
+          <button onClick={() => onNavigate('login')} className="text-purple-600 hover:text-purple-700 font-bold hover:underline cursor-pointer bg-transparent border-0 p-0">
             Log in here
           </button>
         </p>

@@ -28,6 +28,19 @@ function MainAppContent() {
   const { currentUser } = useApp();
   const [currentPage, setCurrentPage] = useState<string>('home');
 
+  // Sync light/dark theme dynamically on the root document element
+  React.useEffect(() => {
+    const lightPages = ['home', 'about', 'faq', 'contact', 'trust', 'terms', 'referrals', 'login', 'signup', 'client-login', 'client-register'];
+    if (lightPages.includes(currentPage)) {
+      document.documentElement.classList.add('light');
+    } else {
+      document.documentElement.classList.remove('light');
+    }
+    return () => {
+      document.documentElement.classList.remove('light');
+    };
+  }, [currentPage]);
+
   const onNavigate = (page: string) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -158,15 +171,17 @@ function MainAppContent() {
     }
   };
 
+  const isLightPage = ['home', 'about', 'faq', 'contact', 'trust', 'terms', 'referrals', 'login', 'signup', 'client-login', 'client-register'].includes(currentPage);
+
   return (
-    <div className="min-h-screen bg-[#050505] text-white flex flex-col justify-between selection:bg-bento-purple selection:text-white">
+    <div className={`min-h-screen ${isLightPage ? 'bg-zinc-50 text-zinc-900 selection:bg-purple-200 selection:text-purple-950' : 'bg-[#050505] text-white selection:bg-bento-purple selection:text-white'} flex flex-col justify-between transition-colors duration-200`}>
       <div>
         <Navbar onNavigate={onNavigate} currentPage={currentPage} />
         <main className="relative z-10">
           {renderPage()}
         </main>
       </div>
-      <Footer onNavigate={onNavigate} />
+      <Footer onNavigate={onNavigate} isLightPage={isLightPage} />
     </div>
   );
 }

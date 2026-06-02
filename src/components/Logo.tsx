@@ -125,7 +125,11 @@ export const Logo: React.FC<LogoProps> = ({
       {withText && (
         <div className="flex flex-col justify-center leading-none">
           <span 
-            className={`font-black tracking-[0.25em] text-white uppercase font-sans ${dimensions.text} ${textClassName}`}
+            className={`font-black tracking-[0.25em] uppercase font-sans ${dimensions.text} ${
+              (textClassName && textClassName.includes('text-'))
+                ? textClassName
+                : `text-white ${textClassName || ''}`
+            }`}
           >
             Influencer
           </span>

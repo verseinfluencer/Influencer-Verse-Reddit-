@@ -151,20 +151,20 @@ export const ClientLogin: React.FC<ClientLoginProps> = ({ onNavigate }) => {
   // 1. Pending view
   if (lockedStatus === 'pending') {
     return (
-      <div id="pending_review_box" className="max-w-md mx-auto my-16 p-8 bg-neutral-900 border border-neutral-800 rounded-3xl text-center text-white select-none">
+      <div id="pending_review_box" className="max-w-md mx-auto my-16 p-8 bg-white border border-slate-100 rounded-3xl text-center text-zinc-900 shadow-xl select-none">
         <Clock className="w-16 h-16 text-amber-500 mx-auto mb-6" />
-        <h1 className="text-2xl font-bold font-sans tracking-tight mb-3 text-amber-400">Account Under Review</h1>
+        <h1 className="text-2xl font-black font-display tracking-tight mb-3 text-zinc-900">Account Under Review</h1>
         
-        <div className="bg-indigo-950/45 p-4 rounded-xl border border-indigo-550/20 text-left text-xs text-indigo-200 leading-relaxed font-sans space-y-1.5 mb-6">
-          <p className="font-bold text-center text-xs text-white">
+        <div className="bg-indigo-50/70 p-4 rounded-xl border border-indigo-100 text-left text-xs text-indigo-805 leading-relaxed font-sans space-y-1.5 mb-6">
+          <p className="font-bold text-center text-xs text-indigo-900">
             📧 Verification Sent
           </p>
-          <p className="text-center font-semibold text-zinc-300">
-            📧 Verification email sent to <span className="text-purple-400 font-bold break-all">{auth.currentUser?.email || email || 'your email'}</span>. Please check your inbox and spam folder. Click the verification link to continue.
+          <p className="text-center font-semibold text-indigo-700/90 leading-normal">
+            Verification email sent to <span className="text-purple-600 font-bold break-all">{auth.currentUser?.email || email || 'your email'}</span>. Please check your inbox and spam folder. Click the verification link to continue.
           </p>
         </div>
 
-        <p className="text-neutral-300 mb-6 font-sans text-xs">
+        <p className="text-zinc-500 mb-6 font-sans text-xs">
           Your client account is under review. <br />
           We'll contact you via WhatsApp/Gmail soon.
         </p>
@@ -175,7 +175,7 @@ export const ClientLogin: React.FC<ClientLoginProps> = ({ onNavigate }) => {
             type="button"
             onClick={handleResendEmail}
             disabled={resendCooldown > 0 || resendCount >= 3}
-            className="px-4 py-2 bg-neutral-850 hover:bg-neutral-800 disabled:opacity-40 disabled:hover:bg-neutral-850 text-[11px] text-zinc-300 font-bold border border-white/5 rounded-xl transition duration-150 w-full"
+            className="px-4 py-3 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-[11px] text-zinc-700 font-bold border border-slate-200/50 rounded-xl transition duration-150 w-full cursor-pointer"
           >
             {resendCooldown > 0 
               ? `Resend in ${resendCooldown}s` 
@@ -184,7 +184,7 @@ export const ClientLogin: React.FC<ClientLoginProps> = ({ onNavigate }) => {
           </button>
           
           {resendMessage && (
-            <p className="text-[11px] text-zinc-400 font-bold mt-2 text-center">
+            <p className="text-[11px] text-zinc-500 font-bold mt-2 text-center">
               {resendMessage}
             </p>
           )}
@@ -194,14 +194,14 @@ export const ClientLogin: React.FC<ClientLoginProps> = ({ onNavigate }) => {
           type="button"
           onClick={handleCheckGmailVerification}
           disabled={isCheckingGmail}
-          className="px-6 py-2.5 bg-indigo-650 hover:bg-indigo-600 disabled:opacity-40 text-xs font-extrabold rounded-xl transition font-sans w-full cursor-pointer mb-3 flex items-center justify-center gap-2"
+          className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white hover:opacity-95 shadow-lg shadow-indigo-600/10 disabled:opacity-40 text-xs font-extrabold rounded-xl transition font-sans w-full cursor-pointer mb-3 flex items-center justify-center gap-2"
         >
           {isCheckingGmail ? 'Syncing...' : "I've verified my email"}
         </button>
 
         <button 
           onClick={() => setLockedStatus(null)} 
-          className="px-6 py-2.5 bg-neutral-800 text-neutral-300 font-semibold rounded-xl hover:bg-neutral-700 transition font-sans w-full"
+          className="px-6 py-3 bg-slate-100 text-zinc-700 font-bold rounded-xl hover:bg-slate-200 border border-slate-200/50 transition font-sans w-full cursor-pointer"
         >
           Back to Login
         </button>
@@ -212,19 +212,19 @@ export const ClientLogin: React.FC<ClientLoginProps> = ({ onNavigate }) => {
   // 2. Rejected View
   if (lockedStatus === 'rejected') {
     return (
-      <div id="rejected_review_box" className="max-w-md mx-auto my-16 p-8 bg-neutral-900 border border-red-950 rounded-3xl text-center text-white">
+      <div id="rejected_review_box" className="max-w-md mx-auto my-16 p-8 bg-white border border-red-100 rounded-3xl text-center text-zinc-900 shadow-xl">
         <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-6" />
-        <h1 className="text-2xl font-bold font-sans tracking-tight mb-3 text-red-400">Onboarding Request Declined</h1>
-        <p className="text-neutral-300 text-sm mb-4">
+        <h1 className="text-2xl font-black font-display tracking-tight mb-3 text-red-600">Onboarding Request Declined</h1>
+        <p className="text-zinc-500 text-sm mb-4 leading-normal">
           Unfortunately, your brand registration request has been rejected.
         </p>
-        <div className="bg-red-950/20 text-red-200 p-4 border border-red-900/40 rounded-xl mb-6 text-sm text-left">
-          <strong>Reason for Rejection:</strong> <br />
-          <p className="mt-1 text-xs text-neutral-300 leading-relaxed">{lockedReason}</p>
+        <div className="bg-red-50 text-red-800 p-4 border border-red-100 rounded-xl mb-6 text-sm text-left">
+          <strong className="text-red-900 text-xs uppercase tracking-wider block mb-1">Reason for Rejection:</strong>
+          <p className="text-xs text-red-700 leading-relaxed">{lockedReason}</p>
         </div>
         <button 
           onClick={() => setLockedStatus(null)} 
-          className="px-6 py-2.5 bg-white text-black font-semibold rounded-xl hover:bg-neutral-200 transition font-sans w-full"
+          className="px-6 py-3 bg-zinc-900 text-white font-bold rounded-xl hover:bg-zinc-800 transition font-sans w-full cursor-pointer"
         >
           Try Logging In Again
         </button>
@@ -235,15 +235,15 @@ export const ClientLogin: React.FC<ClientLoginProps> = ({ onNavigate }) => {
   // 3. Suspended View
   if (lockedStatus === 'suspended') {
     return (
-      <div id="suspended_review_box" className="max-w-md mx-auto my-16 p-8 bg-neutral-900 border border-red-900 rounded-3xl text-center text-white">
-        <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-6 animate-pulse" />
-        <h1 className="text-2xl font-bold font-sans tracking-tight mb-3 text-red-500">Account Suspended</h1>
-        <p className="text-neutral-300 text-sm mb-6">
+      <div id="suspended_review_box" className="max-w-md mx-auto my-16 p-8 bg-white border border-slate-100 rounded-3xl text-center text-zinc-900 shadow-xl">
+        <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-6" />
+        <h1 className="text-2xl font-black font-display tracking-tight mb-3 text-red-600">Account Suspended</h1>
+        <p className="text-zinc-500 text-sm mb-6 leading-relaxed">
           Your client account access has been revoked or suspended temporarily. Please resolve outstanding pending billing statements with management.
         </p>
         <button 
           onClick={() => setLockedStatus(null)} 
-          className="px-6 py-2.5 bg-white text-black font-semibold rounded-xl hover:bg-neutral-200 transition font-sans w-full"
+          className="px-6 py-3 bg-zinc-900 text-white font-bold rounded-xl hover:bg-zinc-800 transition font-sans w-full cursor-pointer"
         >
           Back to Login
         </button>
@@ -252,63 +252,69 @@ export const ClientLogin: React.FC<ClientLoginProps> = ({ onNavigate }) => {
   }
 
   return (
-    <div id="client_login_form_container" className="max-w-md mx-auto my-16 px-4 text-white">
+    <div id="client_login_form_container" className="max-w-md mx-auto my-16 px-4 text-zinc-900">
       <div className="text-center mb-8">
-        <span className="px-3 py-1 bg-indigo-950 text-indigo-400 rounded-full text-xs font-semibold uppercase tracking-wider mb-2 inline-block">
+        <span className="px-3 py-1 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-full text-[10px] font-bold uppercase tracking-wider mb-2.5 inline-block">
           Enterprise Portal
         </span>
-        <h1 className="text-3xl font-extrabold font-sans tracking-tight mb-1 text-white">
+        <h1 className="text-3xl font-black font-display tracking-tight mb-1 text-zinc-900">
           Login as Client
         </h1>
-        <p className="text-xs text-neutral-400">
+        <p className="text-xs text-zinc-500 font-semibold mt-1.5">
           Sign in to manage posts, revisions, payments, and custom campaigns.
         </p>
       </div>
 
-      <div className="bg-neutral-900 border border-neutral-800 rounded-3xl shadow-xl p-8">
+      <div className="bg-white border border-slate-100 rounded-3xl shadow-xl p-8 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl"></div>
+
         {error && (
-          <div className="flex items-start gap-3 bg-red-950/40 border border-red-950 p-4 rounded-xl mb-6 text-red-200 text-xs">
+          <div className="flex items-start gap-3 bg-red-50 border border-red-100 p-4 rounded-xl mb-6 text-red-700 text-xs leading-normal">
             <AlertCircle className="w-4.5 h-4.5 text-red-500 shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="space-y-6">
+        <form onSubmit={handleLogin} className="space-y-5">
           <div>
-            <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
+            <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2">
               Official Gmail Address
             </label>
             <div className="relative">
-              <Mail className="absolute left-3.5 top-3 w-4.5 h-4.5 text-neutral-500" />
+              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-zinc-400">
+                <Mail className="w-4.5 h-4.5" />
+              </span>
               <input 
                 type="email" 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="brand@gmail.com"
                 required
-                className="w-full pl-11 pr-4 py-2.5 bg-neutral-950 text-white rounded-xl border border-neutral-800 focus:outline-none focus:border-indigo-500 text-sm font-sans"
+                className="w-full pl-11 pr-4 py-3 bg-slate-50 text-zinc-900 rounded-xl border border-slate-200 focus:outline-none focus:bg-white focus:border-indigo-500 text-xs font-sans hover:border-slate-300 transition-all font-medium"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
+            <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2">
               Client Password
             </label>
             <div className="relative">
-              <Lock className="absolute left-3.5 top-3 w-4.5 h-4.5 text-neutral-500" />
+              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-zinc-400">
+                <Lock className="w-4.5 h-4.5" />
+              </span>
               <input 
                 type={showPassword ? "text" : "password"} 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
-                className="w-full pl-11 pr-11 py-2.5 bg-neutral-950 text-white rounded-xl border border-neutral-800 focus:outline-none focus:border-indigo-500 text-sm font-sans"
+                className="w-full pl-11 pr-11 py-3 bg-slate-50 text-zinc-900 rounded-xl border border-slate-200 focus:outline-none focus:bg-white focus:border-indigo-500 text-xs font-sans hover:border-slate-300 transition-all font-medium"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer"
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-400 hover:text-zinc-650 transition-colors cursor-pointer"
                 title={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -320,24 +326,24 @@ export const ClientLogin: React.FC<ClientLoginProps> = ({ onNavigate }) => {
             id="client_login_btn"
             type="submit"
             disabled={loading}
-            className="w-full py-3 px-6 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-500 transition focus:outline-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            className="w-full py-3.5 px-6 bg-indigo-600 text-white text-xs font-bold uppercase tracking-wider rounded-xl hover:bg-indigo-700 transition focus:outline-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-lg shadow-indigo-600/10 hover:scale-[1.01]"
           >
             {loading ? 'Authenticating...' : 'Login to dashboard'}
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
 
-        <div className="relative flex py-4 items-center">
-          <div className="flex-grow border-t border-neutral-800"></div>
-          <span className="flex-shrink mx-4 text-neutral-500 text-[10px] uppercase font-bold tracking-widest">
+        <div className="relative flex py-5 items-center">
+          <div className="flex-grow border-t border-slate-100"></div>
+          <span className="flex-shrink mx-4 text-zinc-400 text-[10px] uppercase font-bold tracking-widest">
             Brand Accounts Only
           </span>
-          <div className="flex-grow border-t border-neutral-800"></div>
+          <div className="flex-grow border-t border-slate-100"></div>
         </div>
 
         <button
           onClick={() => onNavigate('client-register')}
-          className="w-full py-2.5 px-4 bg-neutral-800 text-white text-xs font-semibold rounded-xl hover:bg-neutral-700 transition"
+          className="w-full py-3 px-4 bg-slate-50 hover:bg-slate-100 text-zinc-700 text-xs font-bold border border-slate-200 rounded-xl transition cursor-pointer"
         >
           Create New Client Account
         </button>

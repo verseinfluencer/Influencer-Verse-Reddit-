@@ -170,27 +170,27 @@ export const Login: React.FC<LoginProps> = ({ onNavigate }) => {
 
   if (isEmailVerificationPending) {
     return (
-      <div className="w-full min-h-[80vh] flex items-center justify-center bg-zinc-950 px-4 select-none" id="login-verification-panel">
-        <div className="w-full max-w-md bg-zinc-900/40 border border-white/10 rounded-3xl p-8 backdrop-blur-md shadow-2xl relative overflow-hidden flex flex-col items-center text-center">
-          <div className="absolute top-0 left-0 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl"></div>
+      <div className="w-full min-h-[85vh] flex items-center justify-center py-12 px-4 select-none" id="login-verification-panel">
+        <div className="w-full max-w-md bg-white border border-slate-100 rounded-3xl p-8 shadow-xl relative overflow-hidden flex flex-col items-center text-center">
+          <div className="absolute top-0 left-0 w-32 h-32 bg-purple-500/5 rounded-full blur-3xl"></div>
           
-          <div className="w-16 h-16 bg-purple-500/10 border border-purple-500/20 rounded-full flex items-center justify-center text-purple-400 mb-6">
+          <div className="w-16 h-16 bg-purple-50 text-purple-600 border border-purple-100 rounded-full flex items-center justify-center mb-6">
             <Mail className="w-8 h-8" />
           </div>
 
-          <h2 className="text-2.5xl font-black text-white mb-2">Verify Your Email</h2>
-          <p className="text-zinc-400 text-sm mb-6">
+          <h2 className="text-2xl font-black text-zinc-900 mb-2 font-display tracking-tight">Verify Your Email</h2>
+          <p className="text-zinc-500 text-sm mb-6 leading-relaxed">
             We sent a verification link to:<br />
-            <span className="font-semibold text-purple-300 break-all">{auth.currentUser?.email || email}</span>
+            <span className="font-semibold text-purple-600 break-all">{auth.currentUser?.email || email}</span>
           </p>
 
-          <p className="text-zinc-400 text-xs leading-relaxed mb-6">
+          <p className="text-zinc-500 text-xs leading-relaxed mb-6">
             Please check your inbox and spam folder. Click the link in the email to complete your registration.
           </p>
 
-          <div className="w-full bg-zinc-950/60 border border-white/5 rounded-2xl p-4 text-left mb-6">
-            <h4 className="text-white text-xs font-semibold mb-1">Didn't receive the email?</h4>
-            <p className="text-zinc-400 text-[11px] leading-relaxed">
+          <div className="w-full bg-slate-50 border border-slate-200/60 rounded-2xl p-4 text-left mb-6">
+            <h4 className="text-zinc-900 text-xs font-semibold mb-1">Didn't receive the email?</h4>
+            <p className="text-zinc-500 text-[11px] leading-relaxed">
               Please check your Spam, Junk, or Promotions folder. Verification emails may sometimes be filtered there. If you still can't find it, wait a few minutes and try resending.
             </p>
           </div>
@@ -198,7 +198,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigate }) => {
           <button
             onClick={handleCheckEmailVerification}
             disabled={isCheckingEmail}
-            className="w-full h-12 bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-50 hover:to-blue-400 text-white font-bold rounded-xl transition duration-300 flex items-center justify-center gap-2 mb-4 font-sans disabled:opacity-50 cursor-pointer"
+            className="w-full h-12 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-95 text-white font-extrabold rounded-xl transition duration-200 flex items-center justify-center gap-2 mb-4 font-sans disabled:opacity-50 cursor-pointer shadow-md shadow-purple-600/10 hover:scale-[1.01]"
           >
             {isCheckingEmail ? (
               <>
@@ -210,8 +210,8 @@ export const Login: React.FC<LoginProps> = ({ onNavigate }) => {
               </>
             ) : (
               <>
-                <ShieldCheck className="w-5 h-5 animate-pulse" />
-                <span>✅ I've Verified My Email</span>
+                <ShieldCheck className="w-5 h-5" />
+                <span>I've Verified My Email</span>
               </>
             )}
           </button>
@@ -219,11 +219,11 @@ export const Login: React.FC<LoginProps> = ({ onNavigate }) => {
           <button
             onClick={handleResendEmail}
             disabled={resendCooldown > 0 || resendCount >= 3}
-            className="w-full h-11 bg-zinc-850 hover:bg-zinc-850/85 text-zinc-300 font-semibold rounded-xl text-sm transition duration-300 mb-6 disabled:opacity-40 cursor-pointer"
+            className="w-full h-11 bg-slate-100 hover:bg-slate-200 text-zinc-700 font-bold border border-slate-200/65 rounded-xl text-xs uppercase tracking-wider transition duration-200 mb-6 disabled:opacity-40 cursor-pointer"
           >
             {resendCooldown > 0 ? (
-              <span className="flex items-center justify-center gap-2 text-zinc-400 font-mono">
-                <Clock className="w-4 h-4 animate-spin text-purple-400" />
+              <span className="flex items-center justify-center gap-2 text-zinc-500 font-mono">
+                <Clock className="w-4 h-4 animate-spin text-purple-600" />
                 Resend in {resendCooldown}s
               </span>
             ) : (
@@ -232,7 +232,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigate }) => {
           </button>
 
           {resendMessage && (
-            <p className={`text-xs font-semibold mb-6 ${resendMessage.includes('❌') ? 'text-red-400' : 'text-emerald-400'}`}>
+            <p className={`text-xs font-semibold mb-6 ${resendMessage.includes('❌') ? 'text-red-600' : 'text-emerald-600'}`}>
               {resendMessage}
             </p>
           )}
@@ -249,7 +249,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigate }) => {
                 setIsEmailVerificationPending(false);
               }
             }}
-            className="text-zinc-500 hover:text-zinc-300 text-sm underline transition duration-200 cursor-pointer"
+            className="text-zinc-400 hover:text-zinc-650 text-xs font-bold underline transition duration-200 cursor-pointer"
           >
             Wrong email? Go back
           </button>
@@ -260,38 +260,38 @@ export const Login: React.FC<LoginProps> = ({ onNavigate }) => {
 
   if (showForgotPassword) {
     return (
-      <div className="w-full min-h-[80vh] flex items-center justify-center bg-zinc-950 px-4 select-none" id="forgot-password-panel">
-        <div className="w-full max-w-md bg-zinc-900/40 border border-white/10 rounded-3xl p-8 backdrop-blur-md shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl"></div>
+      <div className="w-full min-h-[85vh] flex items-center justify-center py-12 px-4 select-none" id="forgot-password-panel">
+        <div className="w-full max-w-md bg-white border border-slate-100 rounded-3xl p-8 shadow-xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full blur-2xl"></div>
           
           {/* Brand visual header */}
           <div className="text-center space-y-4 mb-8 flex flex-col items-center">
             <Logo size="md" />
             <div>
-              <h2 className="text-2.5xl font-black text-white">Reset Password</h2>
-              <p className="text-zinc-400 text-xs font-semibold mt-1">We will send you a secure link to update your password</p>
+              <h2 className="text-2xl font-black text-zinc-900 font-display tracking-tight">Reset Password</h2>
+              <p className="text-zinc-500 text-xs font-semibold mt-1">We will send you a secure link to update your password</p>
             </div>
           </div>
 
           {resetError && (
-            <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-xl flex items-center gap-2 mb-5">
+            <div className="p-3 bg-red-500/5 border border-red-500/15 text-red-600 text-xs rounded-xl flex items-center gap-2 mb-5">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{resetError}</span>
             </div>
           )}
 
           {resetSuccess && (
-            <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs rounded-xl flex items-center gap-2 mb-5">
-              <ShieldCheck className="w-4 h-4 shrink-0 animate-pulse" />
+            <div className="p-3 bg-emerald-500/5 border border-emerald-500/15 text-emerald-600 text-xs rounded-xl flex items-center gap-2 mb-5">
+              <ShieldCheck className="w-4 h-4 shrink-0" />
               <span>{resetSuccess}</span>
             </div>
           )}
 
           <form onSubmit={handleResetPasswordSubmit} className="space-y-4">
             <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">Email Address</label>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1.5">Email Address</label>
               <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-zinc-500">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-zinc-400">
                   <Mail className="w-4 h-4" />
                 </span>
                 <input 
@@ -299,7 +299,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigate }) => {
                   value={resetEmail}
                   onChange={(e) => setResetEmail(e.target.value)}
                   placeholder="you@example.com" 
-                  className="w-full text-xs text-white bg-zinc-950 border border-white/5 pl-10 pr-4 py-3 rounded-xl focus:border-purple-500 focus:outline-none transition-colors"
+                  className="w-full text-xs text-zinc-900 bg-slate-50 border border-slate-200 pl-10 pr-4 py-3 rounded-xl focus:border-purple-500 focus:outline-none focus:bg-white transition-all hover:border-slate-300"
                   autoComplete="email"
                 />
               </div>
@@ -308,9 +308,9 @@ export const Login: React.FC<LoginProps> = ({ onNavigate }) => {
             <button 
               type="submit"
               disabled={resetLoading}
-              className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-500 text-xs font-bold rounded-xl text-white hover:opacity-95 shadow-lg flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+              className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-xs font-bold rounded-xl text-white hover:opacity-95 shadow-lg shadow-purple-600/10 flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
             >
-              {resetLoading ? 'Sending Link...' : 'Send Reset Link'} <Sparkles className="w-3.5 h-3.5" />
+              {resetLoading ? 'Sending Link...' : 'Send Reset Link'} <Sparkles className="w-4 h-4" />
             </button>
           </form>
 
@@ -321,9 +321,9 @@ export const Login: React.FC<LoginProps> = ({ onNavigate }) => {
               setResetError(null);
               setResetSuccess(null);
             }}
-            className="w-full mt-4 py-2.5 bg-zinc-950 hover:bg-zinc-900 border border-white/5 text-xs text-zinc-300 font-bold rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer"
+            className="w-full mt-4 py-3 bg-slate-100 hover:bg-slate-200 border border-slate-200/50 text-xs text-zinc-700 font-bold rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer"
           >
-            <ArrowLeft className="w-3.5 h-3.5 text-zinc-400" />
+            <ArrowLeft className="w-3.5 h-3.5 text-zinc-500" />
             Back to Login
           </button>
         </div>
@@ -332,21 +332,21 @@ export const Login: React.FC<LoginProps> = ({ onNavigate }) => {
   }
 
   return (
-    <div className="w-full min-h-[80vh] flex items-center justify-center bg-zinc-950 px-4 select-none" id="login-panel">
-      <div className="w-full max-w-md bg-zinc-900/40 border border-white/10 rounded-3xl p-8 backdrop-blur-md shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl"></div>
+    <div className="w-full min-h-[85vh] flex items-center justify-center py-12 px-4 select-none" id="login-panel">
+      <div className="w-full max-w-md bg-white border border-slate-100 rounded-3xl p-8 shadow-xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full blur-2xl"></div>
         
         {/* Brand visual header */}
         <div className="text-center space-y-4 mb-8 flex flex-col items-center">
           <Logo size="md" />
           <div>
-            <h2 className="text-2.5xl font-black text-white">Welcome Back</h2>
-            <p className="text-zinc-400 text-xs font-semibold mt-1">Access your Influencer Verse creator account</p>
+            <h2 className="text-2xl font-black text-zinc-900 font-display tracking-tight">Welcome Back</h2>
+            <p className="text-zinc-500 text-xs font-semibold mt-1">Access your Influencer Verse creator account</p>
           </div>
         </div>
 
         {errorObj && (
-          <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-xl flex items-center gap-2 mb-5">
+          <div className="p-3 bg-red-500/5 border border-red-500/15 text-red-600 text-xs rounded-xl flex items-center gap-2 mb-5">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{errorObj}</span>
           </div>
@@ -354,9 +354,9 @@ export const Login: React.FC<LoginProps> = ({ onNavigate }) => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">Email Address</label>
+            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1.5">Email Address</label>
             <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-zinc-500">
+              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-zinc-400">
                 <Mail className="w-4 h-4" />
               </span>
               <input 
@@ -364,7 +364,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigate }) => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com" 
-                className="w-full text-xs text-white bg-zinc-950 border border-white/5 pl-10 pr-4 py-3 rounded-xl focus:border-purple-500 focus:outline-none transition-colors"
+                className="w-full text-xs text-zinc-900 bg-slate-50 border border-slate-200 pl-10 pr-4 py-3 rounded-xl focus:border-purple-500 focus:outline-none focus:bg-white hover:border-slate-300 transition-all"
                 autoComplete="email"
               />
             </div>
@@ -372,7 +372,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigate }) => {
 
           <div>
             <div className="flex justify-between items-center mb-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Password</label>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block">Password</label>
               <button
                 type="button"
                 onClick={() => {
@@ -381,13 +381,13 @@ export const Login: React.FC<LoginProps> = ({ onNavigate }) => {
                   setResetError(null);
                   setResetSuccess(null);
                 }}
-                className="text-[10px] text-purple-400 hover:text-purple-300 font-bold transition-colors cursor-pointer bg-transparent border-none p-0"
+                className="text-[10px] text-purple-600 hover:text-purple-700 font-bold transition-colors cursor-pointer bg-transparent border-none p-0"
               >
                 Forgot Password?
               </button>
             </div>
             <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-zinc-500">
+              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-zinc-400">
                 <Lock className="w-4 h-4" />
               </span>
               <input 
@@ -395,13 +395,13 @@ export const Login: React.FC<LoginProps> = ({ onNavigate }) => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••" 
-                className="w-full text-xs text-white bg-zinc-950 border border-white/5 pl-10 pr-10 py-3 rounded-xl focus:border-purple-500 focus:outline-none transition-colors"
+                className="w-full text-xs text-zinc-900 bg-slate-50 border border-slate-200 pl-10 pr-10 py-3 rounded-xl focus:border-purple-500 focus:outline-none focus:bg-white hover:border-slate-300 transition-all"
                 autoComplete="current-password"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-400 hover:text-zinc-650 transition-colors cursor-pointer"
                 title={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -412,7 +412,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigate }) => {
           <button 
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-500 text-xs font-bold rounded-xl text-white hover:opacity-95 shadow-lg flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+            className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-xs font-bold rounded-xl text-white hover:opacity-95 shadow-lg shadow-purple-600/10 flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
           >
             {loading ? 'Authenticating...' : 'Sign In To Wallet'} <LogIn className="w-3.5 h-3.5" />
           </button>
@@ -421,9 +421,9 @@ export const Login: React.FC<LoginProps> = ({ onNavigate }) => {
         {/* Separator */}
         <div className="relative my-6 text-center">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-white/5"></div>
+            <div className="w-full border-t border-slate-100"></div>
           </div>
-          <span className="relative bg-zinc-900/60 px-3 text-[10px] text-zinc-500 font-bold uppercase tracking-widest leading-none">OR CONTINUING USING</span>
+          <span className="relative bg-white px-3 text-[10px] text-zinc-400 font-bold uppercase tracking-widest leading-none">OR CONTINUE WITH</span>
         </div>
 
         {/* Google Mock OAuth */}
@@ -431,15 +431,15 @@ export const Login: React.FC<LoginProps> = ({ onNavigate }) => {
           onClick={() => {
             setErrorObj("Google OAuth interface initialization successful! Google registration details will complete inside production applets.");
           }}
-          className="w-full py-2.5 bg-zinc-950 hover:bg-zinc-900 border border-white/5 text-xs text-zinc-300 font-bold rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer"
+          className="w-full py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs text-zinc-700 font-bold rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer"
         >
-          <img src="https://api.dicebear.com/7.x/identicon/svg?seed=google" className="w-3.5 h-3.5 opacity-80" alt="google" />
-          Continue via Google OAuth
+          <img src="https://api.dicebear.com/7.x/identicon/svg?seed=google" className="w-3.5 h-3.5 opacity-85" alt="google" />
+          <span>Continue via Google OAuth</span>
         </button>
 
-        <p className="text-center text-[11px] text-zinc-400 mt-6 select-none font-semibold">
+        <p className="text-center text-[11px] text-zinc-500 mt-6 select-none font-semibold">
           Don't have a wallet configured?{' '}
-          <button onClick={() => onNavigate('signup')} className="text-purple-400 hover:text-purple-300 font-bold hover:underline cursor-pointer">
+          <button onClick={() => onNavigate('signup')} className="text-purple-600 hover:text-purple-700 font-bold hover:underline cursor-pointer">
             Create account
           </button>
         </p>
