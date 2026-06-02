@@ -24,8 +24,8 @@ export const AccountSidebar: React.FC<AccountSidebarProps> = ({ activeTab, onNav
             onClick={() => onNavigate(item.id)}
             className={`flex items-center gap-3 px-4 py-3 rounded-full text-xs sm:text-sm font-semibold transition-all w-full cursor-pointer border border-transparent ${
               isActive
-                ? 'bg-purple-50/80 text-purple-650 font-bold border-purple-100/30'
-                : 'bg-transparent text-gray-700 hover:bg-purple-50/30 hover:text-purple-600'
+                ? 'bg-purple-50 text-purple-700 font-bold'
+                : 'bg-transparent text-gray-700 hover:bg-purple-50 hover:text-purple-700'
             }`}
           >
             <Icon className={`w-4 h-4 ${isActive ? 'text-purple-600' : 'text-gray-400'}`} />

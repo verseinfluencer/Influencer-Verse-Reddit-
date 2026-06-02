@@ -218,7 +218,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onNavigate }) => {
               {currentUser.karmaYesterday !== undefined && (
                 <div className="p-3.5 rounded-xl bg-purple-50 border border-purple-100 text-right text-xs">
                   <span className="text-gray-400 font-bold block uppercase text-[8px] tracking-wider mb-0.5">Yesterday's Sync</span>
-                  <span className="text-gray-905 font-bold font-mono">{(currentUser.karmaYesterday).toLocaleString()} Karma</span>
+                  <span className="text-gray-900 font-bold font-mono">{(currentUser.karmaYesterday).toLocaleString()} Karma</span>
                   <span className={`font-bold font-mono block mt-1 ${(currentUser.karma - currentUser.karmaYesterday) >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                     {currentUser.karma - currentUser.karmaYesterday >= 0 ? '+' : ''}
                     {currentUser.karma - currentUser.karmaYesterday} change

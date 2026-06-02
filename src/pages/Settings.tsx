@@ -90,7 +90,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate }) => {
           <div className="lg:col-span-1 space-y-6">
             <div className="bg-amber-50/50 border border-amber-200/55 p-5 rounded-2xl space-y-4">
               <h3 className="text-xs font-bold uppercase text-amber-800 tracking-wider">Reddit Binding Rules</h3>
-              <div className="space-y-3 text-xs text-gray-750 leading-relaxed font-medium">
+              <div className="space-y-3 text-xs text-gray-650 leading-relaxed font-medium">
                 <p>⚠️ <strong>Anti-Spam Re-verification:</strong> Adjusting your linked Reddit Username or Profile URL automatically resets your account status back to <strong className="text-amber-700">Pending Review</strong>.</p>
                 <p>Admins will need to re-verify your credential authenticity before task access is unlocked.</p>
                 <p>Always double check format: <strong>reddit.com/user/[username]</strong> matches your username exactly.</p>
@@ -190,7 +190,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate }) => {
               )}
 
               {pwError && (
-                <div className="p-3.5 bg-rose-550/10 border border-rose-200 text-rose-750 text-xs rounded-xl flex items-center gap-2 mb-5 font-semibold">
+                <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl flex items-center gap-2 mb-5 font-semibold">
                   <ShieldAlert className="w-4 h-4 shrink-0 text-rose-600" />
                   <span>{pwError}</span>
                 </div>
@@ -243,7 +243,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate }) => {
                 <div className="pt-2">
                   <button 
                     type="submit"
-                    className="px-5 py-3 bg-white border border-gray-200 hover:bg-gray-55/65 text-xs font-bold text-gray-705 rounded-xl cursor-pointer hover:shadow-sm transition-all shadow-sm active:scale-98"
+                    className="px-5 py-3 bg-white border border-gray-200 hover:bg-gray-50 text-xs font-bold text-gray-700 rounded-xl cursor-pointer hover:shadow-sm transition-all shadow-sm active:scale-98"
                   >
                     Reset Account Password
                   </button>
@@ -289,7 +289,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate }) => {
             {/* DANGER ZONE */}
             <div className="bg-rose-50 border border-rose-200 rounded-2xl p-6">
               <h3 className="text-xs font-bold text-rose-800 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><ShieldAlert className="w-4 h-4 text-rose-700" /> Danger Config Zone</h3>
-              <p className="text-xs text-rose-955 mb-4 font-semibold leading-relaxed">Permanently delete your entire Influencer Verse profile. This is completely irreversible and wipes wallet database entries instantly.</p>
+              <p className="text-xs text-rose-900 mb-4 font-semibold leading-relaxed">Permanently delete your entire Influencer Verse profile. This is completely irreversible and wipes wallet database entries instantly.</p>
               <button 
                 onClick={handleDeleteTrigger}
                 className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl cursor-pointer transition-all shadow-sm"
