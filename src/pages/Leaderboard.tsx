@@ -15,7 +15,7 @@ const LeaderboardAvatar: React.FC<LeaderboardAvatarProps> = ({
   avatarUrl, 
   sizeClass = "w-12 h-12",
   fontSizeClass = "text-base",
-  borderClass = "border border-white/5"
+  borderClass = "border border-gray-200"
 }) => {
   const [imageError, setImageError] = useState(false);
   const initials = fullName ? fullName.trim().charAt(0).toUpperCase() : 'C';
@@ -30,14 +30,14 @@ const LeaderboardAvatar: React.FC<LeaderboardAvatarProps> = ({
         src={avatarUrl} 
         alt={fullName || 'User avatar'} 
         onError={() => setImageError(true)}
-        className={`${sizeClass} rounded-full object-cover ${borderClass} bg-zinc-950 p-0.5`}
+        className={`${sizeClass} rounded-full object-cover ${borderClass} bg-white p-0.5`}
       />
     );
   }
 
   return (
     <div 
-      className={`${sizeClass} rounded-full ${borderClass} bg-gradient-to-br from-purple-600 to-indigo-850 text-white font-black flex items-center justify-center shadow-inner uppercase tracking-wider ${fontSizeClass} select-none`}
+      className={`${sizeClass} rounded-full ${borderClass} bg-gradient-to-br from-purple-600 to-indigo-600 text-white font-bold flex items-center justify-center shadow-inner uppercase tracking-wider ${fontSizeClass} select-none`}
     >
       {initials}
     </div>
@@ -64,7 +64,6 @@ export const Leaderboard: React.FC = () => {
   const isAdmin = currentUser?.role === 'admin';
 
   // Apply Filter first
-  // Keep the ranking calculations unchanged, but tier badges are not shown in UI anymore.
   const filteredUsers = legitimateUsers;
 
   // Get dynamic sorting data
@@ -85,10 +84,10 @@ export const Leaderboard: React.FC = () => {
 
   // Styling helper for rankings
   const getRankBadge = (rankOrdinal: number) => {
-    if (rankOrdinal === 1) return { text: '🥇 Gold #1', style: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' };
-    if (rankOrdinal === 2) return { text: '🥈 Silver #2', style: 'bg-zinc-300/10 text-zinc-300 border-zinc-300/20' };
-    if (rankOrdinal === 3) return { text: '🥉 Bronze #3', style: 'bg-amber-600/10 text-amber-600 border-amber-600/20' };
-    return { text: `#${rankOrdinal}`, style: 'bg-zinc-950 text-zinc-500 border-zinc-850' };
+    if (rankOrdinal === 1) return { text: '🥇 Gold #1', style: 'bg-amber-50 text-amber-800 border border-amber-200' };
+    if (rankOrdinal === 2) return { text: '🥈 Silver #2', style: 'bg-gray-50 text-gray-700 border border-gray-200' };
+    if (rankOrdinal === 3) return { text: '🥉 Bronze #3', style: 'bg-amber-50 text-amber-700 border border-amber-200' };
+    return { text: `# ${rankOrdinal}`, style: 'bg-gray-100 text-gray-500 border border-gray-200' };
   };
 
   const getTasksCompletedCount = (userId: string) => {
@@ -99,33 +98,33 @@ export const Leaderboard: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 text-white select-none" id="leaderboard-panel">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 text-gray-700 select-none" id="leaderboard-panel">
       
       {/* Title Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-2">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-4 border-b border-gray-200">
         <div>
-          <span className="text-[10px] text-purple-400 font-extrabold uppercase tracking-widest block mb-1">Creators Honor Roll</span>
-          <h1 className="text-2xl md:text-3xl font-black">Platform Leaderboard</h1>
-          <p className="text-xs text-zinc-400">Track and compete against elite micro-influencers ranking up daily</p>
+          <span className="text-xs text-purple-600 font-bold uppercase tracking-widest block mb-1">Creators Honor Roll</span>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">Platform Leaderboard</h1>
+          <p className="text-sm text-gray-500">Track and compete against elite micro-influencers ranking up daily</p>
         </div>
 
         {/* Controls: sorting tabs */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto font-semibold">
           
           {/* Sorting tabs */}
-          <div className="flex bg-zinc-900 border border-white/5 p-1 rounded-2xl w-full sm:w-auto">
+          <div className="flex bg-gray-100 border border-gray-200 p-1 rounded-xl w-full sm:w-auto">
             <button 
               onClick={() => setLeaderboardType('earners')}
-              className={`flex-1 sm:flex-none px-4 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                leaderboardType === 'earners' ? 'bg-purple-600 text-white shadow-md' : 'text-zinc-500 hover:text-white'
+              className={`flex-1 sm:flex-none px-4 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                leaderboardType === 'earners' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
               }`}
             >
               Top Earners
             </button>
             <button 
               onClick={() => setLeaderboardType('karma')}
-              className={`flex-1 sm:flex-none px-4 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                leaderboardType === 'karma' ? 'bg-purple-600 text-white shadow-md' : 'text-zinc-500 hover:text-white'
+              className={`flex-1 sm:flex-none px-4 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                leaderboardType === 'karma' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
               }`}
             >
               Alternative Rankings
@@ -140,37 +139,37 @@ export const Leaderboard: React.FC = () => {
         
         {/* 2nd Place */}
         {podium[1] && (
-          <div className="bg-zinc-900/30 border border-white/5 rounded-2xl p-6 backdrop-blur-md relative overflow-hidden order-2 md:order-1 flex flex-col items-center text-center space-y-4 shadow-xl">
-            <div className="absolute top-0 left-0 w-full h-1.5 bg-zinc-400/30"></div>
+          <div className="bg-white border border-gray-200 rounded-2xl p-6 relative overflow-hidden order-2 md:order-1 flex flex-col items-center text-center space-y-4 shadow-sm hover:shadow-md transition-all duration-300">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-gray-300"></div>
             <div className="relative">
-              <span className="absolute -top-1 -right-1 bg-zinc-400 text-zinc-950 font-black text-[10px] w-5 h-5 rounded-full flex items-center justify-center border border-zinc-900 shadow-md">2</span>
+              <span className="absolute -top-1 -right-1 bg-gray-100 text-gray-700 font-bold text-xs w-5 h-5 rounded-full flex items-center justify-center border border-gray-300 shadow-sm">2</span>
               <LeaderboardAvatar 
                 fullName={podium[1].fullName} 
                 avatarUrl={podium[1].avatarUrl} 
                 sizeClass="w-14 h-14" 
                 fontSizeClass="text-base"
-                borderClass="border-2 border-zinc-400/50" 
+                borderClass="border-2 border-slate-300" 
               />
             </div>
             <div>
-              <h3 className="font-extrabold text-sm text-white mb-0.5 text-center">
+              <h3 className="font-bold text-gray-950 mb-0.5 text-center">
                 {podium[1].fullName}
               </h3>
             </div>
-            <div className="p-2.5 bg-zinc-950/60 rounded-xl border border-white/5 select-text w-full space-y-2">
+            <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 select-text w-full space-y-2">
               <div>
-                <span className="text-[9px] text-zinc-500 font-bold block uppercase tracking-wider">
+                <span className="text-[10px] text-gray-500 font-bold block uppercase tracking-wider font-display">
                   Total Earnings
                 </span>
-                <span className="text-base font-black text-emerald-400 font-mono leading-none block mt-0.5">
+                <span className="text-base font-bold text-gray-900 font-mono leading-none block mt-0.5">
                   ${podium[1].totalEarned.toFixed(2)} USDT
                 </span>
               </div>
-              <div className="pt-1 border-t border-white/[0.03]">
-                <span className="text-[9px] text-zinc-500 font-bold block uppercase tracking-wider">
+              <div className="pt-1.5 border-t border-gray-200">
+                <span className="text-[10px] text-gray-500 font-bold block uppercase tracking-wider font-display">
                   Tasks Completed
                 </span>
-                <span className="text-xs font-bold text-zinc-300 font-mono">
+                <span className="text-xs font-bold text-gray-700 font-mono">
                   {getTasksCompletedCount(podium[1].id)} Tasks
                 </span>
               </div>
@@ -180,44 +179,44 @@ export const Leaderboard: React.FC = () => {
 
         {/* 1st Place Champion */}
         {podium[0] && (
-          <div className="bg-gradient-to-tr from-purple-950/20 to-blue-950/20 border border-purple-500/30 rounded-3xl p-8 backdrop-blur-md relative overflow-hidden order-1 md:order-2 flex flex-col items-center text-center space-y-5 md:scale-105 shadow-2xl">
-            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-purple-500 to-blue-500"></div>
-            <div className="absolute -top-4 -right-4 w-20 h-20 bg-purple-500/10 rounded-full blur-2xl"></div>
+          <div className="bg-white border-2 border-amber-300 rounded-[24px] p-8 relative overflow-hidden order-1 md:order-2 flex flex-col items-center text-center space-y-5 md:scale-105 shadow-md hover:shadow-lg transition-all duration-300">
+            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-amber-400 to-yellow-500"></div>
+            <div className="absolute -top-4 -right-4 w-20 h-20 bg-amber-500/5 rounded-full blur-2xl"></div>
             
             <div className="relative">
-              <span className="absolute -top-2.5 right-4 text-2xl animate-bounce">👑</span>
-              <span className="absolute -top-1.5 -right-1 bg-yellow-400 text-zinc-950 font-black text-xs w-6 h-6 rounded-full flex items-center justify-center border-2 border-zinc-950">1</span>
+              <span className="absolute -top-3 right-5 text-2xl animate-bounce">👑</span>
+              <span className="absolute -top-1.5 -right-1 bg-amber-400 text-white font-bold text-xs w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow-sm">1</span>
               <LeaderboardAvatar 
                 fullName={podium[0].fullName} 
                 avatarUrl={podium[0].avatarUrl} 
                 sizeClass="w-18 h-18" 
                 fontSizeClass="text-lg"
-                borderClass="border-2 border-yellow-400/60" 
+                borderClass="border-2 border-amber-400" 
               />
             </div>
             <div>
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 border border-purple-500/30 bg-purple-500/10 rounded-full text-[9px] font-extrabold text-purple-400 uppercase tracking-widest block mb-1.5 select-none mx-auto">
-                <Sparkles className="w-3 h-3 text-purple-400" /> Season Champion
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 border border-amber-200 bg-amber-50 rounded-full text-[10px] font-bold text-amber-800 uppercase tracking-widest block mb-1.5 select-none mx-auto">
+                <Sparkles className="w-3 h-3 text-amber-550 fill-amber-500" /> Season Champion
               </div>
-              <h3 className="font-extrabold text-base text-white mb-0.5 text-center">
+              <h3 className="font-bold text-gray-950 text-wrap text-center">
                 {podium[0].fullName}
               </h3>
             </div>
             
-            <div className="p-3 bg-zinc-950/80 rounded-2xl border border-purple-500/10 select-text w-full space-y-2">
+            <div className="p-3.5 bg-amber-50/40 rounded-2xl border border-amber-200 select-text w-full space-y-2">
               <div>
-                <span className="text-[9px] text-zinc-500 font-bold block uppercase tracking-wider">
+                <span className="text-[10px] text-amber-800 font-bold block uppercase tracking-wider font-display">
                   Total Earnings
                 </span>
-                <span className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300 font-mono leading-none block my-0.5">
+                <span className="text-lg font-bold text-amber-600 font-mono leading-none block my-1">
                   ${podium[0].totalEarned.toFixed(2)} USDT
                 </span>
               </div>
-              <div className="pt-1.5 border-t border-white/[0.04]">
-                <span className="text-[9px] text-zinc-500 font-bold block uppercase tracking-wider">
+              <div className="pt-2 border-t border-amber-200/50">
+                <span className="text-[10px] text-amber-700 font-bold block uppercase tracking-wider font-display">
                   Tasks Completed
                 </span>
-                <span className="text-sm font-bold text-zinc-300 font-mono">
+                <span className="text-sm font-bold text-gray-800 font-mono">
                   {getTasksCompletedCount(podium[0].id)} Tasks
                 </span>
               </div>
@@ -227,10 +226,10 @@ export const Leaderboard: React.FC = () => {
 
         {/* 3rd place */}
         {podium[2] && (
-          <div className="bg-zinc-900/30 border border-white/5 rounded-2xl p-6 backdrop-blur-md relative overflow-hidden order-3 flex flex-col items-center text-center space-y-4 shadow-xl">
-            <div className="absolute top-0 left-0 w-full h-1.5 bg-amber-700/30"></div>
+          <div className="bg-white border border-gray-200 rounded-2xl p-6 relative overflow-hidden order-3 flex flex-col items-center text-center space-y-4 shadow-sm hover:shadow-md transition-all duration-300">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-amber-600/30"></div>
             <div className="relative">
-              <span className="absolute -top-1 -right-1 bg-amber-600 text-zinc-950 font-black text-[10px] w-5 h-5 rounded-full flex items-center justify-center border border-zinc-900 shadow-md">3</span>
+              <span className="absolute -top-1 -right-1 bg-amber-50 text-amber-800 font-bold text-xs w-5 h-5 rounded-full flex items-center justify-center border border-amber-300 shadow-sm">3</span>
               <LeaderboardAvatar 
                 fullName={podium[2].fullName} 
                 avatarUrl={podium[2].avatarUrl} 
@@ -240,24 +239,24 @@ export const Leaderboard: React.FC = () => {
               />
             </div>
             <div>
-              <h3 className="font-extrabold text-sm text-white mb-0.5 text-center">
+              <h3 className="font-bold text-gray-950 mb-0.5 text-center">
                 {podium[2].fullName}
               </h3>
             </div>
-            <div className="p-2.5 bg-zinc-950/60 rounded-xl border border-white/5 select-text w-full space-y-2">
+            <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 select-text w-full space-y-2">
               <div>
-                <span className="text-[9px] text-zinc-500 font-bold block uppercase tracking-wider">
+                <span className="text-[10px] text-gray-500 font-bold block uppercase tracking-wider font-display">
                   Total Earnings
                 </span>
-                <span className="text-base font-black text-emerald-400 font-mono leading-none block mt-0.5">
+                <span className="text-base font-bold text-gray-900 font-mono leading-none block mt-0.5">
                   ${podium[2].totalEarned.toFixed(2)} USDT
                 </span>
               </div>
-              <div className="pt-1 border-t border-white/[0.03]">
-                <span className="text-[9px] text-zinc-500 font-bold block uppercase tracking-wider">
+              <div className="pt-1.5 border-t border-gray-200">
+                <span className="text-[10px] text-gray-500 font-bold block uppercase tracking-wider font-display">
                   Tasks Completed
                 </span>
-                <span className="text-xs font-bold text-zinc-300 font-mono">
+                <span className="text-xs font-bold text-gray-700 font-mono">
                   {getTasksCompletedCount(podium[2].id)} Tasks
                 </span>
               </div>
@@ -268,56 +267,56 @@ export const Leaderboard: React.FC = () => {
       </div>
 
       {/* Leaderboard Table List (Ranks 4-10) */}
-      <div className="bg-zinc-900/40 border border-white/10 rounded-3xl p-6 backdrop-blur-md shadow-2xl">
-        <h2 className="text-sm font-black uppercase tracking-wider text-zinc-400 mb-4 flex items-center gap-2">
-          <Award className="w-4 h-4 text-purple-400" /> Competitors Standings
+      <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300">
+        <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500 mb-4 flex items-center gap-2">
+          <Award className="w-4 h-4 text-purple-600" /> Competitors Standings
         </h2>
 
         <div className="overflow-x-auto">
           {remaining.length === 0 ? (
-            <div className="text-center py-6 text-zinc-500 text-xs font-semibold">
+            <div className="text-center py-6 text-gray-400 text-xs">
               No other active verified micro-influencers match criteria.
             </div>
           ) : (
             <table className="w-full text-left border-collapse font-semibold">
-              <thead className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest border-b border-white/5">
+              <thead className="text-[10px] font-bold text-gray-500 uppercase tracking-widest border-b border-gray-100 bg-gray-50">
                 <tr>
-                  <th className="py-3 px-2">Rank</th>
-                  <th className="py-3 px-2">Display Name</th>
-                  <th className="py-3 px-2 text-right">Tasks Completed</th>
-                  <th className="py-3 px-2 text-right">Earnings</th>
+                  <th className="py-3 px-3">Rank</th>
+                  <th className="py-3 px-3">Display Name</th>
+                  <th className="py-3 px-3 text-right">Tasks Completed</th>
+                  <th className="py-3 px-3 text-right">Earnings</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5 text-xs text-zinc-300 select-text">
+              <tbody className="divide-y divide-gray-100 text-xs text-gray-600 select-text">
                 {remaining.map((item, idx) => {
                   const badgeInfo = getRankBadge(idx + 4);
                   const tasksCount = getTasksCompletedCount(item.id);
                   return (
-                    <tr key={item.id} className="hover:bg-white/[0.01]">
+                    <tr key={item.id} className="hover:bg-gray-50/50 transition-colors duration-200">
                       {/* Rank Column */}
-                      <td className="py-4 px-2">
-                        <span className={`px-2.5 py-0.5 border rounded-full text-[10px] font-extrabold ${badgeInfo.style}`}>
+                      <td className="py-4 px-3">
+                        <span className={`px-2.5 py-0.5 border rounded-full text-[10px] font-bold ${badgeInfo.style}`}>
                           {badgeInfo.text}
                         </span>
                       </td>
                       {/* Combined Display Name & Avatar Column */}
-                      <td className="py-4 px-2 flex items-center gap-3">
+                      <td className="py-4 px-3 flex items-center gap-3">
                         <LeaderboardAvatar 
                           fullName={item.fullName} 
                           avatarUrl={item.avatarUrl} 
                           sizeClass="w-8 h-8" 
                           fontSizeClass="text-[10px]"
-                          borderClass="border border-white/10" 
+                          borderClass="border border-gray-200" 
                         />
-                        <span className="text-white font-black block leading-none">{item.fullName}</span>
+                        <span className="text-gray-900 font-bold block leading-none">{item.fullName}</span>
                       </td>
                       {/* Tasks Completed Column */}
-                      <td className="py-4 px-2 text-right font-mono font-bold text-zinc-300">
+                      <td className="py-4 px-3 text-right font-mono font-bold text-gray-600">
                         {tasksCount}
                       </td>
                       {/* Earnings Column */}
-                      <td className="py-4 px-2 text-right">
-                        <span className="text-sm font-black font-mono text-emerald-400">
+                      <td className="py-4 px-3 text-right">
+                        <span className="text-sm font-bold font-mono text-emerald-600">
                           ${item.totalEarned.toFixed(2)} USDT
                         </span>
                       </td>

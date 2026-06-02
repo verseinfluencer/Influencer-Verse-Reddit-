@@ -30,7 +30,7 @@ function MainAppContent() {
 
   // Sync light/dark theme dynamically on the root document element
   React.useEffect(() => {
-    const lightPages = ['home', 'about', 'faq', 'contact', 'trust', 'terms', 'referrals', 'login', 'signup', 'client-login', 'client-register'];
+    const lightPages = ['home', 'about', 'faq', 'contact', 'trust', 'terms', 'referrals', 'login', 'signup', 'client-login', 'client-register', 'dashboard', 'marketplace', 'wallet', 'leaderboard', 'profile', 'settings'];
     if (lightPages.includes(currentPage)) {
       document.documentElement.classList.add('light');
     } else {
