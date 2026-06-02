@@ -82,23 +82,23 @@ export const EarningsChart: React.FC<EarningsChartProps> = ({
     : '';
 
   return (
-    <div className="w-full bg-zinc-900/40 border border-white/10 rounded-2xl p-6 backdrop-blur-md shadow-xl select-none" id="earnings-chart-wrapper">
+    <div className="w-full bg-white border border-slate-200 rounded-2xl p-6 shadow-sm select-none" id="earnings-chart-wrapper">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
-          <h3 className="text-sm font-extrabold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
+          <h3 className="text-sm font-extrabold uppercase tracking-wider text-purple-600 flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5" /> Performance Analytics
           </h3>
-          <p className="text-xs text-zinc-400">Track your influencer progress and reward status</p>
+          <p className="text-xs text-zinc-500">Track your influencer progress and reward status</p>
         </div>
 
         {/* Tab triggers */}
-        <div className="flex border border-white/5 bg-zinc-950 p-1 rounded-xl">
+        <div className="flex border border-slate-200 bg-slate-50 p-1 rounded-xl">
           <button 
             onClick={() => setActiveTab('earnings')}
             className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
               activeTab === 'earnings' 
-                ? 'bg-purple-600 text-white shadow-lg' 
-                : 'text-zinc-400 hover:text-white'
+                ? 'bg-purple-600 text-white shadow-md' 
+                : 'text-zinc-500 hover:text-purple-600'
             }`}
           >
             <TrendingUp className="w-3 h-3" /> Earnings Over Time
@@ -107,8 +107,8 @@ export const EarningsChart: React.FC<EarningsChartProps> = ({
             onClick={() => setActiveTab('tasks')}
             className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
               activeTab === 'tasks' 
-                ? 'bg-purple-600 text-white shadow-lg' 
-                : 'text-zinc-400 hover:text-white'
+                ? 'bg-purple-600 text-white shadow-md' 
+                : 'text-zinc-500 hover:text-purple-600'
             }`}
           >
             <Percent className="w-3 h-3" /> Completion Stats
@@ -119,11 +119,11 @@ export const EarningsChart: React.FC<EarningsChartProps> = ({
       {activeTab === 'earnings' ? (
         <div className="space-y-4">
           {/* SVG Area Chart */}
-          <div className="w-full h-40 bg-zinc-950/40 border border-zinc-900 rounded-xl relative p-2 overflow-hidden">
+          <div className="w-full h-40 bg-slate-50 border border-slate-200 rounded-xl relative p-2 overflow-hidden">
             <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
               <defs>
                 <linearGradient id="chartGlow" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#7C3AED" stopOpacity="0.4" />
+                  <stop offset="0%" stopColor="#7C3AED" stopOpacity="0.15" />
                   <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.0" />
                 </linearGradient>
                 <linearGradient id="lineGlow" x1="0" y1="0" x2="1" y2="0">
@@ -133,9 +133,9 @@ export const EarningsChart: React.FC<EarningsChartProps> = ({
               </defs>
 
               {/* Grid Lines */}
-              <line x1={padding} y1={padding} x2={width - padding} y2={padding} stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
-              <line x1={padding} y1={height/2} x2={width - padding} y2={height/2} stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
-              <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
+              <line x1={padding} y1={padding} x2={width - padding} y2={padding} stroke="rgba(0,0,0,0.02)" strokeWidth="1" />
+              <line x1={padding} y1={height/2} x2={width - padding} y2={height/2} stroke="rgba(0,0,0,0.02)" strokeWidth="1" />
+              <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="rgba(0,0,0,0.06)" strokeWidth="1" />
 
               {/* Filled area */}
               {areaPath && <path d={areaPath} fill="url(#chartGlow)" />}
@@ -159,7 +159,7 @@ export const EarningsChart: React.FC<EarningsChartProps> = ({
                     cx={c.x} 
                     cy={c.y} 
                     r="5" 
-                    fill="#18181b" 
+                    fill="#ffffff" 
                     stroke="#7C3AED" 
                     strokeWidth="3" 
                   />
@@ -168,7 +168,7 @@ export const EarningsChart: React.FC<EarningsChartProps> = ({
                     cy={c.y} 
                     r="10" 
                     fill="#7C3AED" 
-                    fillOpacity="0.15" 
+                    fillOpacity="0.1" 
                     className="hover:scale-150 transition-transform cursor-pointer"
                   />
                 </g>
@@ -177,38 +177,38 @@ export const EarningsChart: React.FC<EarningsChartProps> = ({
           </div>
 
           {/* Labels & Details */}
-          <div className="flex justify-between items-center text-[10px] text-zinc-500 font-mono px-1">
+          <div className="flex justify-between items-center text-[10px] text-zinc-400 font-mono px-1">
             {labels.map((lbl, idx) => (
-              <span key={idx}>{lbl}</span>
+              <span key={idx} className="font-semibold">{lbl}</span>
             ))}
           </div>
 
           <div className="grid grid-cols-3 gap-3 pt-2">
-            <div className="bg-zinc-950/60 border border-white/5 p-3 rounded-xl">
-              <span className="text-[10px] text-zinc-500 font-bold block uppercase tracking-wider">Avg Earnings/Week</span>
-              <span className="text-sm font-extrabold text-white">${avgEarningsPerWeek.toFixed(2)} USDT</span>
+            <div className="bg-slate-50/50 border border-slate-100 p-3 rounded-xl">
+              <span className="text-[10px] text-zinc-400 font-bold block uppercase tracking-wider">Avg Earnings/Week</span>
+              <span className="text-sm font-extrabold text-zinc-800">${avgEarningsPerWeek.toFixed(2)} USDT</span>
             </div>
-            <div className="bg-zinc-950/60 border border-white/5 p-3 rounded-xl">
-              <span className="text-[10px] text-zinc-500 font-bold block uppercase tracking-wider">Peak Task Reward</span>
-              <span className="text-sm font-extrabold text-white">${peakEarning.toFixed(2)} USDT</span>
+            <div className="bg-slate-50/50 border border-slate-100 p-3 rounded-xl">
+              <span className="text-[10px] text-zinc-400 font-bold block uppercase tracking-wider">Peak Task Reward</span>
+              <span className="text-sm font-extrabold text-zinc-800">${peakEarning.toFixed(2)} USDT</span>
             </div>
-            <div className="bg-zinc-950/60 border border-white/5 p-3 rounded-xl">
-              <span className="text-[10px] text-zinc-500 font-bold block uppercase tracking-wider">Milestone Progress</span>
-              <span className="text-sm font-extrabold text-purple-400">{milestoneText}</span>
+            <div className="bg-slate-50/50 border border-slate-100 p-3 rounded-xl">
+              <span className="text-[10px] text-zinc-400 font-bold block uppercase tracking-wider">Milestone Progress</span>
+              <span className="text-sm font-extrabold text-purple-600">{milestoneText}</span>
             </div>
           </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
           {/* Circle progress indicators */}
-          <div className="flex flex-col items-center justify-center p-4 bg-zinc-950/50 rounded-xl border border-white/5 relative">
+          <div className="flex flex-col items-center justify-center p-4 bg-slate-50/50 rounded-xl border border-slate-100 relative">
             <div className="relative w-28 h-28 flex items-center justify-center">
               <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                 <circle 
                   cx="50" 
                   cy="50" 
                   r="40" 
-                  stroke="rgba(255,255,255,0.04)" 
+                  stroke="rgba(0,0,0,0.03)" 
                   strokeWidth="8" 
                   fill="transparent" 
                 />
@@ -225,33 +225,33 @@ export const EarningsChart: React.FC<EarningsChartProps> = ({
                 />
               </svg>
               <div className="absolute text-center">
-                <span className="text-lg font-black text-white">{stats.successRate}%</span>
-                <span className="text-[9px] text-zinc-500 block font-bold leading-none">APPROVALS</span>
+                <span className="text-lg font-black text-zinc-800">{stats.successRate}%</span>
+                <span className="text-[9px] text-zinc-400 block font-bold leading-none">APPROVALS</span>
               </div>
             </div>
-            <p className="text-xs font-semibold text-zinc-400 mt-3 text-center">High completion compliance record</p>
+            <p className="text-xs font-semibold text-zinc-500 mt-3 text-center">High completion compliance record</p>
           </div>
 
           <div className="space-y-3">
-            <div className="flex justify-between items-center bg-zinc-950/30 border border-white/5 p-2.5 rounded-xl">
-              <span className="text-xs font-semibold text-zinc-400 flex items-center gap-1.5">
+            <div className="flex justify-between items-center bg-slate-50/50 border border-slate-100 p-2.5 rounded-xl">
+              <span className="text-xs font-semibold text-zinc-500 flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Approved submissions
               </span>
-              <span className="text-sm font-extrabold text-white font-mono">{stats.approved}</span>
+              <span className="text-sm font-extrabold text-zinc-800 font-mono">{stats.approved}</span>
             </div>
 
-            <div className="flex justify-between items-center bg-zinc-950/30 border border-white/5 p-2.5 rounded-xl">
-              <span className="text-xs font-semibold text-zinc-400 flex items-center gap-1.5">
-                <Calendar className="w-4 h-4 text-purple-400 animate-pulse" /> Pending verification
+            <div className="flex justify-between items-center bg-slate-50/50 border border-slate-100 p-2.5 rounded-xl">
+              <span className="text-xs font-semibold text-zinc-500 flex items-center gap-1.5">
+                <Calendar className="w-4 h-4 text-purple-500 animate-pulse" /> Pending verification
               </span>
-              <span className="text-sm font-extrabold text-white font-mono">{stats.pending}</span>
+              <span className="text-sm font-extrabold text-zinc-800 font-mono">{stats.pending}</span>
             </div>
 
-            <div className="flex justify-between items-center bg-zinc-950/30 border border-white/5 p-2.5 rounded-xl">
-              <span className="text-xs font-semibold text-zinc-400 flex items-center gap-1.5">
-                <UsersIcon className="w-4 h-4 text-blue-400" /> Referred Affiliates
+            <div className="flex justify-between items-center bg-slate-50/50 border border-slate-100 p-2.5 rounded-xl">
+              <span className="text-xs font-semibold text-zinc-500 flex items-center gap-1.5">
+                <UsersIcon className="w-4 h-4 text-blue-500" /> Referred Affiliates
               </span>
-              <span className="text-sm font-extrabold text-white font-mono">{totalReferredCount} signups</span>
+              <span className="text-sm font-extrabold text-zinc-800 font-mono">{totalReferredCount} signups</span>
             </div>
           </div>
         </div>

@@ -140,20 +140,27 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 text-white select-none" id="user-dashboard-container">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 text-zinc-805 select-none" id="user-dashboard-container">
       
       {/* Upper Welcome Header */}
-      <div className="pb-2">
+      <div className="pb-2 border-b border-slate-200/60">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl md:text-3xl font-black font-display">Creator Dashboard</span>
-            <span className="px-3 py-1 bg-purple-600/10 border border-purple-500/20 text-purple-400 font-bold rounded-full text-xs uppercase tracking-wider">
-              {currentTier.emoji} {currentTier.name} Tier
-            </span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-2xl md:text-3xl font-black font-display text-zinc-900">Creator Dashboard</span>
+                <span className="px-3 py-1 bg-purple-50 border border-purple-150/70 text-purple-700 font-extrabold rounded-full text-[11px] uppercase tracking-wider shadow-sm">
+                  {currentTier.emoji} {currentTier.name} Tier
+                </span>
+              </div>
+              <p className="text-xs text-zinc-500 font-semibold mt-1">
+                Linked Reddit Identity: <strong className="text-purple-650 tracking-wide font-mono">{currentUser.redditUsername}</strong>
+              </p>
+            </div>
+            <p className="text-xs text-zinc-400 font-medium">
+              Track your campaigns, earnings, and submission progress.
+            </p>
           </div>
-          <p className="text-xs text-zinc-400 font-semibold">
-            Reddit Account Linked: <strong className="text-purple-400 tracking-wide font-mono">{currentUser.redditUsername}</strong>
-          </p>
         </div>
       </div>
 
@@ -161,71 +168,69 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         
         {/* Total Earnings */}
-        <div className="bg-white/5 border border-white/10 rounded-[28px] p-6 backdrop-blur-md relative overflow-hidden group hover:border-bento-purple/40 transition-all duration-300">
-          <div className="absolute top-0 right-0 w-16 h-16 bg-bento-purple/10 rounded-full blur-xl"></div>
+        <div className="bg-white border border-slate-200/65 rounded-[24px] p-6 relative overflow-hidden group hover:border-purple-600/30 hover:shadow-lg hover:shadow-purple-500/[0.015] transition-all duration-300 shadow-sm shadow-slate-100">
+          <div className="absolute top-0 right-0 w-16 h-16 bg-purple-500/5 rounded-full blur-xl animate-pulse"></div>
           <div className="flex justify-between items-start mb-3">
-            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest block font-display">Total Earnings</span>
-            <div className="p-2 bg-bento-purple/10 border border-bento-purple/20 rounded-xl text-bento-purple">
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block font-display">Total Earnings</span>
+            <div className="p-2 bg-purple-50 text-purple-600 border border-purple-100 rounded-xl">
               <TrendingUp className="w-4 h-4" />
             </div>
           </div>
           <div className="space-y-0.5">
-            <h3 className="text-2xl font-black text-white font-mono">${currentUser.totalEarned.toFixed(2)}</h3>
-            <p className="text-[10px] text-zinc-500 font-semibold">Lifetime rewards from approved Reddit tasks</p>
+            <h3 className="text-2xl font-bold text-zinc-900 font-mono">${currentUser.totalEarned.toFixed(2)}</h3>
+            <p className="text-[10px] text-zinc-500 font-medium">Lifetime rewards from approved Reddit tasks</p>
           </div>
         </div>
 
         {/* Available Balance */}
-        <div className="bg-white/5 border border-white/10 rounded-[28px] p-6 backdrop-blur-md relative overflow-hidden group hover:border-bento-blue/40 transition-all duration-300">
-          <div className="absolute top-0 right-0 w-16 h-16 bg-bento-blue/10 rounded-full blur-xl"></div>
+        <div className="bg-white border border-slate-200/65 rounded-[24px] p-6 relative overflow-hidden group hover:border-emerald-500/30 hover:shadow-lg hover:shadow-emerald-500/[0.015] transition-all duration-300 shadow-sm shadow-slate-100">
+          <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/5 rounded-full blur-xl animate-pulse"></div>
           <div className="flex justify-between items-start mb-3">
-            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest block font-display">Available Balance</span>
-            <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400">
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block font-display">Available Balance</span>
+            <div className="p-2 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl">
               <Wallet className="w-4 h-4" />
             </div>
           </div>
           <div className="space-y-0.5">
-            <h3 className="text-2xl font-black text-white font-mono">${currentUser.balance.toFixed(2)}</h3>
-            <p className="text-[10px] text-zinc-500 font-semibold">Ready to cashout instantly to BSC BEP20 address</p>
+            <h3 className="text-2xl font-bold text-zinc-900 font-mono">${currentUser.balance.toFixed(2)}</h3>
+            <p className="text-[10px] text-zinc-500 font-medium">Ready to cashout instantly to BSC BEP20 address</p>
           </div>
         </div>
 
         {/* Tasks Completed */}
-        <div className="bg-white/5 border border-white/10 rounded-[28px] p-6 backdrop-blur-md relative overflow-hidden group hover:border-bento-purple/40 transition-all duration-300">
-          <div className="absolute top-0 right-0 w-16 h-16 bg-[#7C3AED]/10 rounded-full blur-xl"></div>
+        <div className="bg-white border border-slate-200/65 rounded-[24px] p-6 relative overflow-hidden group hover:border-indigo-650/30 hover:shadow-lg hover:shadow-indigo-500/[0.015] transition-all duration-300 shadow-sm shadow-slate-100">
+          <div className="absolute top-0 right-0 w-16 h-16 bg-[#7C3AED]/5 rounded-full blur-xl animate-pulse"></div>
           <div className="flex justify-between items-start mb-3">
-            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest block font-display">Active Submits</span>
-            <div className="p-2 bg-bento-blue/10 border border-bento-blue/20 rounded-xl text-bento-blue">
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block font-display">Active Submits</span>
+            <div className="p-2 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-xl">
               <CheckCircle className="w-4 h-4" />
             </div>
           </div>
           <div className="space-y-0.5">
-            <h3 className="text-2xl font-black text-white font-mono">{submissions.filter(s => s.userId === currentUser.id).length}</h3>
-            <p className="text-[10px] text-zinc-500 font-semibold">{completedTaskCount} tasks approved &bull; {submissions.filter(s => s.userId === currentUser.id && s.status === 'Pending').length} in audit</p>
+            <h3 className="text-2xl font-bold text-zinc-900 font-mono">{submissions.filter(s => s.userId === currentUser.id).length}</h3>
+            <p className="text-[10px] text-zinc-500 font-medium">{completedTaskCount} tasks approved &bull; {submissions.filter(s => s.userId === currentUser.id && s.status === 'Pending').length} in audit</p>
           </div>
         </div>
-
-
 
       </div>
 
       {/* Karma Tier & Progress Panel */}
-      <div className="bg-white/5 border border-purple-500/10 rounded-[24px] p-6 backdrop-blur-md flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+      <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="space-y-2.5 w-full md:w-3/5">
           <div className="flex justify-between items-center text-xs flex-wrap gap-2">
-            <span className="text-zinc-300 font-black uppercase tracking-wider flex items-center gap-1.5">
-              <Star className="w-4 h-4 text-amber-400" /> Reddit Karma Tier Status
+            <span className="text-zinc-705 font-bold uppercase tracking-wider flex items-center gap-1.5">
+              <Star className="w-4 h-4 text-amber-500" /> Reddit Karma Tier Status
             </span>
             <div className="flex items-center gap-3">
               <div className="flex flex-col text-right">
-                <span className="text-white font-black font-mono">{(currentUser.redditKarma ?? currentUser.karma)?.toLocaleString() || 0} Reddit Karma</span>
+                <span className="text-zinc-800 font-bold font-mono">{(currentUser.redditKarma ?? currentUser.karma)?.toLocaleString() || 0} Reddit Karma</span>
                 {((currentUser.linkKarma !== undefined && currentUser.commentKarma !== undefined) || (currentUser.postKarma !== undefined && currentUser.commentKarma !== undefined)) && (
                   <span className="text-[9px] text-zinc-400 font-mono block">
                     (Post: {(currentUser.postKarma ?? currentUser.linkKarma ?? 0).toLocaleString()} | Comment: {(currentUser.commentKarma ?? 0).toLocaleString()})
                   </span>
                 )}
                 {(currentUser.lastRedditSync || currentUser.karmaLastSynced) && (
-                  <span className="text-[8px] text-zinc-500 font-mono block mt-0.5">
+                  <span className="text-[8px] text-zinc-400 font-mono block mt-0.5">
                     Last Synced: {formatSyncedDate(currentUser.lastRedditSync || currentUser.karmaLastSynced || undefined)}
                   </span>
                 )}
@@ -234,23 +239,23 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
                 <button
                   id="sync-reddit-karma-btn"
                   disabled={true}
-                  className="flex items-center justify-center gap-2 px-3.5 py-2.5 md:py-1.5 md:px-3 text-xs md:text-[10px] font-black uppercase tracking-wider rounded-xl md:rounded-lg border bg-amber-500/10 text-amber-400 border-amber-500/20 cursor-not-allowed min-h-[44px] md:min-h-0 font-sans"
+                  className="flex items-center justify-center gap-2 px-3.5 py-2.5 md:py-1.5 md:px-3 text-xs md:text-[10px] font-bold uppercase tracking-wider rounded-xl md:rounded-lg border bg-amber-50 text-amber-600 border-amber-200 cursor-not-allowed min-h-[44px] md:min-h-0 font-sans"
                   title="Live Reddit sync is currently unavailable"
                 >
                   <UserCheck className="w-3.5 h-3.5 md:w-3 md:h-3" />
-                  <span>Live Reddit sync unavailable. Manual verification mode active.</span>
+                  <span>Manual verification active. Sync offline.</span>
                 </button>
               ) : (
                 <button
                   id="sync-reddit-karma-btn"
                   disabled={isSyncing || !currentUser.redditUsername}
                   onClick={handleSyncKarma}
-                  className={`flex items-center justify-center gap-2 px-3.5 py-2.5 md:py-1.5 md:px-3 text-xs md:text-[10px] font-black uppercase tracking-wider rounded-xl md:rounded-lg border transition-all duration-205 min-h-[44px] md:min-h-0 font-sans ${
+                  className={`flex items-center justify-center gap-2 px-3.5 py-2.5 md:py-1.5 md:px-3 text-xs md:text-[10px] font-bold uppercase tracking-wider rounded-xl hover:shadow-sm md:rounded-lg border transition-all duration-205 min-h-[44px] md:min-h-0 font-sans ${
                     isSyncing 
-                      ? 'bg-zinc-900 text-zinc-500 border-zinc-850 cursor-not-allowed'
+                      ? 'bg-slate-100 text-zinc-400 border-slate-200 cursor-not-allowed'
                       : !currentUser.redditUsername
-                        ? 'bg-zinc-900 text-zinc-500 border-zinc-850 cursor-not-allowed opacity-50'
-                        : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20 active:scale-95 cursor-pointer'
+                        ? 'bg-slate-100 text-zinc-400 border-slate-200 cursor-not-allowed opacity-50'
+                        : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border-emerald-200/70 active:scale-95 cursor-pointer font-bold'
                   }`}
                   title={currentUser.redditUsername ? "Sync Reddit Karma Now" : "Please add Reddit username in profile settings"}
                 >
@@ -262,60 +267,60 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-sm font-black text-white">{currentTier.emoji} {currentTier.name} Tier</span>
-            <span className="text-[10px] text-zinc-500 font-bold uppercase">
+            <span className="text-sm font-bold text-zinc-900">{currentTier.emoji} {currentTier.name} Tier</span>
+            <span className="text-[10px] text-zinc-400 font-bold uppercase">
               ({currentTier.minKarma.toLocaleString()}{currentTier.maxKarma === Infinity ? '+' : ` - ${currentTier.maxKarma.toLocaleString()}`} Karma)
             </span>
           </div>
 
           {(!currentUser.redditUsername || !currentUser.redditUsername.trim()) ? (
-            <div className="text-[10px] text-amber-500 font-bold bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-xl uppercase tracking-wider inline-flex items-center gap-1.5 w-max">
+            <div className="text-[10px] text-amber-600 font-bold bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl uppercase tracking-wider inline-flex items-center gap-1.5 w-max">
               <span>⚠️ Please add your Reddit username in profile settings.</span>
             </div>
           ) : null}
           
           {/* Progress bar to next tier */}
           <div className="space-y-1">
-            <div className="w-full bg-zinc-950 rounded-full h-3 border border-white/5 relative overflow-hidden">
+            <div className="w-full bg-slate-50 border border-slate-200/60 rounded-full h-3 relative overflow-hidden">
               <div 
                 style={{ width: `${karmaBar.percent}%` }}
                 className="bg-gradient-to-r from-amber-500 via-yellow-400 to-emerald-400 h-full rounded-full transition-all duration-500"
               ></div>
             </div>
-            <div className="flex justify-between items-center text-[10px] text-zinc-400 font-mono">
-              <span>{karmaBar.text}</span>
+            <div className="flex justify-between items-center text-[10px] text-zinc-500 font-mono">
+              <span className="font-semibold">{karmaBar.text}</span>
             </div>
           </div>
           
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
-            <span className="text-[10px] text-zinc-500 font-semibold leading-tight">
+            <span className="text-[10px] text-zinc-400 font-medium leading-tight">
               Reddit Karma and Tier Level are managed manually by platform moderators. Your tier unlocks higher paying Special Tasks.
             </span>
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-4 md:border-l md:border-white/5 md:pl-8 py-1.5 shrink-0 select-none">
+        <div className="flex flex-wrap gap-4 md:border-l md:border-slate-100 md:pl-8 py-1.5 shrink-0 select-none">
           <div>
-            <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider block">Global Boost</span>
-            <span className="text-sm font-black text-white font-mono block">
+            <span className="text-[9px] text-zinc-400 font-bold uppercase tracking-wider block">Global Boost</span>
+            <span className="text-sm font-bold text-zinc-805 font-mono block">
               {settings.globalMultiplier.toFixed(2)}x
             </span>
           </div>
           <div>
-            <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider block">Tier Boost</span>
-            <span className="text-sm font-black text-purple-400 font-mono block">
+            <span className="text-[9px] text-zinc-400 font-bold uppercase tracking-wider block">Tier Boost</span>
+            <span className="text-sm font-bold text-purple-650 font-mono block">
               {(currentTier.multiplier || 1.00).toFixed(2)}x
             </span>
           </div>
           <div>
-            <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider block text-pink-400">Total Reward Multiplier</span>
-            <span className="text-lg font-black bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-pink-400 to-amber-400 font-display font-mono block">
+            <span className="text-[9px] text-zinc-400 font-bold uppercase tracking-wider block text-pink-500">Total Multiplier</span>
+            <span className="text-lg font-black bg-clip-text text-transparent bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 font-display font-mono block">
               {(settings.globalMultiplier * (currentTier.multiplier || 1.00)).toFixed(2)}x
             </span>
           </div>
           <div>
-            <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider block">Badge level</span>
-            <span className="text-xs px-2.5 py-1 bg-zinc-950 border border-zinc-800 rounded-lg text-purple-400 font-black font-mono inline-block mt-0.5">
+            <span className="text-[9px] text-zinc-400 font-bold uppercase tracking-wider block">Badge level</span>
+            <span className="span-badge text-xs px-2.5 py-1 bg-purple-50 border border-purple-150 rounded-lg text-purple-700 font-extrabold font-mono inline-block mt-0.5">
               {currentTier.emoji} {currentTier.name}
             </span>
           </div>
@@ -326,8 +331,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* Left 2 columns - Dynamic SVG Charting */}
-        <div className="lg:col-span-2 bg-white/5 border border-white/10 rounded-[32px] p-4 backdrop-blur-md">
-          {/* We pass currentUser's specific earning values into the custom SVG charts */}
+        <div className="lg:col-span-2">
           <EarningsChart 
             earningsData={realEarningsProgress} 
             labels={realEarningsLabels}
@@ -335,37 +339,37 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
         </div>
 
         {/* Right 1 column - Achievements & Badges List */}
-        <div className="bg-white/5 border border-white/10 rounded-[32px] p-6 backdrop-blur-md flex flex-col justify-between">
+        <div className="bg-white border border-slate-205 rounded-[24px] p-6 shadow-sm flex flex-col justify-between">
           <div>
-            <span className="text-[10px] font-black uppercase tracking-widest text-bento-purple block mb-1">Creator Milestones</span>
-            <h3 className="text-base font-black text-white mb-4">Earned Achievement Badges</h3>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-purple-600 block mb-1">Creator Milestones</span>
+            <h3 className="text-base font-bold text-zinc-900 mb-4">Earned Accomplishment Badges</h3>
             
-            <div className="space-y-3.5">
+            <div className="space-y-3">
               {achievements.map((a, i) => (
                 <div 
                   key={i} 
                   className={`flex items-center gap-3 p-3 rounded-2xl border transition-all ${
                     a.active 
-                      ? 'bg-bento-purple/10 border-bento-purple/20' 
-                      : 'bg-zinc-950/20 border-white/[0.02] opacity-40'
+                      ? 'bg-purple-50/50 border-purple-150/50' 
+                      : 'bg-slate-50/50 border-slate-100 opacity-40'
                   }`}
                 >
                   <span className="text-2xl select-all">{a.badge}</span>
                   <div>
-                    <span className="text-xs font-black text-white block leading-tight">{a.title}</span>
-                    <span className="text-[10px] text-zinc-500 font-semibold">{a.desc}</span>
+                    <span className="text-xs font-bold text-zinc-805 block leading-tight">{a.title}</span>
+                    <span className="text-[10px] text-zinc-400 font-medium">{a.desc}</span>
                   </div>
                   {a.active && (
-                    <span className="ml-auto text-[9px] font-bold text-bento-purple uppercase tracking-widest font-mono">Unlocked</span>
+                    <span className="ml-auto text-[9px] font-extrabold text-purple-600 uppercase tracking-widest font-mono bg-purple-100/60 px-1.5 py-0.5 rounded">Unlocked</span>
                   )}
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="pt-4 border-t border-white/5 mt-6 flex justify-between items-center text-xs">
-            <span className="text-zinc-500 font-semibold">Completed Milestones:</span>
-            <span className="font-extrabold text-white font-mono">{achievements.filter(a => a.active).length} / 5</span>
+          <div className="pt-4 border-t border-slate-100 mt-6 flex justify-between items-center text-xs">
+            <span className="text-zinc-550 font-semibold font-sans">Completed Milestones:</span>
+            <span className="font-extrabold text-zinc-800 font-mono bg-slate-100 px-2.5 py-1 rounded-lg">{achievements.filter(a => a.active).length} / 5</span>
           </div>
         </div>
 
@@ -375,72 +379,72 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* Quick Earning links */}
-        <div className="bg-white/5 border border-white/10 rounded-[32px] p-6 backdrop-blur-md">
-          <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500 block mb-1">Quick Actions</span>
-          <h3 className="text-base font-black text-white mb-4">Platform Shortcuts</h3>
+        <div className="bg-white border border-slate-205 rounded-[24px] p-6 shadow-sm">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 block mb-1">Quick Actions</span>
+          <h3 className="text-base font-bold text-zinc-900 mb-4">Platform Shortcuts</h3>
 
           <div className="space-y-2.5">
             <button 
               onClick={() => onNavigate('marketplace')}
-              className="w-full p-3.5 bg-black/40 border border-white/5 rounded-2xl hover:border-bento-purple/40 flex justify-between items-center text-left transition-all group cursor-pointer"
+              className="w-full p-3.5 bg-slate-50 border border-slate-100 rounded-2xl hover:border-purple-600/30 hover:bg-slate-50/80 flex justify-between items-center text-left transition-all group cursor-pointer"
             >
               <div>
-                <span className="text-xs font-bold text-white block">Browse Active Reddit Tasks</span>
-                <span className="text-[10px] text-zinc-500">Comments starting at $0.80 USDT</span>
+                <span className="text-xs font-bold text-zinc-805 block">Browse Active Reddit Tasks</span>
+                <span className="text-[10px] text-zinc-500 font-medium font-sans">Comments starting at $0.80 USDT</span>
               </div>
-              <ArrowUpRight className="w-4 h-4 text-zinc-500 group-hover:text-purple-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+              <ArrowUpRight className="w-4 h-4 text-zinc-400 group-hover:text-purple-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
             </button>
 
             <button 
               onClick={() => onNavigate('wallet')}
-              className="w-full p-3.5 bg-black/40 border border-white/5 rounded-2xl hover:border-bento-purple/40 flex justify-between items-center text-left transition-all group cursor-pointer"
+              className="w-full p-3.5 bg-slate-50 border border-slate-100 rounded-2xl hover:border-purple-600/30 hover:bg-slate-50/80 flex justify-between items-center text-left transition-all group cursor-pointer"
             >
               <div>
-                <span className="text-xs font-bold text-white block">Wallet Cashout Requests</span>
-                <span className="text-[10px] text-zinc-500">Submit USDT BEP20 withdrawal address</span>
+                <span className="text-xs font-bold text-zinc-805 block">Wallet Cashout Requests</span>
+                <span className="text-[10px] text-zinc-500 font-medium font-sans">Submit USDT BEP20 withdrawal address</span>
               </div>
-              <ArrowUpRight className="w-4 h-4 text-zinc-500 group-hover:text-purple-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+              <ArrowUpRight className="w-4 h-4 text-zinc-400 group-hover:text-purple-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
             </button>
 
             <button 
               onClick={() => onNavigate('tickets')}
-              className="w-full p-3.5 bg-black/40 border border-white/5 rounded-2xl hover:border-bento-purple/40 flex justify-between items-center text-left transition-all group cursor-pointer"
+              className="w-full p-3.5 bg-slate-50 border border-slate-100 rounded-2xl hover:border-purple-600/30 hover:bg-slate-50/80 flex justify-between items-center text-left transition-all group cursor-pointer"
             >
               <div>
-                <span className="text-xs font-bold text-white block">Support & Help Desk</span>
-                <span className="text-[10px] text-zinc-500">Contact admin or view support ticket statuses</span>
+                <span className="text-xs font-bold text-zinc-805 block">Support & Help Desk</span>
+                <span className="text-[10px] text-zinc-500 font-medium font-sans">Contact admin or view support ticket statuses</span>
               </div>
-              <ArrowUpRight className="w-4 h-4 text-zinc-500 group-hover:text-purple-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+              <ArrowUpRight className="w-4 h-4 text-zinc-400 group-hover:text-purple-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
             </button>
           </div>
         </div>
 
         {/* Recent Transactions / activity feed */}
-        <div className="lg:col-span-2 bg-white/5 border border-white/10 rounded-[32px] p-6 backdrop-blur-md">
-          <span className="text-[10px] font-black uppercase tracking-widest text-[#3B82F6] block mb-1">Submissions Ledger</span>
-          <h3 className="text-base font-black text-white mb-4">Recent Activity Feed</h3>
+        <div className="lg:col-span-2 bg-white border border-slate-205 rounded-[24px] p-6 shadow-sm">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-600 block mb-1">Submissions Ledger</span>
+          <h3 className="text-base font-bold text-zinc-900 mb-4">Recent Activity Feed</h3>
 
           <div className="space-y-3">
             {userTx.length === 0 ? (
-              <div className="text-center py-8 text-zinc-500 text-xs text-balance select-text">
+              <div className="text-center py-8 text-zinc-400 text-xs text-balance select-text font-medium font-sans">
                 No transactions recorded yet. Complete some active Reddit campaigns to populate stats!
               </div>
             ) : (
               userTx.map((tx) => (
-                <div key={tx.id} className="p-3 bg-black/60 border border-white/5 rounded-2xl flex justify-between items-center">
+                <div key={tx.id} className="p-3 bg-slate-50 border border-slate-150 rounded-xl flex justify-between items-center">
                   <div>
-                    <span className="text-xs font-bold text-white block leading-tight">{tx.description}</span>
-                    <span className="text-[9px] text-zinc-500 font-bold font-mono">{new Date(tx.date).toLocaleDateString()}</span>
+                    <span className="text-xs font-bold text-zinc-800 block leading-tight">{tx.description}</span>
+                    <span className="text-[9px] text-zinc-400 font-bold font-mono">{new Date(tx.date).toLocaleDateString()}</span>
                   </div>
                   <div className="text-right">
                     <span className={`text-xs font-black font-mono block ${
-                      tx.type === 'withdrawal' ? 'text-red-400' : 'text-emerald-400'
+                      tx.type === 'withdrawal' ? 'text-red-500' : 'text-emerald-600'
                     }`}>
                       {tx.type === 'withdrawal' ? '-' : '+'}${tx.amount.toFixed(2)} USDT
                     </span>
-                    <span className={`text-[9px] font-mono tracking-wider ${
-                      tx.status === 'Completed' ? 'text-emerald-400' : 
-                      tx.status === 'Pending' ? 'text-yellow-400 animate-pulse' : 'text-red-400'
+                    <span className={`text-[9px] font-mono tracking-wider font-extrabold uppercase ${
+                      tx.status === 'Completed' ? 'text-emerald-600' : 
+                      tx.status === 'Pending' ? 'text-amber-500 animate-pulse' : 'text-red-500'
                     }`}>
                       {tx.status}
                     </span>
@@ -455,13 +459,13 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
 
       {/* Floating Animated Toast Feedback Container */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-zinc-950 border border-emerald-500/30 text-white rounded-2xl p-4 shadow-2xl flex items-center gap-3.5 animate-slide-up-fade-in font-bold text-xs select-none">
-          <span className="p-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl font-bold">✅ Synced</span>
+        <div className="fixed bottom-6 right-6 z-50 bg-white border border-slate-200 text-zinc-800 rounded-2xl p-4 shadow-2xl flex items-center gap-3.5 animate-slide-up-fade-in font-bold text-xs select-none">
+          <span className="p-2 bg-emerald-50 text-emerald-600 border border-emerald-150 rounded-xl font-bold">✅ Synced</span>
           <span>{toastMessage}</span>
           <button 
             type="button" 
             onClick={() => setToastMessage(null)}
-            className="text-zinc-500 hover:text-white ml-2 cursor-pointer transition-colors p-1 text-xs"
+            className="text-zinc-400 hover:text-zinc-800 ml-2 cursor-pointer transition-colors p-1 text-xs"
           >
             ✕
           </button>
@@ -469,13 +473,13 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
       )}
 
       {syncError && (
-        <div className="fixed bottom-6 right-6 z-50 bg-zinc-950 border border-red-500/30 text-white rounded-2xl p-4 shadow-2xl flex items-center gap-3.5 animate-slide-up-fade-in font-bold text-xs select-none">
-          <span className="p-2 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl font-bold">❌ Error</span>
+        <div className="fixed bottom-6 right-6 z-50 bg-white border border-red-200 text-zinc-805 rounded-2xl p-4 shadow-2xl flex items-center gap-3.5 animate-slide-up-fade-in font-bold text-xs select-none">
+          <span className="p-2 bg-red-50 text-red-505 border border-red-200 rounded-xl font-bold">❌ Error</span>
           <span>{syncError}</span>
           <button 
             type="button" 
             onClick={() => setSyncError(null)}
-            className="text-zinc-500 hover:text-white ml-2 cursor-pointer transition-colors p-1 text-xs"
+            className="text-zinc-400 hover:text-zinc-850 ml-2 cursor-pointer transition-colors p-1 text-xs"
           >
             ✕
           </button>

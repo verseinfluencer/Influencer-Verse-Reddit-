@@ -54,6 +54,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
 
   const navItemClass = (itemPage: string) => {
     const isActive = currentPage === itemPage;
+    if (isLightHeader) {
+      return `px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer flex items-center gap-1.5 ${
+        isActive 
+          ? 'bg-purple-150 text-purple-700 bg-purple-50 border border-purple-200/50 shadow-[0_2px_10px_rgba(124,58,237,0.08)] font-extrabold' 
+          : 'text-zinc-600 hover:text-purple-600 hover:bg-zinc-100 border border-transparent font-medium'
+      }`;
+    }
     return `px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer flex items-center gap-1.5 ${
       isActive 
         ? 'bg-bento-purple/20 text-[#D8B4FE] border border-bento-purple/40 shadow-[0_0_15px_rgba(124,58,237,0.25)]' 
@@ -63,7 +70,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
 
   const isPendingUser = currentUser?.status === 'Pending';
   const isPublic = !currentUser;
-  const isLightHeader = ['home', 'about', 'faq', 'contact', 'trust', 'terms', 'referrals', 'login', 'signup', 'client-login', 'client-register'].includes(currentPage);
+  const isLightHeader = ['home', 'about', 'faq', 'contact', 'trust', 'terms', 'referrals', 'login', 'signup', 'client-login', 'client-register', 'dashboard', 'marketplace', 'wallet', 'leaderboard', 'profile', 'settings'].includes(currentPage);
 
   const navBgClass = isLightHeader
     ? 'sticky top-0 z-50 w-full border-b backdrop-blur-md bg-white/90 border-slate-100 text-zinc-900 shadow-[0_2px_15px_rgba(0,0,0,0.02)] select-none transition-all duration-300'
@@ -192,7 +199,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
                 <div className="relative">
                   <button 
                     onClick={() => { setNotifOpen(!notifOpen); setDropdownOpen(false); }} 
-                    className="p-2 rounded-xl border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors relative"
+                    className={`p-2 rounded-xl border transition-colors relative ${
+                      isLightHeader 
+                        ? 'border-slate-200 bg-slate-50 hover:bg-slate-100 text-zinc-600 hover:text-purple-600'
+                        : 'border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200'
+                    }`}
                   >
                     <Bell className="w-4 h-4" />
                     {unreadCount > 0 && (
@@ -204,13 +215,23 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
 
                   {/* Notifications Dropdown */}
                   {notifOpen && (
-                    <div className="absolute right-0 mt-2 w-80 rounded-2xl border border-white/10 bg-zinc-900 shadow-2xl p-4 text-zinc-200 z-50">
-                      <div className="flex justify-between items-center pb-2 border-b border-white/5 mb-2">
-                        <span className="font-bold text-sm">Notifications ({unreadCount})</span>
+                    <div className={`absolute right-0 mt-2 w-80 rounded-2xl border shadow-2xl p-4 z-50 ${
+                      isLightHeader 
+                        ? 'border-slate-200 bg-white text-zinc-700 shadow-xl shadow-zinc-200/50' 
+                        : 'border-white/10 bg-zinc-900 text-zinc-200'
+                    }`}>
+                      <div className={`flex justify-between items-center pb-2 border-b mb-2 ${
+                        isLightHeader ? 'border-slate-100' : 'border-white/5'
+                      }`}>
+                        <span className={`font-bold text-sm ${isLightHeader ? 'text-zinc-800 font-bold' : 'text-zinc-200'}`}>Notifications ({unreadCount})</span>
                         {userNotifications.length > 0 && (
                           <button 
                             onClick={clearAllNotifications} 
-                            className="text-xs text-purple-400 hover:text-purple-300 border border-purple-400/20 hover:border-purple-300/40 px-2 py-0.5 rounded cursor-pointer transition-colors"
+                            className={`text-xs border px-2 py-0.5 rounded cursor-pointer transition-colors ${
+                              isLightHeader
+                                ? 'text-purple-650 border-purple-200 hover:bg-purple-50 hover:border-purple-300'
+                                : 'text-purple-400 border-purple-400/20 hover:border-purple-300/40'
+                            }`}
                           >
                             Clear All
                           </button>
@@ -229,16 +250,20 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
                               onClick={() => handleNotifClick(n)}
                               className={`p-2.5 rounded-xl text-left border cursor-pointer transition-all duration-300 flex flex-col gap-0.5 ${
                                 !n.read 
-                                  ? 'bg-purple-600/10 border-purple-500/20 hover:bg-purple-600/20' 
-                                  : 'bg-zinc-950/40 border-zinc-900 hover:bg-zinc-800/40'
+                                  ? isLightHeader
+                                    ? 'bg-purple-50/60 border-purple-100/70 hover:bg-purple-50'
+                                    : 'bg-purple-600/10 border-purple-500/20 hover:bg-purple-600/20' 
+                                  : isLightHeader
+                                    ? 'bg-zinc-50 border-zinc-100 hover:bg-zinc-100/50'
+                                    : 'bg-zinc-950/40 border-zinc-900 hover:bg-zinc-800/40'
                               }`}
                             >
                               <div className="flex justify-between items-start gap-1">
-                                <span className="font-semibold text-xs tracking-tight text-white">{n.title}</span>
+                                <span className={`font-bold text-xs tracking-tight ${isLightHeader ? 'text-zinc-800 font-bold' : 'text-white font-semibold'}`}>{n.title}</span>
                                 {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-purple-500 shrink-0 mt-1"></span>}
                               </div>
-                              <span className="text-[11px] text-zinc-400 text-wrap leading-tight">{n.message}</span>
-                              <span className="text-[9px] text-zinc-500 mt-1 self-end">
+                              <span className={`text-[11px] text-wrap leading-tight ${isLightHeader ? 'text-zinc-550 font-medium' : 'text-zinc-400 font-semibold'}`}>{n.message}</span>
+                              <span className="text-[9px] text-zinc-405 mt-1 self-end font-medium">
                                 {new Date(n.timestamp).toLocaleDateString()} {new Date(n.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                               </span>
                             </div>
@@ -264,20 +289,26 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
 
                   {/* Dropdown Menu */}
                   {dropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-white/10 bg-zinc-900 shadow-2xl p-2 text-zinc-200 z-50">
-                      <div className="px-3 py-2 border-b border-white/5 mb-1.5 leading-snug">
+                    <div className={`absolute right-0 mt-2 w-56 rounded-2xl border shadow-2xl p-2 z-50 ${
+                      isLightHeader
+                        ? 'border-slate-200 bg-white text-zinc-750 shadow-xl shadow-zinc-200/50'
+                        : 'border-white/10 bg-zinc-900 text-zinc-205'
+                    }`}>
+                      <div className={`px-3 py-2 border-b mb-1.5 leading-snug ${
+                        isLightHeader ? 'border-slate-100' : 'border-white/5'
+                      }`}>
                         <p className="text-xs text-zinc-400 font-semibold">Signed in as</p>
-                        <p className="font-bold text-sm text-white truncate max-w-[180px]">{currentUser.fullName}</p>
+                        <p className={`font-bold text-sm truncate max-w-[180px] ${isLightHeader ? 'text-zinc-800 font-bold' : 'text-white'}`}>{currentUser.fullName}</p>
                         {currentUser.role === 'client' ? (
-                          <p className="text-[10px] text-indigo-400 font-semibold">Brand Client Account</p>
+                          <p className="text-[10px] text-indigo-505 font-bold">Brand Client Account</p>
                         ) : (
                           <>
-                            <p className="text-[10px] text-purple-400 font-medium truncate max-w-[180px]">{currentUser.redditUsername}</p>
+                            <p className="text-[10px] text-purple-600 font-bold truncate max-w-[180px]">{currentUser.redditUsername}</p>
                             {currentUser.role === 'admin' && (
-                              <span className="inline-block mt-1 text-[9px] font-extrabold uppercase tracking-wider bg-red-500/10 border border-red-500/20 text-red-400 px-1.5 py-0.5 rounded">Admin</span>
+                              <span className="inline-block mt-1 text-[9px] font-extrabold uppercase tracking-wider bg-red-500/10 border border-red-500/20 text-red-500 px-1.5 py-0.5 rounded">Admin</span>
                             )}
                             {currentUser.role === 'moderator' && (
-                              <span className="inline-block mt-1 text-[9px] font-extrabold uppercase tracking-wider bg-amber-500/15 border border-amber-500/25 text-amber-500 px-1.5 py-0.5 rounded">Moderator</span>
+                              <span className="inline-block mt-1 text-[9px] font-extrabold uppercase tracking-wider bg-amber-500/15 border border-amber-500/25 text-amber-550 px-1.5 py-0.5 rounded">Moderator</span>
                             )}
                           </>
                         )}
@@ -287,21 +318,33 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
                         <>
                           <button 
                             onClick={() => { onNavigate('profile'); setDropdownOpen(false); }} 
-                            className="w-full flex items-center gap-2 px-3 py-2 text-xs rounded-xl hover:bg-white/10 text-zinc-300 hover:text-white text-left transition-colors cursor-pointer"
+                            className={`w-full flex items-center gap-2 px-3 py-2 text-xs rounded-xl text-left transition-colors cursor-pointer ${
+                              isLightHeader
+                                ? 'hover:bg-purple-50 text-zinc-705 hover:text-purple-650'
+                                : 'hover:bg-white/10 text-zinc-300 hover:text-white'
+                            }`}
                           >
                             <UserIcon className="w-3.5 h-3.5" /> My Profile
                           </button>
 
                           <button 
                             onClick={() => { onNavigate('settings'); setDropdownOpen(false); }} 
-                            className="w-full flex items-center gap-2 px-3 py-2 text-xs rounded-xl hover:bg-white/10 text-zinc-300 hover:text-white text-left transition-colors cursor-pointer"
+                            className={`w-full flex items-center gap-2 px-3 py-2 text-xs rounded-xl text-left transition-colors cursor-pointer ${
+                              isLightHeader
+                                ? 'hover:bg-purple-50 text-zinc-705 hover:text-purple-650'
+                                : 'hover:bg-white/10 text-zinc-300 hover:text-white'
+                            }`}
                           >
                             <Settings className="w-3.5 h-3.5" /> Platform Settings
                           </button>
 
                           <button 
                             onClick={() => { onNavigate('tickets'); setDropdownOpen(false); }} 
-                            className="w-full flex items-center gap-2 px-3 py-2 text-xs rounded-xl hover:bg-white/10 text-zinc-300 hover:text-white text-left transition-colors cursor-pointer"
+                            className={`w-full flex items-center gap-2 px-3 py-2 text-xs rounded-xl text-left transition-colors cursor-pointer ${
+                              isLightHeader
+                                ? 'hover:bg-purple-50 text-zinc-705 hover:text-purple-650'
+                                : 'hover:bg-white/10 text-zinc-300 hover:text-white'
+                            }`}
                           >
                             <HeartHandshake className="w-3.5 h-3.5" /> Help Support
                           </button>
@@ -309,17 +352,21 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
                       ) : (
                         <button 
                           onClick={() => { onNavigate('client-dashboard'); setDropdownOpen(false); }} 
-                          className="w-full flex items-center gap-2 px-3 py-2 text-xs rounded-xl hover:bg-white/10 text-zinc-300 hover:text-white text-left transition-colors cursor-pointer"
+                          className={`w-full flex items-center gap-2 px-3 py-2 text-xs rounded-xl text-left transition-colors cursor-pointer ${
+                            isLightHeader
+                              ? 'hover:bg-purple-50 text-zinc-705 hover:text-purple-650'
+                              : 'hover:bg-white/10 text-zinc-300 hover:text-white'
+                          }`}
                         >
                           <BarChart className="w-3.5 h-3.5" /> Client Dashboard
                         </button>
                       )}
 
-                      <div className="border-t border-white/5 my-1"></div>
+                      <div className={`border-t my-1 ${isLightHeader ? 'border-slate-100' : 'border-white/5'}`}></div>
 
                       <button 
                         onClick={() => { logout(); setDropdownOpen(false); onNavigate('home'); }} 
-                        className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl text-left transition-colors cursor-pointer"
+                        className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl text-left transition-colors cursor-pointer"
                       >
                         <LogOut className="w-3.5 h-3.5" /> Disconnect Wallet
                       </button>

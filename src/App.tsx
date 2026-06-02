@@ -171,7 +171,8 @@ function MainAppContent() {
     }
   };
 
-  const isLightPage = ['home', 'about', 'faq', 'contact', 'trust', 'terms', 'referrals', 'login', 'signup', 'client-login', 'client-register'].includes(currentPage);
+  const isLightPage = ['home', 'about', 'faq', 'contact', 'trust', 'terms', 'referrals', 'login', 'signup', 'client-login', 'client-register', 'dashboard', 'marketplace', 'wallet', 'leaderboard', 'profile', 'settings'].includes(currentPage);
+  const isPublicLightFooter = ['home', 'about', 'faq', 'contact', 'trust', 'terms', 'referrals', 'login', 'signup', 'client-login', 'client-register'].includes(currentPage);
 
   return (
     <div className={`min-h-screen ${isLightPage ? 'bg-zinc-50 text-zinc-900 selection:bg-purple-200 selection:text-purple-950' : 'bg-[#050505] text-white selection:bg-bento-purple selection:text-white'} flex flex-col justify-between transition-colors duration-200`}>
@@ -181,7 +182,7 @@ function MainAppContent() {
           {renderPage()}
         </main>
       </div>
-      <Footer onNavigate={onNavigate} isLightPage={isLightPage} />
+      <Footer onNavigate={onNavigate} isLightPage={isPublicLightFooter} />
     </div>
   );
 }

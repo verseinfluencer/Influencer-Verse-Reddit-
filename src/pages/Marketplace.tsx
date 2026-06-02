@@ -257,22 +257,22 @@ export const Marketplace: React.FC = () => {
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 text-white select-none" id="marketplace-panel">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 text-zinc-850 select-none pb-12" id="marketplace-panel">
       
       {/* Title section */}
-      <div className="space-y-1.5 pb-2">
-        <span className="text-[10px] text-purple-400 font-extrabold uppercase tracking-widest block mb-1">Reddit Campaigns Desk</span>
-        <h1 className="text-2xl md:text-3xl font-black">Tasks Marketplace</h1>
-        <p className="text-xs text-zinc-400">Discover and execute high-paying Reddit tasks to earn verified USDT</p>
+      <div className="space-y-1.5 pb-3 border-b border-slate-200/60">
+        <span className="text-[10px] text-purple-600 font-extrabold uppercase tracking-widest block mb-1">Reddit Campaigns Desk</span>
+        <h1 className="text-2xl md:text-3xl font-black text-zinc-900 font-display">Campaign Marketplace</h1>
+        <p className="text-xs text-zinc-500">Discover verified Reddit campaigns and submit proof to earn rewards.</p>
       </div>
 
       {/* Search & Filter Toolbars */}
       <div className="space-y-3">
-        <div className="bg-zinc-900/40 border border-white/10 rounded-2xl p-4 backdrop-blur-md flex flex-col md:flex-row gap-4 items-center justify-between font-semibold">
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between font-semibold">
           
           {/* Search */}
           <div className="relative w-full md:w-96 select-text">
-            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-zinc-500">
+            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-zinc-400">
               <Search className="w-4 h-4" />
             </span>
             <input 
@@ -280,13 +280,13 @@ export const Marketplace: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search campaigns by subreddit, title, keywords..." 
-              className="w-full text-xs text-white bg-zinc-950 border border-white/5 pl-10 pr-10 py-2.5 rounded-xl focus:border-purple-500 focus:outline-none placeholder-zinc-500"
+              className="w-full text-xs text-zinc-800 bg-slate-50 border border-slate-200 pl-10 pr-10 py-2.5 rounded-xl focus:border-purple-500 focus:outline-none placeholder-zinc-450"
             />
             {searchQuery && (
               <button 
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-zinc-400 hover:text-white cursor-pointer"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-zinc-400 hover:text-zinc-700 cursor-pointer"
                 title="Clear Search"
               >
                 <X className="w-4 h-4" />
@@ -297,12 +297,12 @@ export const Marketplace: React.FC = () => {
           {/* Filters */}
           <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
             {/* Type trigger */}
-            <div className="flex bg-zinc-950 p-1 rounded-xl border border-white/5 text-[11px]">
+            <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-200 text-[11px]">
               <button 
                 type="button"
                 onClick={() => setActiveType('all')} 
                 className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  activeType === 'all' ? 'bg-purple-600 text-white font-bold' : 'text-zinc-500 hover:text-white'
+                  activeType === 'all' ? 'bg-purple-600 text-white font-bold' : 'text-zinc-500 hover:text-purple-600'
                 }`}
               >
                 All Types
@@ -311,7 +311,7 @@ export const Marketplace: React.FC = () => {
                 type="button"
                 onClick={() => setActiveType('post')} 
                 className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  activeType === 'post' ? 'bg-purple-600 text-white font-bold' : 'text-zinc-500 hover:text-white'
+                  activeType === 'post' ? 'bg-purple-600 text-white font-bold' : 'text-zinc-500 hover:text-purple-600'
                 }`}
               >
                 Posts campaigns
@@ -320,7 +320,7 @@ export const Marketplace: React.FC = () => {
                 type="button"
                 onClick={() => setActiveType('comment')} 
                 className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  activeType === 'comment' ? 'bg-purple-600 text-white font-bold' : 'text-zinc-500 hover:text-white'
+                  activeType === 'comment' ? 'bg-purple-600 text-white font-bold' : 'text-zinc-500 hover:text-purple-600'
                 }`}
               >
                 Comments campaigns
@@ -328,12 +328,12 @@ export const Marketplace: React.FC = () => {
             </div>
 
             {/* Difficulty filter */}
-            <div className="flex bg-zinc-950 p-1 rounded-xl border border-white/5 text-[11px]">
+            <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-200 text-[11px]">
               <button 
                 type="button"
                 onClick={() => setActiveDiff('all')} 
                 className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  activeDiff === 'all' ? 'bg-purple-600 text-white font-bold' : 'text-zinc-500 hover:text-white'
+                  activeDiff === 'all' ? 'bg-purple-600 text-white font-bold' : 'text-zinc-505 hover:text-purple-605'
                 }`}
               >
                 All Difficulties
@@ -344,7 +344,7 @@ export const Marketplace: React.FC = () => {
                   type="button"
                   onClick={() => setActiveDiff(diff as any)} 
                   className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                    activeDiff === diff ? 'bg-purple-600 text-white font-bold' : 'text-zinc-500 hover:text-white'
+                    activeDiff === diff ? 'bg-purple-600 text-white font-bold' : 'text-zinc-505 hover:text-purple-605'
                   }`}
                 >
                   {diff}
@@ -353,30 +353,30 @@ export const Marketplace: React.FC = () => {
             </div>
 
             {/* Tier Requirements Dropdown */}
-            <div className="flex items-center gap-2 bg-zinc-950 p-1 pl-3 rounded-xl border border-white/5 text-[11px] font-semibold text-zinc-400 select-none">
-              <span className="shrink-0 flex items-center gap-1.5 text-zinc-400">
-                <Filter className="w-3.5 h-3.5 text-purple-400" />
+            <div className="flex items-center gap-2 bg-slate-50 p-1 pl-3 rounded-xl border border-slate-200 text-[11px] font-semibold text-zinc-500 select-none">
+              <span className="shrink-0 flex items-center gap-1.5 text-zinc-500">
+                <Filter className="w-3.5 h-3.5 text-purple-600" />
                 <span>Tier Requirements:</span>
               </span>
               <select
                 id="tier-requirement-filter"
                 value={tierFilter}
                 onChange={(e) => setTierFilter(e.target.value)}
-                className="bg-transparent border-0 text-white focus:outline-none focus:ring-0 cursor-pointer font-black text-xs p-1 px-2 pr-8"
+                className="bg-transparent border-0 text-zinc-800 focus:outline-none focus:ring-0 cursor-pointer font-extrabold text-xs p-1 px-2 pr-8"
               >
-                <option value="all" className="bg-zinc-900 text-white">👑 All Tiers</option>
-                <option value="eligible" className="bg-zinc-900 text-purple-400 font-extrabold">
+                <option value="all" className="bg-white text-zinc-805">👑 All Tiers</option>
+                <option value="eligible" className="bg-white text-purple-700 font-extrabold">
                   ✅ Eligible For Me {userTier ? `(${userTier.emoji} ${userTier.name})` : ''}
                 </option>
-                <option value="unlocked" className="bg-zinc-900 text-white">🔓 No Tier Required</option>
-                <option value="special_only" className="bg-zinc-900 text-white">⭐ Special Only</option>
-                <option value="bronze" className="bg-zinc-900 text-white">🥉 Bronze Required</option>
-                <option value="silver" className="bg-zinc-900 text-white">🥈 Silver Required</option>
-                <option value="gold" className="bg-zinc-900 text-white">⭐ Gold Required</option>
-                <option value="diamond" className="bg-zinc-900 text-white">💎 Diamond Required</option>
-                <option value="platinum" className="bg-zinc-900 text-white">🔥 Platinum Required</option>
-                <option value="elite" className="bg-zinc-900 text-white">👑 Elite Required</option>
-                <option value="legend" className="bg-zinc-900 text-white">🚀 Legend Required</option>
+                <option value="unlocked" className="bg-white text-zinc-805">🔓 No Tier Required</option>
+                <option value="special_only" className="bg-white text-zinc-850">⭐ Special Only</option>
+                <option value="bronze" className="bg-white text-zinc-805">🥉 Bronze Required</option>
+                <option value="silver" className="bg-white text-zinc-805">🥈 Silver Required</option>
+                <option value="gold" className="bg-white text-zinc-805">⭐ Gold Required</option>
+                <option value="diamond" className="bg-white text-zinc-805">💎 Diamond Required</option>
+                <option value="platinum" className="bg-white text-zinc-805">🔥 Platinum Required</option>
+                <option value="elite" className="bg-white text-zinc-805">👑 Elite Required</option>
+                <option value="legend" className="bg-white text-zinc-805">🚀 Legend Required</option>
               </select>
             </div>
 
@@ -386,8 +386,8 @@ export const Marketplace: React.FC = () => {
 
         {/* Dynamic real-time quick subreddit suggestions */}
         {uniqueSubreddits.length > 0 && (
-          <div className="bg-zinc-950/40 border border-white/5 rounded-2xl p-3 flex flex-wrap items-center gap-2 text-xs">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-500 select-none mr-2">
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 flex flex-wrap items-center gap-2 text-xs shadow-sm">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 select-none mr-2">
               ⚡ Quick Subreddit Filters:
             </span>
             {uniqueSubreddits.map(sub => {
@@ -399,8 +399,8 @@ export const Marketplace: React.FC = () => {
                   onClick={() => handleSubredditClick(sub)}
                   className={`px-2.5 py-1 rounded-lg text-[11px] font-mono transition-all cursor-pointer border ${
                     active 
-                      ? 'bg-purple-600/20 border-purple-500 text-purple-400 font-extrabold shadow-sm shadow-purple-500/10' 
-                      : 'bg-zinc-900/50 border-white/5 text-zinc-400 hover:text-white hover:border-white/10'
+                      ? 'bg-purple-50 border-purple-355 text-purple-700 font-bold shadow-sm' 
+                      : 'bg-white border-slate-200 text-zinc-500 hover:text-purple-650 hover:border-purple-300'
                   }`}
                 >
                   {sub}
@@ -412,7 +412,7 @@ export const Marketplace: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="text-[10px] text-purple-400 hover:text-purple-300 ml-auto font-bold underline px-1 cursor-pointer"
+                className="text-[10px] text-purple-600 hover:text-purple-700 ml-auto font-bold underline px-1 cursor-pointer"
               >
                 Reset Search
               </button>
@@ -422,10 +422,10 @@ export const Marketplace: React.FC = () => {
 
         {/* Search & Matches statistics */}
         {searchQuery.trim() && (
-          <div className="flex items-center gap-2 text-xs font-semibold text-zinc-400 pl-1 animate-fade-in">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-purple-500 animate-ping" />
+          <div className="flex items-center gap-2 text-xs font-semibold text-zinc-550 pl-1 animate-fade-in">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-purple-600 animate-ping" />
             <span>
-              Real-time filtered: found <strong className="text-purple-400 font-extrabold">{visibleTasks.length}</strong> campaigns matching <strong className="text-zinc-200">"{searchQuery}"</strong>
+              Real-time filtered: found <strong className="text-purple-600 font-extrabold">{visibleTasks.length}</strong> campaigns matching <strong className="text-zinc-800">"{searchQuery}"</strong>
             </span>
           </div>
         )}
@@ -433,10 +433,10 @@ export const Marketplace: React.FC = () => {
 
       {/* Block pending users notification if necessary */}
       {isPending && (
-        <div className="p-4 bg-yellow-500/10 border border-yellow-500/25 rounded-2xl flex gap-3.5 text-yellow-500 text-xs font-semibold leading-relaxed">
-          <ShieldAlert className="w-5 h-5 shrink-0" />
+        <div className="p-4 bg-amber-50 border border-amber-205 rounded-2xl flex gap-3.5 text-amber-700 text-xs font-semibold leading-relaxed shadow-sm">
+          <ShieldAlert className="w-5 h-5 shrink-0 text-amber-500" />
           <div>
-            <strong className="block text-yellow-400 mb-0.5">Tasks Restricted During Manual Review</strong>
+            <strong className="block text-amber-800 mb-0.5">Tasks Restricted During Manual Review</strong>
             Your profile is currently undergo manual background reviews. Review limits allow viewing existing market tasks, but submission actions are disabled until your Reddit Username is authenticated!
           </div>
         </div>
@@ -444,12 +444,12 @@ export const Marketplace: React.FC = () => {
 
       {/* Cooldown notification banner */}
       {isCooldownActive && (
-        <div className="p-4 bg-purple-500/15 border border-purple-500/30 rounded-2xl flex items-center justify-between text-purple-400 text-xs font-semibold">
+        <div className="p-4 bg-purple-50 border border-purple-200 rounded-2xl flex items-center justify-between text-purple-700 text-xs font-semibold shadow-sm">
           <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 animate-spin text-purple-500" />
+            <Clock className="w-4 h-4 animate-spin text-purple-600" />
             <span>You are currently on claiming cooldown between campaigns.</span>
           </div>
-          <span className="font-mono bg-purple-500/20 px-3 py-1 rounded-xl text-white font-black animate-pulse">
+          <span className="font-mono bg-purple-100 px-3 py-1 rounded-xl text-purple-755 font-black animate-pulse">
             ⏳ Claim available in {cooldownString || '00:00'}
           </span>
         </div>
@@ -457,10 +457,10 @@ export const Marketplace: React.FC = () => {
 
       {/* Claim operations general alert */}
       {claimError && (
-        <div className="p-4 bg-red-500/10 border border-red-500/25 rounded-2xl flex gap-3 text-red-500 text-xs font-bold leading-relaxed">
-          <ShieldAlert className="w-5 h-5 shrink-0" />
+        <div className="p-4 bg-red-50 border border-red-200 rounded-2xl flex gap-3 text-red-700 text-xs font-bold leading-relaxed shadow-sm">
+          <ShieldAlert className="w-5 h-5 shrink-0 text-red-505" />
           <div>
-            <span className="block text-red-400 mb-0.5">Claim Interrupted</span>
+            <span className="block text-red-800 mb-0.5 font-display font-black">Claim Interrupted</span>
             {claimError}
           </div>
         </div>
@@ -469,7 +469,7 @@ export const Marketplace: React.FC = () => {
       {/* Grid List */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {visibleTasks.length === 0 ? (
-          <div className="col-span-full text-center py-20 text-zinc-500 text-xs font-semibold">
+          <div className="col-span-full text-center py-20 text-zinc-405 text-xs font-semibold bg-white border border-slate-205 rounded-3xl shadow-sm">
             No active campaigns match your currently selected filters. Refine criteria queries.
           </div>
         ) : (
@@ -500,91 +500,90 @@ export const Marketplace: React.FC = () => {
             return (
               <div 
                 key={task.id} 
-                className="bg-zinc-900/30 border border-white/10 rounded-2xl p-6 flex flex-col justify-between hover:border-purple-500/35 transition-all duration-300 group shadow-md relative overflow-hidden"
+                className="bg-white border border-slate-200 rounded-2xl p-6 flex flex-col justify-between hover:border-purple-550/45 hover:shadow-lg transition-all duration-300 group shadow-sm relative overflow-hidden"
               >
                 {/* Visual lock overlay for low karma influencers */}
                 {isLocked && (
-                  <div className="absolute inset-0 bg-zinc-950/90 backdrop-blur-[3px] rounded-2xl flex flex-col items-center justify-center p-6 text-center z-10 pointer-events-auto">
-                    <span className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-full mb-3">
+                  <div className="absolute inset-0 bg-white/95 backdrop-blur-[3px] rounded-2xl flex flex-col items-center justify-center p-6 text-center z-10 pointer-events-auto">
+                    <span className="p-3 bg-red-50 border border-red-200 text-red-500 rounded-full mb-3">
                       <ShieldAlert className="w-5 h-5" />
                     </span>
-                    <h4 className="font-extrabold text-sm text-white">🔒 Locked Special Campaign</h4>
-                    <p className="text-[10px] text-zinc-400 mt-1 max-w-[200px] leading-normal font-semibold">
-                      This premium special task is restricted. Requires <strong className="text-purple-400">{getTierRequirementText(task.minKarmaRequired)}</strong>. Check your dashboard status card!
+                    <h4 className="font-extrabold text-sm text-zinc-900 font-display">🔒 Locked Special Campaign</h4>
+                    <p className="text-[10px] text-zinc-500 mt-1 max-w-[200px] leading-normal font-semibold">
+                      This premium special task is restricted. Requires <strong className="text-purple-600">{getTierRequirementText(task.minKarmaRequired)}</strong>. Check your dashboard status card!
                     </p>
-                    <button className="mt-4 px-4 py-1.5 bg-zinc-800 text-zinc-500 text-[10px] font-bold rounded-lg border border-zinc-700 cursor-not-allowed uppercase">
+                    <button className="mt-4 px-4 py-1.5 bg-slate-100 text-zinc-400 text-[10px] font-bold rounded-lg border border-slate-200 cursor-not-allowed uppercase">
                       Locked 🔒
                     </button>
                   </div>
                 )}
 
-                <div>
-                  <div className="flex justify-between items-center mb-4">
-                    <div className="flex items-center gap-1.5">
-                      <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
-                        task.type === 'post' 
-                          ? 'bg-purple-600/10 border border-purple-500/20 text-purple-400 font-bold' 
-                          : 'bg-zinc-950 border border-white/5 text-zinc-400 font-semibold'
-                      }`}>
-                        Reddit {task.type}
+                <div className="flex justify-between items-center mb-4">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                      task.type === 'post' 
+                        ? 'bg-purple-100/60 border border-purple-200 text-purple-700 font-bold' 
+                        : 'bg-slate-100 border border-slate-200 text-zinc-600 font-semibold'
+                    }`}>
+                      Reddit {task.type}
+                    </span>
+                    {isTaskSpecial && (
+                      <span className="bg-amber-50 border border-amber-250 text-amber-600 text-[9px] font-extrabold px-2 py-0.5 rounded-full select-none flex items-center gap-0.5 tracking-wider">
+                        ⭐ SPECIAL
                       </span>
-                      {isTaskSpecial && (
-                        <span className="bg-amber-500/10 border border-amber-500/25 text-amber-400 text-[9px] font-extrabold px-2 py-0.5 rounded-full select-none flex items-center gap-0.5 tracking-wider animate-pulse">
-                          ⭐ SPECIAL
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-xs text-zinc-500 font-bold">🎯 {task.difficulty}</span>
+                    )}
                   </div>
+                  <span className="text-xs text-zinc-500 font-bold">🎯 {task.difficulty}</span>
+                </div>
 
-                  {task.type === 'post' && task.targetSubreddit && (
-                    <div className="mb-2 flex items-center gap-1.5 select-all">
-                      <span className="text-[10px] text-zinc-550 uppercase tracking-wider font-bold">Subreddit:</span>
-                      <span className="text-purple-400 font-extrabold text-xs bg-purple-500/10 px-2 py-0.5 rounded-md border border-purple-500/15">{task.targetSubreddit.startsWith('r/') ? task.targetSubreddit : 'r/' + task.targetSubreddit}</span>
-                    </div>
-                  )}
+                {task.type === 'post' && task.targetSubreddit && (
+                  <div className="mb-2 flex items-center gap-1.5 select-all">
+                    <span className="text-[10px] text-zinc-450 uppercase tracking-wider font-bold">Subreddit:</span>
+                    <span className="text-purple-705 font-extrabold text-xs bg-purple-50 px-2 py-0.5 rounded-md border border-purple-205">{task.targetSubreddit.startsWith('r/') ? task.targetSubreddit : 'r/' + task.targetSubreddit}</span>
+                  </div>
+                )}
 
-                  <h3 className="text-base font-extrabold text-white mb-2 leading-tight group-hover:text-purple-400 transition-all select-text">
-                    {task.title}
-                  </h3>
-                  
-                  <p className="text-zinc-400 text-xs leading-relaxed line-clamp-3 mb-4 select-text">
-                    {task.description}
-                  </p>
-
-                  {/* Premium Reddit post actions details inside the card */}
-                  {task.type === 'post' && (
-                    <div className="mt-2.5 mb-4 bg-zinc-950/70 border border-white/5 rounded-xl p-3 space-y-2.5 text-[11px] select-text">
+                <h3 className="text-base font-extrabold text-zinc-900 mb-2 leading-tight group-hover:text-purple-600 transition-all select-text font-display">
+                  {task.title}
+                </h3>
+                
+                <p className="text-zinc-650 text-xs leading-relaxed line-clamp-3 mb-4 select-text">
+                  {task.description}
+                </p>
+                
+                {/* Premium Reddit post actions details inside the card */}
+                {task.type === 'post' && (
+                  <div className="mt-2.5 mb-4 bg-slate-50 border border-slate-200/60 rounded-xl p-3 space-y-2.5 text-[11px] select-text font-semibold text-zinc-700">
                       {task.requiredPostTitle && (
                         <div className="space-y-1">
                           <div className="flex justify-between items-center">
-                            <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-extrabold">Required Title</span>
+                            <span className="text-[9px] text-zinc-400 uppercase tracking-widest font-extrabold animate-delay-100">Required Title</span>
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleCopyText(task.title || '', 'Task title copied');
                               }}
-                              className="text-[9px] text-purple-400 hover:text-purple-300 font-extrabold flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-2 py-0.5 rounded transition-all border border-purple-500/5 cursor-pointer"
+                              className="text-[9px] text-purple-650 hover:text-purple-700 font-extrabold flex items-center gap-1 bg-white hover:bg-purple-50 px-2 py-0.5 rounded transition-all border border-slate-250 cursor-pointer"
                             >
                               <Copy className="w-2.5 h-2.5" /> Copy Title
                             </button>
                           </div>
-                          <p className="text-white font-mono font-bold leading-normal text-xs break-words">"{task.requiredPostTitle}"</p>
+                          <p className="text-zinc-800 font-mono font-bold leading-normal text-xs break-words">"{task.requiredPostTitle}"</p>
                         </div>
                       )}
 
-                      <div className="space-y-1 border-t border-white/5 pt-2">
+                      <div className="space-y-1 border-t border-slate-200 pt-2">
                         <div className="flex justify-between items-center">
-                          <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-extrabold">Post Body / Content</span>
-                          <div className="flex gap-1.5">
+                          <span className="text-[9px] text-zinc-400 uppercase tracking-widest font-extrabold animate-delay-100">Post Body / Content</span>
+                          <div className="flex gap-1.55">
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleCopyText(task.description || '', 'Task body copied');
                               }}
-                              className="text-[9px] text-purple-400 hover:text-purple-300 font-extrabold flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-2 py-0.5 rounded transition-all border border-purple-500/5 cursor-pointer"
+                              className="text-[9px] text-purple-650 hover:text-purple-700 font-extrabold flex items-center gap-1 bg-white hover:bg-purple-50 px-2 py-0.5 rounded transition-all border border-slate-250 cursor-pointer"
                             >
                               <Copy className="w-2.5 h-2.5" /> Copy Body
                             </button>
@@ -600,28 +599,28 @@ export const Marketplace: React.FC = () => {
                                   `Body:\n${task.description || ''}`;
                                 handleCopyText(content, 'Task copied successfully');
                               }}
-                              className="text-[9px] text-pink-400 hover:text-pink-300 font-extrabold flex items-center gap-1 bg-pink-500/10 hover:bg-pink-500/20 px-2 py-0.5 rounded transition-all border border-pink-500/5 cursor-pointer"
+                              className="text-[9px] text-pink-600 hover:text-pink-700 font-extrabold flex items-center gap-1 bg-white hover:bg-pink-50 px-2 py-0.5 rounded transition-all border border-slate-250 cursor-pointer"
                             >
                               <Copy className="w-2.5 h-2.5" /> Copy All
                             </button>
                           </div>
                         </div>
-                        <p className="text-zinc-300 font-normal leading-normal select-text break-words line-clamp-2 hover:line-clamp-none transition-all duration-300">
+                        <p className="text-zinc-600 font-normal leading-normal select-text break-words line-clamp-2 hover:line-clamp-none transition-all duration-300">
                           {task.description}
                         </p>
                       </div>
 
                       {task.postGuidelines && (
-                        <div className="space-y-1 border-t border-white/5 pt-2 select-text">
-                          <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-extrabold block text-zinc-400">Task Guidelines</span>
-                          <p className="text-zinc-400 font-normal leading-relaxed text-[11px] break-words">
+                        <div className="space-y-1 border-t border-slate-205 pt-2 select-text">
+                          <span className="text-[9px] text-zinc-455 uppercase tracking-widest font-extrabold block text-zinc-400">Task Guidelines</span>
+                          <p className="text-zinc-500 font-normal leading-relaxed text-[11px] break-words">
                             {task.postGuidelines}
                           </p>
                         </div>
                       )}
 
                       {task.targetSubreddit && (
-                        <div className="pt-2 border-t border-white/5 flex gap-2">
+                        <div className="pt-2 border-t border-slate-200 flex gap-2">
                           <button
                             type="button"
                             onClick={(e) => {
@@ -630,9 +629,9 @@ export const Marketplace: React.FC = () => {
                               const cleanSub = sub.startsWith('r/') ? sub.substring(2) : sub;
                               window.open(`https://reddit.com/r/${cleanSub}`, '_blank');
                             }}
-                            className="w-full py-1.5 bg-zinc-900 border border-white/5 hover:bg-zinc-850 hover:border-purple-500/25 text-[10px] font-black text-purple-450 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer"
+                            className="w-full py-1.5 bg-white border border-slate-200 hover:bg-slate-50 hover:border-purple-500/25 text-[10px] font-black text-purple-600 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer"
                           >
-                            <ExternalLink className="w-3 h-3 text-purple-400 animate-pulse" /> Open Subreddit
+                            <ExternalLink className="w-3 h-3 text-purple-600 animate-pulse" /> Open Subreddit
                           </button>
                         </div>
                       )}
@@ -641,17 +640,17 @@ export const Marketplace: React.FC = () => {
 
                   {/* Comment tasks experience inside card */}
                   {task.type === 'comment' && (
-                    <div className="mt-2.5 mb-4 bg-zinc-950/70 border border-white/5 rounded-xl p-3 space-y-2.5 text-[11px] select-text">
+                    <div className="mt-2.5 mb-4 bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2.5 text-[11px] select-text">
                       {task.postUrlToCommentOn && (
                         <div className="space-y-1">
-                          <span className="text-[9px] text-zinc-500 uppercase tracking-widest block font-extrabold">Reddit Post Link</span>
+                          <span className="text-[9px] text-zinc-400 uppercase tracking-widest block font-extrabold">Reddit Post Link</span>
                           <div className="flex items-center justify-between gap-3">
                             <a
                               href={task.postUrlToCommentOn}
                               target="_blank"
                               rel="noreferrer"
                               onClick={(e) => e.stopPropagation()}
-                              className="text-blue-400 font-mono text-[10px] hover:underline truncate max-w-[120px] block font-bold"
+                              className="text-blue-600 font-mono text-[10px] hover:underline truncate max-w-[120px] block font-bold"
                             >
                               {task.postUrlToCommentOn}
                             </a>
@@ -661,7 +660,7 @@ export const Marketplace: React.FC = () => {
                                 e.stopPropagation();
                                 handleCopyText(task.postUrlToCommentOn || '', 'Post URL copied');
                               }}
-                              className="text-[9px] text-purple-400 hover:text-purple-300 font-extrabold flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-2 py-0.5 rounded transition-all border border-purple-500/5 cursor-pointer shrink-0 font-sans"
+                              className="text-[9px] text-purple-650 hover:text-purple-700 font-extrabold flex items-center gap-1 bg-white hover:bg-purple-50 px-2 py-0.5 rounded transition-all border border-slate-200 cursor-pointer shrink-0"
                             >
                               <Copy className="w-2.5 h-2.5" /> Copy Link
                             </button>
@@ -670,9 +669,9 @@ export const Marketplace: React.FC = () => {
                       )}
 
                       {task.commentGuidelines && (
-                        <div className="space-y-1 border-t border-white/5 pt-2">
+                        <div className="space-y-1 border-t border-slate-200 pt-2">
                           <div className="flex justify-between items-center">
-                            <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-extrabold">Comment Text</span>
+                            <span className="text-[9px] text-zinc-400 uppercase tracking-widest font-extrabold">Comment Text</span>
                             <div className="flex gap-1.5">
                               <button
                                 type="button"
@@ -680,7 +679,7 @@ export const Marketplace: React.FC = () => {
                                   e.stopPropagation();
                                   handleCopyText(task.commentGuidelines || '', 'Comment copied successfully');
                                 }}
-                                className="text-[9px] text-purple-400 hover:text-purple-300 font-extrabold flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-2 py-0.5 rounded transition-all border border-purple-500/5 cursor-pointer font-sans"
+                                className="text-[9px] text-purple-655 hover:text-purple-700 font-extrabold flex items-center gap-1 bg-white hover:bg-purple-50 px-2 py-0.5 rounded transition-all border border-slate-200 cursor-pointer"
                               >
                                 <Copy className="w-2.5 h-2.5" /> Copy Comment
                               </button>
@@ -694,29 +693,29 @@ export const Marketplace: React.FC = () => {
                                     `Task Instructions: ${task.description || ''}`;
                                   handleCopyText(content, 'Task copied successfully');
                                 }}
-                                className="text-[9px] text-pink-400 hover:text-pink-300 font-extrabold flex items-center gap-1 bg-pink-500/10 hover:bg-pink-500/20 px-2 py-0.5 rounded transition-all border border-pink-500/5 cursor-pointer"
+                                className="text-[9px] text-pink-600 hover:text-pink-700 font-extrabold flex items-center gap-1 bg-white hover:bg-pink-50 px-2 py-0.5 rounded transition-all border border-slate-200 cursor-pointer"
                               >
                                 <Copy className="w-2.5 h-2.5" /> Copy All
                               </button>
                             </div>
                           </div>
-                          <p className="text-zinc-300 font-normal leading-normal select-text break-words line-clamp-2 hover:line-clamp-none transition-all duration-300">
+                          <p className="text-zinc-600 font-normal leading-normal select-text break-words line-clamp-2 hover:line-clamp-none transition-all duration-300">
                             {task.commentGuidelines}
                           </p>
                         </div>
                       )}
 
                       {task.postUrlToCommentOn && (
-                        <div className="pt-2 border-t border-white/5 flex gap-2">
+                        <div className="pt-2 border-t border-slate-200 flex gap-2">
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               window.open(task.postUrlToCommentOn, '_blank');
                             }}
-                            className="w-full py-1.5 bg-zinc-900 border border-white/5 hover:bg-zinc-850 hover:border-purple-500/25 text-[10px] font-black text-purple-450 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer"
+                            className="w-full py-1.5 bg-white border border-slate-205 hover:bg-slate-50 text-[10px] font-black text-purple-600 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer"
                           >
-                            <ExternalLink className="w-3 h-3 text-purple-400 animate-pulse" /> Open Post
+                            <ExternalLink className="w-3 h-3 text-purple-600 animate-pulse" /> Open Post
                           </button>
                         </div>
                       )}
@@ -724,19 +723,19 @@ export const Marketplace: React.FC = () => {
                   )}
 
                   <div className="space-y-1.5 mb-6 text-[11px] font-semibold text-zinc-500 select-text">
-                    <div className="flex justify-between border-b border-white/5 pb-1">
+                    <div className="flex justify-between border-b border-slate-100 pb-1">
                       <span>Deadline Date:</span>
-                      <span className="text-zinc-400">{task.deadline}</span>
+                      <span className="text-zinc-650 font-mono">{task.deadline}</span>
                     </div>
 
                     {isTaskSpecial && !isLocked && (
-                      <div className="mt-2.5 text-[9px] text-emerald-400 font-bold tracking-wide flex items-center gap-1 bg-emerald-500/5 p-1.5 rounded-lg border border-emerald-500/10 select-none">
+                      <div className="mt-2.5 text-[9px] text-emerald-600 font-bold tracking-wide flex items-center gap-1 bg-emerald-50 p-1.5 rounded-lg border border-emerald-205 select-none font-sans">
                         <CheckCircle className="w-3.5 h-3.5" /> ⭐ You're eligible for this special task
                       </div>
                     )}
 
                     {isClaimedByMe && (
-                      <div className="mt-3 bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[10px] py-2 px-3 rounded-xl flex items-center justify-between font-mono animate-pulse">
+                      <div className="mt-3 bg-purple-50 border border-purple-200 text-purple-700 text-[10px] py-2 px-3 rounded-xl flex items-center justify-between font-mono animate-pulse">
                         <span>⏰ Time Remaining to Submit:</span>
                         <span className="font-extrabold text-white font-mono bg-purple-600 px-2 py-0.5 rounded">
                           {formatMinsSecs(secondsRemaining)} mins
@@ -744,29 +743,28 @@ export const Marketplace: React.FC = () => {
                       </div>
                     )}
                   </div>
-                </div>
 
-                <div className="border-t border-white/5 pt-4 flex justify-between items-center bg-transparent mt-auto select-none">
+                <div className="border-t border-slate-100 pt-4 flex justify-between items-center bg-transparent mt-auto select-none">
                   <div>
-                    <span className="text-[9px] text-zinc-500 font-bold block uppercase tracking-wider">Earning payout</span>
-                    <span className="text-base font-black text-white font-mono">
+                    <span className="text-[9px] text-zinc-400 font-bold block uppercase tracking-wider">Earning payout</span>
+                    <span className="text-base font-extrabold text-zinc-900 font-mono">
                       ${(task.reward * settings.globalMultiplier).toFixed(2)} USDT
                     </span>
                     {task.isSpecial && (
-                      <span className="text-[8px] text-amber-400 block tracking-wider uppercase font-bold">🔒 Requires {getTierRequirementText(task.minKarmaRequired)}</span>
+                      <span className="text-[8px] text-amber-600 block tracking-wider uppercase font-bold text-amber-500">🔒 Requires {getTierRequirementText(task.minKarmaRequired)}</span>
                     )}
                   </div>
 
                   {userSub ? (
                     <div className={`px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1 border ${
-                      (userSub.status === 'Client Approved (Payment Released)' || userSub.status === 'Approved') ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400' :
-                      (userSub.status === 'Pending' || userSub.status === 'Under Admin Review') ? 'bg-yellow-500/10 border-yellow-500/25 text-yellow-500 animate-pulse' :
-                      userSub.status === 'Admin Approved (Waiting for Client Approval)' ? 'bg-indigo-500/15 border-indigo-500/25 text-indigo-400 font-bold' :
-                      'bg-red-500/10 border-red-500/25 text-red-500'
+                      (userSub.status === 'Client Approved (Payment Released)' || userSub.status === 'Approved') ? 'bg-emerald-50 border-emerald-200 text-emerald-600' :
+                      (userSub.status === 'Pending' || userSub.status === 'Under Admin Review') ? 'bg-amber-50 border-amber-200 text-amber-600 animate-pulse' :
+                      userSub.status === 'Admin Approved (Waiting for Client Approval)' ? 'bg-indigo-50 border-indigo-200 text-indigo-700 font-semibold' :
+                      'bg-red-50 border-red-250 text-red-500'
                     }`}>
                       {(userSub.status === 'Client Approved (Payment Released)' || userSub.status === 'Approved') && <CheckCircle className="w-3.5 h-3.5" />}
                       {(userSub.status === 'Pending' || userSub.status === 'Under Admin Review') && <Clock className="w-3.5 h-3.5" />}
-                      {userSub.status === 'Admin Approved (Waiting for Client Approval)' && <Clock className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />}
+                      {userSub.status === 'Admin Approved (Waiting for Client Approval)' && <Clock className="w-3.5 h-3.5 text-indigo-600 animate-pulse" />}
                       {(userSub.status === 'Client Rejected' || userSub.status === 'Rejected') && <ShieldAlert className="w-3.5 h-3.5" />}
                       {
                         (userSub.status === 'Client Approved (Payment Released)' || userSub.status === 'Approved') ? 'Approved' :
@@ -776,7 +774,7 @@ export const Marketplace: React.FC = () => {
                       }
                     </div>
                   ) : slotsLeft === 0 ? (
-                    <div className="px-3 py-1.5 bg-zinc-800 text-zinc-500 text-[10px] font-bold rounded-lg border border-zinc-700/50">
+                    <div className="px-3 py-1.5 bg-slate-100 text-zinc-400 text-[10px] font-bold rounded-lg border border-slate-200">
                       Slots limit Taken
                     </div>
                   ) : isClaimedByMe ? (
@@ -785,8 +783,8 @@ export const Marketplace: React.FC = () => {
                       onClick={() => handleOpenSubmission(task)}
                       className={`px-4 py-2 border text-xs font-bold rounded-xl scroll-smooth transition-all cursor-pointer ${
                         isPending 
-                          ? 'border-zinc-850 bg-zinc-950 text-zinc-650 cursor-not-allowed' 
-                          : 'border-yellow-500 bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500 hover:text-black font-extrabold'
+                          ? 'border-slate-205 bg-slate-100 text-zinc-400 cursor-not-allowed' 
+                          : 'border-amber-500 bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white font-extrabold'
                       }`}
                     >
                       Submit Proof
@@ -794,7 +792,7 @@ export const Marketplace: React.FC = () => {
                   ) : isCooldownActive && !isUserAdmin ? (
                     <button 
                       disabled
-                      className="px-4 py-2 bg-zinc-950 border border-zinc-850 text-zinc-500 text-xs font-bold rounded-xl cursor-not-allowed leading-tight"
+                      className="px-4 py-2 bg-slate-100 border border-slate-250 text-zinc-400 text-xs font-bold rounded-xl cursor-not-allowed leading-tight"
                     >
                       Cooldown ⏳ {cooldownString || '00:00'}
                     </button>
@@ -804,8 +802,8 @@ export const Marketplace: React.FC = () => {
                       onClick={() => handleClaimTask(task.id)}
                       className={`px-4 py-2 border text-xs font-bold rounded-xl scroll-smooth transition-all cursor-pointer ${
                         isPending 
-                          ? 'border-zinc-850 bg-zinc-950 text-zinc-650 cursor-not-allowed' 
-                          : claimLoading === task.id ? 'border-purple-500 bg-purple-500/10 text-white animate-pulse' : 'border-purple-500 bg-purple-600/15 text-purple-400 hover:bg-purple-600 hover:text-white'
+                          ? 'border-slate-200 bg-slate-100 text-zinc-400 cursor-not-allowed' 
+                          : claimLoading === task.id ? 'border-purple-500 bg-purple-50 text-purple-700 animate-pulse' : 'border-purple-200 bg-purple-50 text-purple-600 hover:bg-purple-600 hover:text-white hover:border-purple-600 hover:shadow-sm'
                       }`}
                     >
                       {claimLoading === task.id ? 'Claiming...' : 'Claim Task'}
@@ -820,53 +818,53 @@ export const Marketplace: React.FC = () => {
 
       {/* Modal submission proof form */}
       {selectedTask && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg bg-zinc-900 border border-white/10 p-6 rounded-3xl space-y-6 relative max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg bg-white border border-slate-200 p-6 rounded-3xl space-y-6 relative max-h-[90vh] overflow-y-auto shadow-2xl">
             
             {/* Closes */}
             <button 
               onClick={() => setSelectedTask(null)}
-              className="absolute top-4 right-4 text-zinc-500 hover:text-white cursor-pointer px-2 py-1 bg-zinc-950 rounded-lg text-xs hover:bg-zinc-800 font-bold"
+              className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-800 cursor-pointer px-2.5 py-1 bg-slate-100 hover:bg-slate-200/90 rounded-lg text-xs font-bold transition-all"
             >
               Cancel
             </button>
 
             <div className="space-y-1">
-              <span className="text-[10px] font-bold text-purple-400 uppercase tracking-widest block">Reserve Campaign Slot</span>
-              <h2 className="text-lg font-extrabold text-white leading-tight">{selectedTask.title}</h2>
-              <span className="text-xs bg-zinc-950 border border-zinc-850 px-2 py-0.5 rounded text-zinc-500 font-bold font-mono">
+              <span className="text-[10px] font-bold text-purple-600 uppercase tracking-widest block">Reserve Campaign Slot</span>
+              <h2 className="text-lg font-extrabold text-zinc-900 leading-tight font-display">{selectedTask.title}</h2>
+              <span className="text-xs bg-purple-50 border border-purple-150 px-2.5 py-0.5 rounded text-purple-700 font-bold font-mono">
                 payout: ${(selectedTask.reward * settings.globalMultiplier).toFixed(2)} USDT
               </span>
             </div>
 
             {successSubmission ? (
               <div className="p-8 text-center space-y-4">
-                <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/35 text-emerald-400 flex items-center justify-center mx-auto">
+                <div className="w-12 h-12 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center mx-auto">
                   <CheckCircle className="w-6 h-6" />
                 </div>
-                <h3 className="text-base font-extrabold text-white">Proof Submitted Safely!</h3>
-                <p className="text-zinc-500 text-xs">Administrators will audit your Reddit activity inside our Control Panel soon!</p>
+                <h3 className="text-base font-extrabold text-zinc-900 font-display">Proof Submitted Safely!</h3>
+                <p className="text-zinc-500 text-xs font-semibold">Administrators will audit your Reddit activity inside our Control Panel soon!</p>
               </div>
             ) : (
-              <form onSubmit={handleProofSubmit} className="space-y-4 text-xs font-semibold text-zinc-300">
+              <form onSubmit={handleProofSubmit} className="space-y-4 text-xs font-semibold text-zinc-700">
                 {errorMessage && (
-                  <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 text-xs rounded-xl flex items-center gap-2 mb-2">
+                  <div className="p-3 bg-red-50 border border-red-200 text-red-600 text-xs rounded-xl flex items-center gap-2 mb-2 font-bold animate-pulse">
                     <ShieldAlert className="w-4 h-4 shrink-0" />
                     <span>{errorMessage}</span>
                   </div>
                 )}
 
                 {/* Left/Right Guideline breakdown */}
-                <div className="bg-zinc-950 border border-white/5 rounded-2xl p-4 space-y-3.5">
-                  <span className="text-[10px] text-zinc-500 block uppercase tracking-wider font-bold border-b border-white/5 pb-1.5">Campaign Details & Copy Panel</span>
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3.5">
+                  <span className="text-[10px] text-zinc-450 block uppercase tracking-wider font-bold border-b border-slate-200 pb-1.5 font-sans">Campaign Details & Copy Panel</span>
                   
                   {selectedTask.type === 'post' ? (
-                    <div className="space-y-3">
+                    <div className="space-y-3 font-semibold text-zinc-700">
                       {selectedTask.targetSubreddit && (
-                        <div className="flex justify-between items-center bg-zinc-900/60 p-2.5 rounded-xl border border-white/5">
+                        <div className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-slate-205">
                           <div>
-                            <span className="text-[9px] text-zinc-500 block uppercase tracking-widest font-black">Subreddit</span>
-                            <span className="text-purple-400 font-extrabold text-xs">
+                            <span className="text-[9px] text-zinc-400 block uppercase tracking-widest font-black">Subreddit</span>
+                            <span className="text-purple-650 font-extrabold text-xs">
                               {selectedTask.targetSubreddit.startsWith('r/') ? selectedTask.targetSubreddit : 'r/' + selectedTask.targetSubreddit}
                             </span>
                           </div>
@@ -885,31 +883,31 @@ export const Marketplace: React.FC = () => {
                       )}
 
                       {selectedTask.requiredPostTitle && (
-                        <div className="space-y-1 bg-zinc-900 border border-white/5 p-2.5 rounded-xl">
+                        <div className="space-y-1 bg-white border border-slate-205 p-2.5 rounded-xl">
                           <div className="flex justify-between items-center">
-                            <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-extrabold">Reddit Post Title</span>
+                            <span className="text-[9px] text-zinc-400 uppercase tracking-widest font-extrabold">Reddit Post Title</span>
                             <button
                               type="button"
                               onClick={() => handleCopyText(selectedTask.title || '', 'Task title copied')}
-                              className="text-[9px] text-purple-400 hover:text-purple-300 font-extrabold flex items-center gap-1 bg-purple-500/15 px-2 py-0.5 rounded cursor-pointer transition-all border border-purple-500/10"
+                              className="text-[9px] text-purple-650 hover:text-purple-700 font-extrabold flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded cursor-pointer transition-all border border-slate-200"
                             >
                               <Copy className="w-2.5 h-2.5" /> Copy Title
                             </button>
                           </div>
-                          <p className="text-white font-mono font-bold text-[11px] select-text break-words">
+                          <p className="text-zinc-850 font-mono font-bold text-[11px] select-text break-words">
                             "{selectedTask.requiredPostTitle}"
                           </p>
                         </div>
                       )}
 
-                      <div className="space-y-1 bg-zinc-900 border border-white/5 p-2.5 rounded-xl">
+                      <div className="space-y-1 bg-white border border-slate-205 p-2.5 rounded-xl">
                         <div className="flex justify-between items-center">
-                          <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-extrabold">Post Body / Content</span>
+                          <span className="text-[9px] text-zinc-400 uppercase tracking-widest font-extrabold">Post Body / Content</span>
                           <div className="flex gap-1.5">
                             <button
                               type="button"
                               onClick={() => handleCopyText(selectedTask.description || '', 'Task body copied')}
-                              className="text-[9px] text-purple-400 hover:text-purple-300 font-extrabold flex items-center gap-1 bg-purple-500/15 px-2 py-0.5 rounded cursor-pointer transition-all border border-purple-500/10"
+                              className="text-[9px] text-purple-650 hover:text-purple-700 font-extrabold flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded cursor-pointer transition-all border border-slate-200"
                             >
                               <Copy className="w-2.5 h-2.5" /> Copy Body
                             </button>
@@ -924,37 +922,37 @@ export const Marketplace: React.FC = () => {
                                   `Body:\n${selectedTask.description || ''}`;
                                 handleCopyText(content, 'Task copied successfully');
                               }}
-                              className="text-[9px] text-pink-400 hover:text-pink-300 font-extrabold flex items-center gap-1 bg-pink-500/15 px-2 py-0.5 rounded cursor-pointer transition-all border border-pink-500/10"
+                              className="text-[9px] text-pink-600 hover:text-pink-700 font-extrabold flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded cursor-pointer transition-all border border-slate-200"
                             >
                               <Copy className="w-2.5 h-2.5" /> Copy All
                             </button>
                           </div>
                         </div>
-                        <p className="text-zinc-300 font-normal text-[11px] select-text break-words whitespace-pre-wrap leading-relaxed">
+                        <p className="text-zinc-600 font-normal text-[11px] select-text break-words whitespace-pre-wrap leading-relaxed">
                           {selectedTask.description}
                         </p>
                       </div>
 
                       {selectedTask.postGuidelines && (
-                        <div className="space-y-1 bg-zinc-900 border border-white/5 p-2.5 rounded-xl">
-                          <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-extrabold block text-zinc-400">Task Guidelines</span>
-                          <p className="text-zinc-400 font-normal text-[11px] select-text break-words whitespace-pre-wrap leading-relaxed">
+                        <div className="space-y-1 bg-white border border-slate-205 p-2.5 rounded-xl">
+                          <span className="text-[9px] text-zinc-400 uppercase tracking-widest font-extrabold block text-zinc-400">Task Guidelines</span>
+                          <p className="text-zinc-500 font-normal text-[11px] select-text break-words whitespace-pre-wrap leading-relaxed">
                             {selectedTask.postGuidelines}
                           </p>
                         </div>
                       )}
                     </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-3 font-semibold text-zinc-700">
                       {selectedTask.postUrlToCommentOn && (
-                        <div className="flex justify-between items-center bg-zinc-900/60 p-2.5 rounded-xl border border-white/5">
+                        <div className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-slate-205">
                           <div className="min-w-0 flex-1 mr-2">
-                            <span className="text-[9px] uppercase tracking-widest text-zinc-500 block font-black">Target Reddit Post</span>
+                            <span className="text-[9px] uppercase tracking-widest text-zinc-400 block font-black">Target Reddit Post</span>
                             <a
                               href={selectedTask.postUrlToCommentOn}
                               target="_blank"
                               rel="noreferrer"
-                              className="text-xs font-bold text-blue-400 hover:underline truncate block"
+                              className="text-xs font-bold text-blue-600 hover:underline truncate block"
                             >
                               {selectedTask.postUrlToCommentOn}
                             </a>
@@ -970,32 +968,32 @@ export const Marketplace: React.FC = () => {
                       )}
 
                       {selectedTask.postUrlToCommentOn && (
-                        <div className="space-y-1 bg-zinc-900 border border-white/5 p-2.5 rounded-xl">
+                        <div className="space-y-1 bg-white border border-slate-205 p-2.5 rounded-xl">
                           <div className="flex justify-between items-center">
-                            <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-extrabold">Post URL Link</span>
+                            <span className="text-[9px] text-zinc-400 uppercase tracking-widest font-extrabold">Post URL Link</span>
                             <button
                               type="button"
                               onClick={() => handleCopyText(selectedTask.postUrlToCommentOn || '', 'Post URL copied')}
-                              className="text-[9px] text-purple-400 hover:text-purple-300 font-extrabold flex items-center gap-1 bg-purple-500/15 px-2 py-0.5 rounded cursor-pointer transition-all border border-purple-500/10"
+                              className="text-[9px] text-purple-650 hover:text-purple-700 font-extrabold flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded cursor-pointer transition-all border border-slate-200"
                             >
                               <Copy className="w-2.5 h-2.5" /> Copy Post URL
                             </button>
                           </div>
-                          <p className="text-white font-mono text-[10px] select-text break-all">
+                          <p className="text-zinc-800 font-mono text-[10px] select-text break-all">
                             {selectedTask.postUrlToCommentOn}
                           </p>
                         </div>
                       )}
 
                       {selectedTask.commentGuidelines && (
-                        <div className="space-y-1 bg-zinc-900 border border-white/5 p-2.5 rounded-xl">
+                        <div className="space-y-1 bg-white border border-slate-205 p-2.5 rounded-xl">
                           <div className="flex justify-between items-center">
-                            <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-extrabold">Comment Text / Guidelines</span>
-                            <div className="flex gap-1.5">
+                            <span className="text-[9px] text-zinc-400 uppercase tracking-widest font-extrabold">Comment Text / Guidelines</span>
+                            <div className="flex gap-1.55">
                               <button
                                 type="button"
                                 onClick={() => handleCopyText(selectedTask.commentGuidelines || '', 'Comment copied successfully')}
-                                className="text-[9px] text-purple-400 hover:text-purple-300 font-extrabold flex items-center gap-1 bg-purple-500/15 px-2 py-0.5 rounded cursor-pointer transition-all border border-purple-500/10 font-sans"
+                                className="text-[9px] text-purple-650 hover:text-purple-700 font-extrabold flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded cursor-pointer transition-all border border-slate-200"
                               >
                                 <Copy className="w-2.5 h-2.5" /> Copy Comment
                               </button>
@@ -1008,13 +1006,13 @@ export const Marketplace: React.FC = () => {
                                     `Task Instructions: ${selectedTask.description || ''}`;
                                   handleCopyText(content, 'Task copied successfully');
                                 }}
-                                className="text-[9px] text-pink-400 hover:text-pink-300 font-extrabold flex items-center gap-1 bg-pink-500/15 px-2 py-0.5 rounded cursor-pointer transition-all border border-pink-500/10 font-sans"
+                                className="text-[9px] text-pink-600 hover:text-pink-700 font-extrabold flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded cursor-pointer transition-all border border-slate-200 font-sans"
                               >
                                 <Copy className="w-2.5 h-2.5" /> Copy All
                               </button>
                             </div>
                           </div>
-                          <p className="text-zinc-300 text-[11px] select-text break-words whitespace-pre-wrap leading-relaxed">
+                          <p className="text-zinc-600 text-[11px] select-text break-words whitespace-pre-wrap leading-relaxed">
                             {selectedTask.commentGuidelines}
                           </p>
                         </div>
@@ -1025,21 +1023,21 @@ export const Marketplace: React.FC = () => {
 
                 {/* Proof fields */}
                 <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">Reddit Proof Link</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1.5 font-sans">Reddit Proof Link</label>
                   <input 
                     type="text" 
                     value={redditProofLink}
                     onChange={(e) => setRedditProofLink(e.target.value)}
                     placeholder="https://reddit.com/r/..." 
-                    className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-3 py-2.5 rounded-xl focus:border-purple-500 focus:outline-none placeholder-zinc-600"
+                    className="w-full text-xs text-zinc-800 bg-slate-50 border border-slate-205 px-3 py-2.5 rounded-xl focus:border-purple-500 focus:outline-none placeholder-zinc-400 font-semibold"
                   />
-                  <p className="text-[10px] text-zinc-500 font-semibold mt-1">Paste the direct link to your Reddit post or comment</p>
+                  <p className="text-[10px] text-zinc-400 font-semibold mt-1">Paste the direct link to your Reddit post or comment</p>
                 </div>
 
                 <button 
                   type="submit"
                   disabled={submitting}
-                  className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-500 text-xs font-black text-white rounded-xl shadow-lg hover:opacity-95 cursor-pointer disabled:opacity-50"
+                  className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-xs font-black text-white rounded-xl shadow-md hover:shadow-lg hover:opacity-95 cursor-pointer disabled:opacity-50 transition-all"
                 >
                   {submitting ? 'Transmitting proof payloads...' : 'Submit Proof'}
                 </button>
@@ -1051,8 +1049,8 @@ export const Marketplace: React.FC = () => {
       )}
 
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-[100] bg-zinc-950/95 border border-purple-500/50 text-white text-xs px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 font-bold animate-bounce backdrop-blur-md select-none">
-          <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+        <div className="fixed bottom-6 right-6 z-[100] bg-white border border-purple-500/20 text-zinc-900 text-xs px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 font-bold animate-bounce backdrop-blur-md select-none font-sans">
+          <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>{toastMessage}</span>
         </div>
       )}
