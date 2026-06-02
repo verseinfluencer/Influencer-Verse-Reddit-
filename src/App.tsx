@@ -107,11 +107,11 @@ function MainAppContent() {
         case 'admin':
           return <AdminDashboard />;
         case 'tickets':
-          return <SupportTickets />;
+          return <SupportTickets onNavigate={onNavigate} />;
         case 'profile':
-          return <UserProfile />;
+          return <UserProfile onNavigate={onNavigate} />;
         case 'settings':
-          return <SettingsPage />;
+          return <SettingsPage onNavigate={onNavigate} />;
         case 'faq':
           return <FAQPage />;
         case 'about':
@@ -147,11 +147,11 @@ function MainAppContent() {
       case 'leaderboard':
         return <Leaderboard />;
       case 'profile':
-        return <UserProfile />;
+        return <UserProfile onNavigate={onNavigate} />;
       case 'settings':
-        return <SettingsPage />;
+        return <SettingsPage onNavigate={onNavigate} />;
       case 'tickets':
-        return <SupportTickets />;
+        return <SupportTickets onNavigate={onNavigate} />;
       case 'referrals':
         return <ReferralProgramInfo />;
       case 'about':
