@@ -70,7 +70,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
 
   const isPendingUser = currentUser?.status === 'Pending';
   const isPublic = !currentUser;
-  const isLightHeader = ['home', 'about', 'faq', 'contact', 'trust', 'terms', 'referrals', 'login', 'signup', 'client-login', 'client-register', 'dashboard', 'marketplace', 'wallet', 'leaderboard', 'profile', 'settings'].includes(currentPage);
+  const isLightHeader = ['home', 'about', 'faq', 'contact', 'trust', 'terms', 'referrals', 'login', 'signup', 'client-login', 'client-register', 'dashboard', 'marketplace', 'wallet', 'leaderboard', 'profile', 'settings', 'tickets', 'admin', 'client-dashboard'].includes(currentPage);
 
   const navBgClass = isLightHeader
     ? 'sticky top-0 z-50 w-full border-b backdrop-blur-md bg-white/90 border-slate-100 text-zinc-900 shadow-[0_2px_15px_rgba(0,0,0,0.02)] select-none transition-all duration-300'

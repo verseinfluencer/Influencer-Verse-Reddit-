@@ -5,6 +5,7 @@ interface LogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
   withText?: boolean;
   textClassName?: string;
+  theme?: 'light' | 'dark' | 'auto';
 }
 
 export const Logo: React.FC<LogoProps> = ({
@@ -12,6 +13,7 @@ export const Logo: React.FC<LogoProps> = ({
   size = 'md',
   withText = false,
   textClassName = '',
+  theme = 'auto',
 }) => {
   // Determine pixel sizes
   const dimensions = {
@@ -20,6 +22,33 @@ export const Logo: React.FC<LogoProps> = ({
     lg: { box: 'w-14 h-14', text: 'text-xl' },
     xl: { box: 'w-24 h-24', text: 'text-3xl' },
   }[size];
+
+  const [isLight, setIsLight] = React.useState(false);
+
+  React.useEffect(() => {
+    if (theme === 'light') {
+      setIsLight(true);
+      return;
+    }
+    if (theme === 'dark') {
+      setIsLight(false);
+      return;
+    }
+
+    const checkTheme = () => {
+      setIsLight(document.documentElement.classList.contains('light'));
+    };
+
+    checkTheme();
+
+    const observer = new MutationObserver(checkTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+
+    return () => observer.disconnect();
+  }, [theme]);
 
   return (
     <div className={`flex items-center gap-3 select-none ${className}`} id="influencer-verse-brand-logo">
@@ -126,9 +155,9 @@ export const Logo: React.FC<LogoProps> = ({
         <div className="flex flex-col justify-center leading-none">
           <span 
             className={`font-black tracking-[0.25em] uppercase font-sans ${dimensions.text} ${
-              (textClassName && textClassName.includes('text-'))
-                ? textClassName
-                : `text-white ${textClassName || ''}`
+              isLight 
+                ? 'text-[#111111]' 
+                : 'text-white'
             }`}
           >
             Influencer

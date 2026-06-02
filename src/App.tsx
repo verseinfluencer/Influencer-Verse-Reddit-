@@ -30,7 +30,7 @@ function MainAppContent() {
 
   // Sync light/dark theme dynamically on the root document element
   React.useEffect(() => {
-    const lightPages = ['home', 'about', 'faq', 'contact', 'trust', 'terms', 'referrals', 'login', 'signup', 'client-login', 'client-register', 'dashboard', 'marketplace', 'wallet', 'leaderboard', 'profile', 'settings', 'tickets'];
+    const lightPages = ['home', 'about', 'faq', 'contact', 'trust', 'terms', 'referrals', 'login', 'signup', 'client-login', 'client-register', 'dashboard', 'marketplace', 'wallet', 'leaderboard', 'profile', 'settings', 'tickets', 'admin', 'client-dashboard'];
     if (lightPages.includes(currentPage)) {
       document.documentElement.classList.add('light');
     } else {
@@ -171,7 +171,7 @@ function MainAppContent() {
     }
   };
 
-  const isLightPage = ['home', 'about', 'faq', 'contact', 'trust', 'terms', 'referrals', 'login', 'signup', 'client-login', 'client-register', 'dashboard', 'marketplace', 'wallet', 'leaderboard', 'profile', 'settings', 'tickets'].includes(currentPage);
+  const isLightPage = ['home', 'about', 'faq', 'contact', 'trust', 'terms', 'referrals', 'login', 'signup', 'client-login', 'client-register', 'dashboard', 'marketplace', 'wallet', 'leaderboard', 'profile', 'settings', 'tickets', 'admin', 'client-dashboard'].includes(currentPage);
   const isPublicLightFooter = ['home', 'about', 'faq', 'contact', 'trust', 'terms', 'referrals', 'login', 'signup', 'client-login', 'client-register'].includes(currentPage);
 
   return (
