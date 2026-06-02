@@ -9,11 +9,11 @@ interface FooterProps {
 
 export const Footer: React.FC<FooterProps> = ({ onNavigate, isLightPage = false }) => {
   // Reusable hover animate classes satisfying: text transition, small upward movement, smooth 300ms transitions
-  const linkClass = "hover:text-indigo-600 hover:-translate-y-0.5 transform transition-all duration-300 text-xs text-zinc-500 font-semibold cursor-pointer inline-block text-left";
+  const linkClass = "hover:text-[#7C3AED] hover:-translate-y-0.5 transform transition-all duration-300 text-xs text-[#374151] font-semibold cursor-pointer inline-block text-left";
 
   if (isLightPage) {
     return (
-      <footer className="bg-white border-t border-slate-200 text-zinc-500 text-sm mt-auto select-none font-sans relative z-10">
+      <footer className="bg-white border-t border-[#E5E7EB] text-[#4B5563] text-sm mt-auto select-none font-sans relative z-10" id="global-light-footer">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12">
             
@@ -24,19 +24,19 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, isLightPage = false 
                 className="cursor-pointer inline-block" 
                 id="footer-logo"
               >
-                <Logo size="sm" withText={true} textClassName="text-zinc-905 font-black" />
+                <Logo size="sm" withText={true} textClassName="text-[#111827] font-black" />
               </div>
-              <p className="text-xs text-zinc-400 max-w-sm leading-relaxed font-sans font-medium">
+              <p className="text-xs text-[#6B7280] max-w-sm leading-relaxed font-sans font-medium">
                 The premier Web3 Reddit influencer network where Reddit micro-influencers connect directly with decentralized brands. Earn USDT rewards securely via instant BEP20 payouts.
               </p>
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-indigo-50 border border-indigo-125 rounded-full text-[10px] font-bold text-indigo-600 w-fit">
-                <ShieldCheck className="w-3.5 h-3.5" /> Direct BEP20 BSC Instant Payouts
+              <div className="flex items-center gap-1.5 px-3 py-1 bg-purple-50 border border-purple-100 rounded-full text-[10px] font-bold text-[#7C3AED] w-fit">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#7C3AED]" /> Direct BEP20 BSC Instant Payouts
               </div>
             </div>
 
             {/* Column 2 - Platform */}
             <div className="md:col-span-2 space-y-4">
-              <h3 className="font-extrabold text-[11px] tracking-wider text-zinc-900 uppercase font-sans">Platform</h3>
+              <h3 className="font-extrabold text-[11px] tracking-wider text-[#111827] uppercase font-sans">Platform</h3>
               <ul className="space-y-3 font-sans">
                 <li>
                   <button onClick={() => onNavigate('marketplace')} className={linkClass}>
@@ -63,7 +63,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, isLightPage = false 
 
             {/* Column 3 - Company */}
             <div className="md:col-span-3 space-y-4">
-              <h3 className="font-extrabold text-[11px] tracking-wider text-zinc-900 uppercase font-sans">Company</h3>
+              <h3 className="font-extrabold text-[11px] tracking-wider text-[#111827] uppercase font-sans">Company</h3>
               <ul className="space-y-3 font-sans">
                 <li>
                   <button onClick={() => onNavigate('about')} className={linkClass}>
@@ -95,7 +95,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, isLightPage = false 
 
             {/* Column 4 - Community */}
             <div className="md:col-span-3 space-y-4">
-              <h3 className="font-extrabold text-[11px] tracking-wider text-zinc-900 uppercase font-sans">Community</h3>
+              <h3 className="font-extrabold text-[11px] tracking-wider text-[#111827] uppercase font-sans">Community</h3>
               <ul className="space-y-3 font-sans">
                 <li>
                   <a 
@@ -123,14 +123,14 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, isLightPage = false 
           </div>
 
           {/* Bottom Copyright Section */}
-          <div className="border-t border-slate-100 mt-12 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-zinc-400 font-sans">
-            <div className="font-medium text-zinc-450">
+          <div className="border-t border-[#E5E7EB] mt-12 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-[#6B7280] font-sans">
+            <div className="font-medium text-[#6B7280]">
               &copy; 2026 Influencer Verse. All rights reserved.
             </div>
-            <div className="flex gap-4 font-semibold">
-              <button onClick={() => onNavigate('terms')} className="hover:text-indigo-650 transition-colors duration-200 cursor-pointer">Privacy Policy</button>
-              <span className="text-zinc-200">&middot;</span>
-              <button onClick={() => onNavigate('terms')} className="hover:text-indigo-650 transition-colors duration-200 cursor-pointer">Terms of Service</button>
+            <div className="flex gap-4 font-semibold text-[#374151]">
+              <button onClick={() => onNavigate('terms')} className="hover:text-[#7C3AED] transition-colors duration-200 cursor-pointer">Privacy Policy</button>
+              <span className="text-[#E5E7EB]">&middot;</span>
+              <button onClick={() => onNavigate('terms')} className="hover:text-[#7C3AED] transition-colors duration-200 cursor-pointer">Terms of Service</button>
             </div>
           </div>
         </div>
@@ -138,9 +138,9 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, isLightPage = false 
     );
   }
 
-  // Fallback dark dashboard page footer
+  // Fallback dashboard page footer, completely converted to white SaaS layout
   return (
-    <footer className="bg-[#050505] border-t border-white/5 text-zinc-400 text-sm mt-auto select-none relative z-10">
+    <footer className="bg-white border-t border-[#E5E7EB] text-[#4B5563] text-sm mt-auto select-none relative z-10" id="global-dashboard-footer">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-12">
           {/* Brand Info */}
@@ -150,34 +150,34 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, isLightPage = false 
               className="cursor-pointer inline-block" 
               id="footer-logo"
             >
-              <Logo size="sm" withText={true} textClassName="text-white font-black" />
+              <Logo size="sm" withText={true} textClassName="text-[#111827] font-black" />
             </div>
-            <p className="text-xs text-zinc-400 max-w-sm leading-relaxed">
+            <p className="text-xs text-[#6B7280] max-w-sm leading-relaxed font-sans font-medium">
               The premier Web3 Reddit influencer network where Reddit micro-influencers connect directly with decentralized brands. Earn USDT rewards securely via instant BEP20 payouts.
             </p>
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-purple-600/10 border border-purple-500/20 rounded-full text-[11px] font-semibold text-purple-400">
-                <ShieldCheck className="w-3.5 h-3.5" /> Direct BEP20 BSC Instant Payouts
+              <div className="flex items-center gap-1.5 px-3 py-1 bg-purple-50 border border-purple-100 rounded-full text-[11px] font-semibold text-[#7C3AED]">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#7C3AED]" /> Direct BEP20 BSC Instant Payouts
               </div>
             </div>
           </div>
 
           {/* Quick Navigations */}
           <div>
-            <h3 className="font-extrabold text-xs tracking-wider text-zinc-200 uppercase mb-4">Earning Center</h3>
+            <h3 className="font-extrabold text-xs tracking-wider text-[#111827] uppercase mb-4 font-sans">Earning Center</h3>
             <ul className="space-y-2.5 text-xs font-semibold">
               <li>
-                <button onClick={() => onNavigate('marketplace')} className="hover:text-purple-400 flex items-center gap-0.5 cursor-pointer transition-colors text-left">
-                  Tasks Marketplace <ArrowUpRight className="w-3 h-3 text-zinc-650" />
+                <button onClick={() => onNavigate('marketplace')} className="text-[#374151] hover:text-[#7C3AED] flex items-center gap-0.5 cursor-pointer transition-colors text-left font-sans">
+                  Tasks Marketplace <ArrowUpRight className="w-3 h-3 text-[#6B7280]" />
                 </button>
               </li>
               <li>
-                <button onClick={() => onNavigate('leaderboard')} className="hover:text-purple-400 flex items-center gap-0.5 cursor-pointer transition-colors text-left">
-                  Earning Leaderboard <ArrowUpRight className="w-3 h-3 text-zinc-650" />
+                <button onClick={() => onNavigate('leaderboard')} className="text-[#374151] hover:text-[#7C3AED] flex items-center gap-0.5 cursor-pointer transition-colors text-left font-sans">
+                  Earning Leaderboard <ArrowUpRight className="w-3 h-3 text-[#6B7280]" />
                 </button>
               </li>
               <li>
-                <button onClick={() => onNavigate('faq')} className="hover:text-purple-400 cursor-pointer transition-colors text-left">
+                <button onClick={() => onNavigate('faq')} className="text-[#374151] hover:text-[#7C3AED] cursor-pointer transition-colors text-left font-sans">
                   How It Works & FAQ
                 </button>
               </li>
@@ -186,26 +186,26 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, isLightPage = false 
 
           {/* Platform Info */}
           <div>
-            <h3 className="font-extrabold text-xs tracking-wider text-zinc-200 uppercase mb-4">Company Info</h3>
+            <h3 className="font-extrabold text-xs tracking-wider text-[#111827] uppercase mb-4 font-sans">Company Info</h3>
             <ul className="space-y-2.5 text-xs font-semibold">
               <li>
-                <button onClick={() => onNavigate('about')} className="hover:text-purple-400 cursor-pointer transition-colors text-left">
+                <button onClick={() => onNavigate('about')} className="text-[#374151] hover:text-[#7C3AED] cursor-pointer transition-colors text-left font-sans">
                   About Our Team
                 </button>
               </li>
               <li>
-                <button onClick={() => onNavigate('trust')} className="text-purple-400 hover:text-purple-300 flex items-center gap-1 cursor-pointer transition-colors text-left">
+                <button onClick={() => onNavigate('trust')} className="text-[#7C3AED] hover:text-purple-700 flex items-center gap-1 cursor-pointer transition-colors text-left font-sans">
                   Trust, Audits & Safety
                 </button>
               </li>
               <li>
-                <button onClick={() => onNavigate('contact')} className="hover:text-purple-400 cursor-pointer transition-colors text-left">
+                <button onClick={() => onNavigate('contact')} className="text-[#374151] hover:text-[#7C3AED] cursor-pointer transition-colors text-left font-sans">
                   Contact Support
                 </button>
               </li>
               <li>
-                <button onClick={() => onNavigate('terms')} className="hover:text-purple-400 cursor-pointer transition-colors text-left">
-                  Terms of Service & Privacy Statement
+                <button onClick={() => onNavigate('terms')} className="text-[#374151] hover:text-[#7C3AED] cursor-pointer transition-colors text-left font-sans">
+                  Terms of Service & Privacy
                 </button>
               </li>
             </ul>
@@ -213,18 +213,17 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, isLightPage = false 
         </div>
 
         {/* Bottom copyright */}
-        <div className="border-t border-white/5 mt-10 pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-zinc-500">
+        <div className="border-t border-[#E5E7EB] mt-10 pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-[#6B7280] font-sans">
           <div>
             &copy; 2026 Influencer Verse. Built for Reddit Task Optimization. All rights reserved.
           </div>
-          <div className="flex gap-4">
-            <button onClick={() => onNavigate('terms')} className="hover:text-zinc-305 transition-colors">Privacy Policy</button>
-            <span>&middot;</span>
-            <button onClick={() => onNavigate('terms')} className="hover:text-zinc-305 transition-colors">Terms of Service</button>
+          <div className="flex gap-4 font-semibold text-[#374151]">
+            <button onClick={() => onNavigate('terms')} className="hover:text-[#7C3AED] transition-colors cursor-pointer">Privacy Policy</button>
+            <span className="text-[#E5E7EB]">&middot;</span>
+            <button onClick={() => onNavigate('terms')} className="hover:text-[#7C3AED] transition-colors cursor-pointer">Terms of Service</button>
           </div>
         </div>
       </div>
     </footer>
   );
 };
-
