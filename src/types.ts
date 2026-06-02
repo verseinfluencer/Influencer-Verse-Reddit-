@@ -193,9 +193,15 @@ export interface SupportTicket {
   subject: string;
   category: 'Billing' | 'Tasks' | 'Account' | 'Technical' | 'Other';
   description: string;
-  status: 'Open' | 'In Progress' | 'Resolved';
+  status: 'Open' | 'In Progress' | 'Resolved' | 'Awaiting Response' | 'Closed';
   messages: TicketMessage[];
   createdAt: string;
+  closedAt?: string;
+  closedBy?: string;
+  deleted?: boolean;
+  deletedAt?: string;
+  assignedModeratorId?: string;
+  assignedModeratorName?: string;
 }
 
 export interface AppNotification {

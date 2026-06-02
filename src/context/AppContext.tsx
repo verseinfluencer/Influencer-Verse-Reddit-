@@ -145,6 +145,11 @@ interface AppContextType {
   // Tickets
   createTicket: (subject: string, category: SupportTicket['category'], description: string) => void;
   replyToTicket: (ticketId: string, text: string, sender: 'user' | 'admin') => void;
+  closeTicket: (ticketId: string, closedByRole: string, closedByUsername: string) => Promise<void>;
+  reopenTicket: (ticketId: string) => Promise<void>;
+  deleteTicket: (ticketId: string, softDelete?: boolean) => Promise<void>;
+  changeTicketStatus: (ticketId: string, status: SupportTicket['status']) => Promise<void>;
+  assignModerator: (ticketId: string, moderatorId: string, moderatorName: string) => Promise<void>;
 
   // Notifications
   markNotificationRead: (id: string) => void;
@@ -2034,6 +2039,51 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
+  const closeTicket = async (ticketId: string, closedByRole: string, closedByUsername: string) => {
+    const ticketRef = doc(db, 'tickets', ticketId);
+    await updateDoc(ticketRef, {
+      status: 'Closed',
+      closedAt: new Date().toISOString(),
+      closedBy: `${closedByRole} (${closedByUsername})`
+    });
+  };
+
+  const reopenTicket = async (ticketId: string) => {
+    const ticketRef = doc(db, 'tickets', ticketId);
+    await updateDoc(ticketRef, {
+      status: 'Open',
+      closedAt: null,
+      closedBy: null
+    });
+  };
+
+  const deleteTicket = async (ticketId: string, softDelete: boolean = true) => {
+    const ticketRef = doc(db, 'tickets', ticketId);
+    if (softDelete) {
+      await updateDoc(ticketRef, {
+        deleted: true,
+        deletedAt: new Date().toISOString()
+      });
+    } else {
+      await deleteDoc(ticketRef);
+    }
+  };
+
+  const changeTicketStatus = async (ticketId: string, status: SupportTicket['status']) => {
+    const ticketRef = doc(db, 'tickets', ticketId);
+    await updateDoc(ticketRef, {
+      status
+    });
+  };
+
+  const assignModerator = async (ticketId: string, moderatorId: string, moderatorName: string) => {
+    const ticketRef = doc(db, 'tickets', ticketId);
+    await updateDoc(ticketRef, {
+      assignedModeratorId: moderatorId,
+      assignedModeratorName: moderatorName
+    });
+  };
+
   const submitTaskProof = async (taskId: string, proofUrl: string, submissionLink?: string): Promise<void> => {
     if (!currentUser) throw new Error('Unauthenticated');
     await checkBannedOrSuspended();
@@ -3272,6 +3322,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       
       createTicket,
       replyToTicket,
+      closeTicket,
+      reopenTicket,
+      deleteTicket,
+      changeTicketStatus,
+      assignModerator,
       
       markNotificationRead,
       clearAllNotifications,
