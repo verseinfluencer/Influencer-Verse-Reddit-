@@ -24,7 +24,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, isLightPage = false 
                 className="cursor-pointer inline-block" 
                 id="footer-logo"
               >
-                <Logo size="sm" withText={true} textClassName="text-[#111827] font-black" />
+                <Logo size="sm" withText={true} theme="light" textClassName="text-[#111111] font-black" />
               </div>
               <p className="text-xs text-[#6B7280] max-w-sm leading-relaxed font-sans font-medium">
                 The premier Web3 Reddit influencer network where Reddit micro-influencers connect directly with decentralized brands. Earn USDT rewards securely via instant BEP20 payouts.
@@ -150,7 +150,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, isLightPage = false 
               className="cursor-pointer inline-block" 
               id="footer-logo"
             >
-              <Logo size="sm" withText={true} textClassName="text-[#111827] font-black" />
+              <Logo size="sm" withText={true} theme="light" textClassName="text-[#111111] font-black" />
             </div>
             <p className="text-xs text-[#6B7280] max-w-sm leading-relaxed font-sans font-medium">
               The premier Web3 Reddit influencer network where Reddit micro-influencers connect directly with decentralized brands. Earn USDT rewards securely via instant BEP20 payouts.

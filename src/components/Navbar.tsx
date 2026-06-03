@@ -90,7 +90,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
             className="cursor-pointer"
             id="nav-logo"
           >
-            <Logo size="sm" withText={true} textClassName={isLightHeader ? "text-black font-black" : "text-white font-black"} />
+            <Logo size="sm" withText={true} theme={isLightHeader ? 'light' : 'dark'} textClassName={isLightHeader ? "text-black font-black" : "text-white font-black"} />
           </div>
 
           {/* Center Links - Desktop */}

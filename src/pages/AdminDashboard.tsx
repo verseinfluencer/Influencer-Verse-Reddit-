@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { Task, Submission, Withdrawal, User, TaskType, Client, ClientTask, ClientPayment, ClientPaymentProof, ChatMessage, ClientChat, ArchivedApprovedTask, ArchivedWithdrawal } from '../types';
 import { getKarmaTier } from '../utils/tierHelper';
 import { db } from '../utils/firebase';
+import { renderRedditMarkdown, validateRedditMarkdownLinks } from '../utils/markdownHelper';
 import { collection, doc, deleteDoc, setDoc, getDocs, onSnapshot, query, orderBy, where, updateDoc } from 'firebase/firestore';
 import { 
   Users, FileText, CheckCircle, Wallet, Sparkles, 
@@ -671,6 +672,18 @@ export const AdminDashboard: React.FC = () => {
       return;
     }
 
+    // Validate Reddit markdown links for security
+    const titleCheck = validateRedditMarkdownLinks(taskTitle);
+    if (!titleCheck.isValid) {
+      alert(`Title links validation failed:\n${titleCheck.error}`);
+      return;
+    }
+    const descCheck = validateRedditMarkdownLinks(taskDescription);
+    if (!descCheck.isValid) {
+      alert(`Description links validation failed:\n${descCheck.error}`);
+      return;
+    }
+
     const baseTask = {
       title: taskTitle,
       description: taskDescription,
@@ -687,6 +700,17 @@ export const AdminDashboard: React.FC = () => {
 
     let extendedTask = {};
     if (taskType === 'post') {
+      const titleReqCheck = validateRedditMarkdownLinks(requiredTitle);
+      if (!titleReqCheck.isValid) {
+        alert(`Required post title links validation failed:\n${titleReqCheck.error}`);
+        return;
+      }
+      const postGuideCheck = validateRedditMarkdownLinks(postGuidelines);
+      if (!postGuideCheck.isValid) {
+        alert(`Post guidelines links validation failed:\n${postGuideCheck.error}`);
+        return;
+      }
+
       extendedTask = {
         ...baseTask,
         targetSubreddit: subreddit,
@@ -694,6 +718,12 @@ export const AdminDashboard: React.FC = () => {
         postGuidelines: postGuidelines
       };
     } else {
+      const commentGuideCheck = validateRedditMarkdownLinks(commentGuidelines);
+      if (!commentGuideCheck.isValid) {
+        alert(`Comment guidelines links validation failed:\n${commentGuideCheck.error}`);
+        return;
+      }
+
       extendedTask = {
         ...baseTask,
         postUrlToCommentOn: commentPostUrl,
@@ -742,55 +772,52 @@ export const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 text-white select-none" id="admin-dashboard-container">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 text-slate-800" id="admin-dashboard-container">
       
       {/* Upper Brand Control Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-2 border-b border-white/5">
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 pb-5 border-b border-slate-200">
         <div>
-          <span className="text-[10px] font-extrabold uppercase tracking-widest text-purple-400 block mb-1">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-650 block mb-1">
             {currentUser?.role === 'moderator' ? 'Moderator Control Center' : 'Administrative Center'}
           </span>
-          <h1 className="text-2xl md:text-3xl font-black">
+          <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
             {currentUser?.role === 'moderator' ? 'Moderator Panel' : 'Admin Panel Controls'}
           </h1>
         </div>
 
         {/* Tab Selection */}
-        <div className="flex flex-wrap gap-1 bg-zinc-900 grid-cols-2 p-1.5 rounded-2xl border border-white/5 w-full md:w-auto">
+        <div className="flex flex-wrap gap-1 bg-slate-100 p-1.5 rounded-2xl border border-slate-200 w-full xl:w-auto">
           {[
-            { id: 'users', label: 'Users Map', count: usersBadgeCount },
-            { id: 'live-wallet', label: '💳 Live Wallet Balances', count: null },
-            { id: 'clients', label: 'Clients Registry', count: clientsBadgeCount },
-            { id: 'client-tasks', label: 'Client Approvals', count: clientTasksBadgeCount },
-            { id: 'client-payments', label: 'Agency Payments', count: paymentsBadgeCount },
-            { id: 'client-chats', label: 'Client Support', count: clientSupportBadgeCount },
-            { id: 'tasks', label: 'Tasks Desk', count: tasksBadgeCount },
-            { id: 'submissions', label: 'Task Submits', count: submissionsBadgeCount },
-            { id: 'withdrawals', label: 'Withdraw Desk', count: withdrawalsBadgeCount },
+            { id: 'users', label: '👤 Users Map', count: usersBadgeCount },
+            { id: 'live-wallet', label: '💳 Wallet Balances', count: null },
+            { id: 'clients', label: '🏢 Clients Registry', count: clientsBadgeCount },
+            { id: 'client-tasks', label: '✅ Client Approvals', count: clientTasksBadgeCount },
+            { id: 'client-payments', label: '💰 Agency Payments', count: paymentsBadgeCount },
+            { id: 'client-chats', label: '💬 Client Support', count: clientSupportBadgeCount },
+            { id: 'tasks', label: '📝 Tasks Desk', count: tasksBadgeCount },
+            { id: 'submissions', label: '📥 Task Submits', count: submissionsBadgeCount },
+            { id: 'withdrawals', label: '💵 Withdraw Desk', count: withdrawalsBadgeCount },
             { id: 'track-data', label: '📊 Track Data', count: trackDataBadgeCount },
             { id: 'security', label: '🛡️ Security Center', count: securityBadgeCount },
-            { id: 'announcements', label: 'Publish Feed', count: announcementsBadgeCount },
-            { id: 'audit-log', label: '📜 Role Audit Logs', count: auditLogsBadgeCount },
+            { id: 'announcements', label: '📢 Publish Feed', count: announcementsBadgeCount },
+            { id: 'audit-log', label: '📜 Audit Logs', count: auditLogsBadgeCount },
             { id: 'deleted-tasks', label: '🗑️ Deleted Tasks', count: 0 },
             { id: 'deleted-history', label: '🗄️ Deleted History', count: archivedTasks.length + archivedWithdrawals.length }
           ].map(tab => (
             <button
                key={tab.id}
                onClick={() => setActiveTab(tab.id as any)}
-               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer relative"
+               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer relative"
                style={{
-                 color: activeTab === tab.id ? '#ffffff' : '#a1a1aa',
-                 backgroundColor: activeTab === tab.id ? '#9333ea' : 'transparent'
+                 color: activeTab === tab.id ? '#ffffff' : '#64748b',
+                 backgroundColor: activeTab === tab.id ? '#6366f1' : 'transparent',
+                 boxShadow: activeTab === tab.id ? '0 2px 4px rgba(99, 102, 241, 0.2)' : 'none'
                }}
             >
-               {tab.label}
+               <span>{tab.label}</span>
                {tab.count !== null && tab.count > 0 && (
                  <span 
-                   className={`px-1.5 py-0.5 bg-red-600 text-[9px] font-black rounded-full text-white shadow-sm transition-all duration-300 ${
-                     shouldPulse(tab.id, tab.count) 
-                       ? 'animate-premium-glow-pulse border border-red-500/50' 
-                       : ''
-                   }`}
+                   className="px-1.5 py-0.5 bg-rose-600 text-[9px] font-bold rounded-full text-white shadow-sm"
                  >
                    {tab.count}
                  </span>
@@ -801,24 +828,24 @@ export const AdminDashboard: React.FC = () => {
       </div>
 
       {/* Main Tab Render Grid */}
-      <div className="bg-zinc-900/40 border border-white/10 rounded-3xl p-6 backdrop-blur-md shadow-2xl">
+      <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
         
         {/* ================= CLIENTS REGISTRY TAB ================= */}
         {activeTab === 'clients' && (
-          <div className="space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-white/5">
+          <div className="space-y-6 text-slate-800">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-slate-200">
               <div>
-                <h2 className="text-base font-black flex items-center gap-2 text-indigo-400">
-                  <Building className="w-5 h-5" /> Brand Clients Management Registry
+                <h2 className="text-base font-bold flex items-center gap-2 text-indigo-600">
+                  <Building className="w-5 h-5 text-indigo-600" /> Brand Clients Management Registry
                 </h2>
-                <p className="text-xs text-zinc-500 mt-1">Review onboarding requirements, toggle upload privileges, or suspend brand campaigns.</p>
+                <p className="text-xs text-slate-500 mt-1">Review onboarding requirements, toggle upload privileges, or suspend brand campaigns.</p>
               </div>
               
               {/* Global Disable Client Upload Switch */}
-              <div className="bg-zinc-950 p-3 rounded-2xl border border-white/5 flex items-center gap-4">
+              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 flex items-center gap-4 shadow-sm">
                 <div>
-                  <span className="text-xs font-bold text-white block">Global Task Lock</span>
-                  <span className="text-[10px] text-zinc-500 font-medium">Block all brand uploads instantly</span>
+                  <span className="text-xs font-bold text-slate-800 block">Global Task Lock</span>
+                  <span className="text-[10px] text-slate-500 font-medium">Block all brand uploads instantly</span>
                 </div>
                 <button
                   onClick={() => {
@@ -828,19 +855,19 @@ export const AdminDashboard: React.FC = () => {
                     }
                     adminToggleGlobalTaskUpload(!settings.disableAllClientUploads);
                   }}
-                  className={`p-1.5 rounded-xl border flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                  className={`p-1.5 rounded-xl border flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
                     settings.disableAllClientUploads
-                      ? 'bg-red-500/20 text-red-400 border-red-500/30'
-                      : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                      ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+                      : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
                   }`}
                 >
                   {settings.disableAllClientUploads ? (
                     <>
-                      <ToggleRight className="w-4 h-4 text-red-400" /> Uploads Blocked
+                      <ToggleRight className="w-4 h-4 text-rose-600" /> Uploads Blocked
                     </>
                   ) : (
                     <>
-                      <ToggleLeft className="w-4 h-4 text-emerald-400" /> Uploads Allowed
+                      <ToggleLeft className="w-4 h-4 text-emerald-600" /> Uploads Allowed
                     </>
                   )}
                 </button>
@@ -848,22 +875,22 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             {/* Search and Status Filters */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-zinc-950/60 p-4 rounded-2xl border border-white/5">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
               {/* Search Bar */}
               <div className="space-y-1">
-                <label className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400">Search Brand Clients</label>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Search Brand Clients</label>
                 <div className="relative">
                   <input
                     type="text"
                     value={clientSearchQuery}
                     onChange={(e) => setClientSearchQuery(e.target.value)}
                     placeholder="Search by name, company, email..."
-                    className="w-full text-xs bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500/50"
+                    className="w-full text-xs bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition"
                   />
                   {clientSearchQuery && (
                     <button 
                       onClick={() => setClientSearchQuery('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white text-[10px] uppercase font-black"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-450 hover:text-slate-850 text-[10px] uppercase font-bold"
                     >
                       Clear
                     </button>
@@ -873,7 +900,7 @@ export const AdminDashboard: React.FC = () => {
 
               {/* Status Filter Sub-Tabs */}
               <div className="space-y-1">
-                <label className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400">Status Registry View</label>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Status Registry View</label>
                 <div className="flex flex-wrap gap-1">
                   {[
                     { id: 'active_pending', label: '👥 Active & Pending' },
@@ -885,10 +912,10 @@ export const AdminDashboard: React.FC = () => {
                     <button
                       key={tab.id}
                       onClick={() => setSelectedClientStatusFilter(tab.id)}
-                      className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer border ${
+                      className={`px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer border ${
                         selectedClientStatusFilter === tab.id
-                          ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg'
-                          : 'bg-zinc-900 hover:bg-zinc-800 border-white/5 text-zinc-400 hover:text-white'
+                          ? 'bg-indigo-600 border-indigo-500 text-white shadow-sm'
+                          : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-600 hover:text-slate-800'
                       }`}
                     >
                       {tab.label}
@@ -902,7 +929,7 @@ export const AdminDashboard: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-white/5 text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+                  <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-550 bg-slate-50 uppercase tracking-wider">
                     <th className="py-3 px-2">Client Brand</th>
                     <th className="py-3 px-2">Country Code</th>
                     <th className="py-3 px-2">Contacts (Gmail / WhatsApp)</th>
@@ -913,7 +940,7 @@ export const AdminDashboard: React.FC = () => {
                     <th className="py-3 px-2 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5 text-xs">
+                <tbody className="divide-y divide-slate-100 text-xs">
                   {filteredClientsForAdmin.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="py-8 text-center text-zinc-500 font-semibold italic">
@@ -923,27 +950,27 @@ export const AdminDashboard: React.FC = () => {
                   ) : (
                     filteredClientsForAdmin.map(c => {
                       return (
-                        <tr key={c.id} className="hover:bg-white/[0.02] tracking-wide">
+                        <tr key={c.id} className="hover:bg-slate-50/75 border-b border-slate-100 transition duration-150">
                           <td className="py-4 px-2 space-y-0.5">
-                            <p className="font-extrabold text-white text-sm">{c.name}</p>
-                            <span className="text-[10px] text-zinc-400 font-bold bg-zinc-950 px-2 py-0.5 rounded border border-white/5 inline-block">{c.company}</span>
+                            <p className="font-extrabold text-slate-900 text-sm">{c.name}</p>
+                            <span className="text-[10px] text-slate-600 font-bold bg-slate-100 px-2 py-0.5 rounded border border-slate-200 inline-block">{c.company}</span>
                           </td>
-                          <td className="py-4 px-2 font-bold text-zinc-300">
+                          <td className="py-4 px-2 font-bold text-slate-700">
                             {c.country}
                           </td>
                           <td className="py-4 px-2 space-y-1">
-                            <div className="flex items-center gap-1.5 text-zinc-300 font-semibold">
+                            <div className="flex items-center gap-1.5 text-slate-850 font-semibold">
                               <span className="font-mono text-xs">{c.whatsapp}</span>
                               <a 
                                 href={`https://wa.me/${c.whatsapp.replace(/\D/g, '')}`} 
                                 target="_blank" 
                                 rel="noreferrer" 
-                                className="text-[9px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded font-black uppercase border border-emerald-500/20 block w-max"
+                                className="text-[9px] bg-emerald-50 text-emerald-750 px-1.5 py-0.5 rounded font-bold uppercase border border-emerald-200 block w-max"
                               >
                                 Ping WhatsApp
                               </a>
                             </div>
-                            <div className="text-[10px] text-zinc-500 flex items-center gap-1 font-mono">
+                            <div className="text-[10px] text-slate-500 flex items-center gap-1 font-mono">
                               <span>{c.gmail}</span>
                             </div>
                             {/* Explicit Email/Phone verification flags requested */}
@@ -951,44 +978,44 @@ export const AdminDashboard: React.FC = () => {
                               <div className="flex items-center gap-1">
                                 <span>📧 Email:</span>
                                 {c.gmailVerified ? (
-                                  <span className="text-emerald-450 text-xs">✅ Email Verified</span>
+                                  <span className="text-emerald-700 text-xs">✅ Verified</span>
                                 ) : (
-                                  <span className="text-rose-450 text-xs">❌ Email Not Verified</span>
+                                  <span className="text-rose-700 text-xs">❌ Not Verified</span>
                                 )}
                               </div>
                               <div className="flex items-center gap-1">
                                 {c.phoneVerified ? (
-                                  <span className="text-emerald-450 text-xs">📱 Phone Verified: ✅ {c.phoneNumber || 'N/A'}</span>
+                                  <span className="text-emerald-700 text-xs text-wrap">📱 Phone: ✅ {c.phoneNumber || 'N/A'}</span>
                                 ) : (
-                                  <span className="text-rose-450 text-xs">📱 Phone Verified: ❌ Not verified</span>
+                                  <span className="text-rose-705 text-xs">📱 Phone: ❌ Not verified</span>
                                 )}
                               </div>
                             </div>
                           </td>
                           <td className="py-4 px-2 space-y-1">
-                            <span className="text-zinc-300 block font-bold text-[11px]">{c.paymentMethod}</span>
-                            <div className="text-[10px] text-zinc-500 font-mono">
-                              Est: <span className="text-zinc-400 font-bold">{c.budget || 'None'}</span>
-                              {c.paymentNotes && <p className="text-[9px] font-sans text-zinc-500 max-w-sm truncate" title={c.paymentNotes}>"{c.paymentNotes}"</p>}
+                            <span className="text-slate-800 block font-bold text-[11px]">{c.paymentMethod}</span>
+                            <div className="text-[10px] text-slate-500 font-mono">
+                              Est: <span className="text-slate-650 font-bold">{c.budget || 'None'}</span>
+                              {c.paymentNotes && <p className="text-[9px] font-sans text-slate-450 max-w-sm truncate" title={c.paymentNotes}>"{c.paymentNotes}"</p>}
                             </div>
                           </td>
                           <td className="py-4 px-2">
-                            <span className={`font-mono text-sm font-black ${c.payAgencyBalance > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                            <span className={`font-mono text-sm font-black ${c.payAgencyBalance > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
                               ${c.payAgencyBalance.toFixed(2)} USDT
                             </span>
                           </td>
                           <td className="py-4 px-2">
-                            <span className={`px-2 py-1 rounded text-[10px] font-black ${
-                              c.taskUploadEnabled ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                              c.taskUploadEnabled ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-rose-50 border-rose-200 text-rose-700'
                             }`}>
                               {c.taskUploadEnabled ? 'ENABLED' : 'DISABLED'}
                             </span>
                           </td>
                           <td className="py-4 px-2 select-none">
-                            <span className={`px-2.5 py-0.5 rounded-full font-black text-[10px] uppercase tracking-wider ${
-                              c.status === 'approved' ? 'bg-emerald-500/10 text-emerald-500' :
-                              c.status === 'pending' ? 'bg-yellow-500/10 text-yellow-500 animate-pulse' :
-                              c.status === 'rejected' ? 'bg-zinc-800 text-zinc-400' : 'bg-red-500/10 text-red-500'
+                            <span className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] uppercase tracking-wider border ${
+                              c.status === 'approved' ? 'bg-emerald-50 border-emerald-250 text-emerald-700' :
+                              c.status === 'pending' ? 'bg-amber-50 border-amber-250 text-amber-700 animate-pulse' :
+                              c.status === 'rejected' ? 'bg-slate-100 border-slate-250 text-slate-500' : 'bg-rose-50 border-rose-250 text-rose-700'
                             }`}>
                               {c.status}
                             </span>
@@ -1005,7 +1032,7 @@ export const AdminDashboard: React.FC = () => {
                                       }
                                       adminReviewClient(c.id, 'approved');
                                     }}
-                                    className="px-2.5 py-1 text-[10px] font-black rounded text-white cursor-pointer bg-emerald-600 hover:bg-emerald-500"
+                                    className="px-2.5 py-1 text-[10px] font-bold rounded text-white cursor-pointer bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95"
                                   >
                                     Approve
                                   </button>
@@ -1014,7 +1041,7 @@ export const AdminDashboard: React.FC = () => {
                                       const fb = clientRejectFeedback[c.id] || 'Brand submission failed identity and payment verification standards.';
                                       adminReviewClient(c.id, 'rejected', fb);
                                     }}
-                                    className="px-2.5 py-1 bg-red-600/20 hover:bg-red-600 hover:text-white border border-red-500/20 text-red-400 text-[10px] font-black rounded cursor-pointer"
+                                    className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-[10px] font-bold rounded cursor-pointer"
                                   >
                                     Reject
                                   </button>
@@ -1024,7 +1051,7 @@ export const AdminDashboard: React.FC = () => {
                                   value={clientRejectFeedback[c.id] || ''}
                                   onChange={(e: any) => setClientRejectFeedback({ ...clientRejectFeedback, [c.id]: e.target.value })}
                                   placeholder="Feedback/Rejection details..."
-                                  className="w-full text-[10px] bg-zinc-950 border border-white/5 rounded px-2 py-1 text-white text-right"
+                                  className="w-full text-[10px] bg-white border border-slate-200 rounded px-2 py-1 text-slate-800 focus:outline-none focus:border-indigo-500 text-right"
                                 />
                               </div>
                             )}
@@ -1035,15 +1062,15 @@ export const AdminDashboard: React.FC = () => {
                                   onClick={() => adminToggleTaskUpload(c.id, !c.taskUploadEnabled)}
                                   className={`px-2 py-0.5 rounded text-[9px] font-bold border transition-colors cursor-pointer ${
                                     c.taskUploadEnabled 
-                                      ? 'bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500 hover:text-white' 
-                                      : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-white'
+                                      ? 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100' 
+                                      : 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
                                   }`}
                                 >
-                                  {c.taskUploadEnabled ? 'Block Upload' : 'Allow Upload'}
+                                  {c.taskUploadEnabled ? 'Block Upload' : 'Allow Submissions'}
                                 </button>
                                 <button
                                   onClick={() => adminReviewClient(c.id, 'suspended', 'Suspended for platform policy violations')}
-                                  className="px-2 py-0.5 bg-zinc-850 hover:bg-zinc-700 text-zinc-300 text-[9px] font-bold rounded cursor-pointer"
+                                  className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[9px] font-bold rounded border border-slate-200 cursor-pointer"
                                 >
                                   Hold Client
                                 </button>
@@ -1059,7 +1086,7 @@ export const AdminDashboard: React.FC = () => {
                                   }
                                   adminReviewClient(c.id, 'approved');
                                 }}
-                                className="px-2.5 py-1.5 text-[10px] font-black rounded text-white cursor-pointer bg-indigo-600 hover:bg-indigo-500"
+                                className="px-2.5 py-1.5 text-[10px] font-bold rounded text-white cursor-pointer bg-indigo-600 hover:bg-indigo-550"
                               >
                                 Activate Profile
                               </button>
@@ -1067,7 +1094,7 @@ export const AdminDashboard: React.FC = () => {
 
                             {c.status === 'rejected' && (
                               <div className="space-y-1.5 text-right">
-                                <p className="text-[10px] text-zinc-500 italic max-w-[200px] text-right ml-auto">
+                                <p className="text-[10px] text-slate-500 italic max-w-[200px] text-right ml-auto">
                                   Reason: "{c.rejectionReason || 'No reason specified'}"
                                 </p>
                                 <button
@@ -1110,16 +1137,16 @@ export const AdminDashboard: React.FC = () => {
 
         {/* ================= CLIENT TASK APPROVALS TAB ================= */}
         {activeTab === 'client-tasks' && (
-          <div className="space-y-6">
-            <div className="pb-4 border-b border-white/5">
-              <h2 className="text-base font-black text-indigo-400 flex items-center gap-2">
-                <CheckSquare className="w-5 h-5" /> Brand Campaigns Audit & Review Panel
+          <div className="space-y-6 text-slate-800">
+            <div className="pb-4 border-b border-slate-200">
+              <h2 className="text-base font-bold text-indigo-600 flex items-center gap-2">
+                <CheckSquare className="w-5 h-5 text-indigo-600" /> Brand Campaigns Audit & Review Panel
               </h2>
-              <p className="text-xs text-zinc-500 mt-1">Audit, approve, force-complete, or remove campaigns proposed by brand clients. Specify payout multipliers before publishing them live to the creator marketplace.</p>
+              <p className="text-xs text-slate-500 mt-1">Audit, approve, force-complete, or remove campaigns proposed by brand clients. Specify payout multipliers before publishing them live to the creator marketplace.</p>
             </div>
 
             {/* Filter Bar */}
-            <div className="flex flex-wrap gap-2 p-1.5 bg-zinc-950/60 rounded-xl border border-white/5 items-center justify-between">
+            <div className="flex flex-wrap gap-2 p-2 bg-slate-50 rounded-xl border border-slate-200 items-center justify-between shadow-xs">
               <div className="flex flex-wrap gap-1.5">
                 {(['All', 'Pending', 'Live', 'Submitted', 'Completed', 'Removed'] as const).map(f => {
                   const matchedCount = (clientTasks || []).filter(t => {
@@ -1136,21 +1163,23 @@ export const AdminDashboard: React.FC = () => {
                     <button
                       key={f}
                       onClick={() => setAdminTaskFilter(f)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition uppercase tracking-wider cursor-pointer font-sans shrink-0 flex items-center gap-1.5 ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition uppercase tracking-wider cursor-pointer flex items-center gap-1.5 border ${
                         adminTaskFilter === f
-                          ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
-                          : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
+                          ? 'bg-indigo-600 border-indigo-550 text-white shadow-sm'
+                          : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-600 hover:text-slate-800'
                       }`}
                     >
                       <span>{f}</span>
-                      <span className="text-[10px] bg-black/30 px-1.5 py-0.5 rounded-full font-mono">{matchedCount}</span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
+                        adminTaskFilter === f ? 'bg-black/15 text-white' : 'bg-slate-100 text-slate-700'
+                      }`}>{matchedCount}</span>
                     </button>
                   );
                 })}
               </div>
-              <span className="text-[10px] font-mono text-zinc-500 mr-2 uppercase flex items-center gap-2">
+              <span className="text-[10px] font-mono text-slate-500 mr-2 uppercase flex items-center gap-2 font-semibold">
                 {adminTaskFilter === 'Removed' && selectedTaskIds.length > 0 && (
-                  <span className="bg-purple-500/10 border border-purple-500/20 text-purple-400 font-extrabold normal-case px-2.5 py-1 rounded inline-flex items-center gap-1 animate-pulse select-none">
+                  <span className="bg-purple-50 border border-purple-200 text-purple-700 font-bold normal-case px-2.5 py-1 rounded inline-flex items-center gap-1 animate-pulse select-none shadow-sm">
                     💜 {selectedTaskIds.length} {selectedTaskIds.length === 1 ? 'task' : 'tasks'} selected
                   </span>
                 )}
@@ -1159,10 +1188,10 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             {/* Campaigns Ledger Table */}
-            <div className="overflow-x-auto bg-zinc-950/60 rounded-2xl border border-white/5 animate-fade-in">
+            <div className="overflow-x-auto bg-white rounded-2xl border border-slate-200 animate-fade-in shadow-sm">
               <table className="w-full text-left border-collapse text-xs min-w-[1100px]">
                 <thead>
-                  <tr className="border-b border-white/5 text-[10px] font-bold text-zinc-500 uppercase tracking-widest bg-zinc-950/40">
+                  <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-slate-50/75">
                     {adminTaskFilter === 'Removed' && (
                       <th className="py-4 px-4 w-12 text-center select-none">
                         <input
@@ -1175,7 +1204,7 @@ export const AdminDashboard: React.FC = () => {
                               setSelectedTaskIds([]);
                             }
                           }}
-                          className="w-4 h-4 rounded border-white/10 bg-zinc-900 text-indigo-650 focus:ring-indigo-500 cursor-pointer accent-indigo-500"
+                          className="w-4 h-4 rounded border-slate-300 bg-white text-indigo-650 focus:ring-indigo-500 cursor-pointer accent-indigo-500"
                         />
                       </th>
                     )}
@@ -1188,7 +1217,7 @@ export const AdminDashboard: React.FC = () => {
                     <th className="py-4 px-4 text-right">Execution Controls & Action Desk</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-slate-100">
                   {(clientTasks || []).filter(t => {
                     const s = (t.status || '').toLowerCase();
                     if (adminTaskFilter === 'Pending') return s === 'pending' || s === 'pending_review';
@@ -1199,7 +1228,7 @@ export const AdminDashboard: React.FC = () => {
                     return s !== 'removed' && s !== 'deleted';
                   }).length === 0 ? (
                     <tr>
-                      <td colSpan={adminTaskFilter === 'Removed' ? 8 : 7} className="py-12 text-center text-zinc-500 italic font-medium">
+                      <td colSpan={adminTaskFilter === 'Removed' ? 8 : 7} className="py-12 text-center text-slate-500 italic font-semibold">
                         No campaign tasks match the "{adminTaskFilter}" filter criteria.
                       </td>
                     </tr>
@@ -1221,10 +1250,10 @@ export const AdminDashboard: React.FC = () => {
 
                       return (
                         <React.Fragment key={t.id}>
-                          <tr className={`transition-colors border-l border-transparent ${
+                          <tr className={`transition-colors border-b border-slate-100 ${
                             adminTaskFilter === 'Removed' && isSelected
-                              ? 'bg-purple-950/25 hover:bg-purple-900/25 border-l-purple-500'
-                              : 'hover:bg-white/[0.01]'
+                              ? 'bg-purple-50/50 border-l-4 border-l-purple-500'
+                              : 'hover:bg-slate-50/75'
                           }`}>
                             {adminTaskFilter === 'Removed' && (
                               <td className="py-4 px-4 text-center select-none w-12">
@@ -1238,58 +1267,58 @@ export const AdminDashboard: React.FC = () => {
                                       setSelectedTaskIds(prev => prev.filter(id => id !== t.id));
                                     }
                                   }}
-                                  className="w-4 h-4 rounded border-white/10 bg-zinc-900 text-indigo-650 focus:ring-indigo-500 cursor-pointer accent-indigo-500"
+                                  className="w-4 h-4 rounded border-slate-300 bg-white text-indigo-650 focus:ring-indigo-500 cursor-pointer accent-indigo-500"
                                 />
                               </td>
                             )}
                             <td className="py-4 px-4 select-text max-w-xs">
-                              <div className="font-extrabold text-white text-sm truncate" title={t.title}>{t.title}</div>
-                              <div className="flex gap-2 items-center text-[10px] text-zinc-400 mt-1">
-                                <span className="text-zinc-300 font-bold bg-zinc-900 border border-zinc-800 px-1.5 py-0.5 rounded">
+                              <div className="font-extrabold text-slate-900 text-sm truncate" title={t.title}>{t.title}</div>
+                              <div className="flex gap-2 items-center text-[10px] text-slate-500 mt-1">
+                                <span className="text-slate-705 font-bold bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded">
                                   Brand: {t.clientName || 'Unlabeled'}
                                 </span>
-                                <span className="text-zinc-500 font-mono">ID: {t.id}</span>
+                                <span className="text-slate-450 font-mono">ID: {t.id}</span>
                               </div>
                             </td>
                             <td className="py-4 px-4">
-                              <span className="px-2 py-0.5 bg-zinc-900 border border-zinc-800 text-[10px] rounded text-zinc-300 font-bold uppercase tracking-wider font-mono">
+                              <span className="px-2 py-0.5 bg-slate-100 border border-slate-200 text-[10px] rounded text-slate-700 font-bold uppercase tracking-wider font-mono">
                                 {t.type}
                               </span>
                             </td>
-                            <td className="py-4 px-4 text-right font-mono font-bold text-white text-sm">
+                            <td className="py-4 px-4 text-right font-mono font-bold text-slate-800 text-sm">
                               ${t.agencyPay.toFixed(2)}
                             </td>
                             <td className="py-4 px-4">
                               <div className="flex flex-col items-center gap-1.5">
                                 {s === 'pending' || s === 'pending_review' ? (
                                   <div className="flex items-center gap-2 select-none">
-                                    <span className="text-[10px] text-zinc-400 font-mono font-bold">$</span>
+                                    <span className="text-[10px] text-slate-500 font-mono font-bold">$</span>
                                     <input
                                       type="number"
                                       step="0.05"
                                       placeholder="Reward"
                                       value={rate}
                                       onChange={(e) => setClientTaskRates({ ...clientTaskRates, [t.id]: Math.min(t.agencyPay, Number(e.target.value)) })}
-                                      className="w-16 bg-zinc-950 border border-white/10 px-1 py-0.5 rounded text-xs text-white text-center font-bold font-mono focus:border-indigo-500 outline-none"
+                                      className="w-16 bg-white border border-slate-200 px-1 py-0.5 rounded text-xs text-slate-800 text-center font-bold font-mono focus:border-indigo-500 outline-none"
                                     />
-                                    <span className="text-[9px] text-zinc-500 font-mono">({((1 - (rate / t.agencyPay)) * 100).toFixed(0)}% fee)</span>
+                                    <span className="text-[9px] text-slate-400 font-mono">({((1 - (rate / t.agencyPay)) * 100).toFixed(0)}% fee)</span>
                                   </div>
                                 ) : (
-                                  <span className="font-mono font-bold text-emerald-400 text-sm">
+                                  <span className="font-mono font-bold text-emerald-600 text-sm">
                                     ${(t.memberPay || 0).toFixed(2)}
                                   </span>
                                 )}
                               </div>
                             </td>
                             <td className="py-4 px-4 text-center select-none">
-                              <span className={`px-2 py-0.5 rounded font-black text-[9px] uppercase tracking-wider border ${
-                                s === 'pending' || s === 'pending_review' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                                s === 'approved/live' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
-                                s === 'claimed' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
-                                s === 'submitted' ? 'bg-sky-500/10 text-sky-400 border-sky-500/20' :
-                                s === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                                s === 'revision' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
-                                'bg-zinc-800 text-zinc-500 border-zinc-700/50'
+                              <span className={`px-2 py-0.5 rounded font-bold text-[9px] uppercase tracking-wider border ${
+                                s === 'pending' || s === 'pending_review' ? 'bg-amber-50 text-amber-705 border-amber-200' :
+                                s === 'approved/live' ? 'bg-emerald-50 text-emerald-700 border-emerald-250 animate-pulse' :
+                                s === 'claimed' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' :
+                                s === 'submitted' ? 'bg-sky-50 border-sky-200 text-sky-700' :
+                                s === 'completed' ? 'bg-emerald-50 border-emerald-250 text-emerald-750' :
+                                s === 'revision' ? 'bg-purple-50 border-purple-200 text-purple-705' :
+                                'bg-slate-100 text-slate-500 border-slate-250'
                               }`}>
                                 {s === 'approved/live' ? 'Live' : s}
                               </span>
@@ -1297,21 +1326,21 @@ export const AdminDashboard: React.FC = () => {
                             <td className="py-4 px-4">
                               {t.claimedBy ? (
                                 <div className="space-y-1">
-                                  <p className="font-bold text-zinc-200 font-mono select-text">u/{t.claimedBy}</p>
+                                  <p className="font-bold text-slate-800 font-mono select-text">u/{t.claimedBy}</p>
                                   {hasSub && (
                                     <a
                                       href={t.proofLink}
                                       target="_blank"
                                       rel="noreferrer"
-                                      className="px-2 py-0.5 bg-neutral-900 border border-neutral-800 text-[9px] font-bold text-blue-400 rounded hover:underline hover:text-blue-300 flex items-center gap-1 w-fit mt-1"
+                                      className="px-2 py-0.5 bg-slate-50 border border-slate-200 text-[9px] font-bold text-indigo-650 rounded hover:bg-slate-100 flex items-center gap-1 w-fit mt-1 animate-fade-in"
                                     >
                                       <span>Proof Link</span>
-                                      <ExternalLink className="w-2.5 h-2.5" />
+                                      <ExternalLink className="w-2.5 h-2.5 text-indigo-600" />
                                     </a>
                                   )}
                                 </div>
                               ) : (
-                                <span className="text-zinc-500 italic select-none">Unclaimed</span>
+                                <span className="text-slate-400 italic select-none">Unclaimed</span>
                               )}
                             </td>
                             <td className="py-4 px-4 text-right space-y-2 min-w-[280px]">
@@ -1319,7 +1348,7 @@ export const AdminDashboard: React.FC = () => {
                                 {/* Details Toggle */}
                                 <button
                                   onClick={() => setExpandedTaskId(expandedTaskId === t.id ? null : t.id)}
-                                  className="px-2 py-1 bg-zinc-900 hover:bg-zinc-850 text-zinc-300 hover:text-white text-[10px] font-bold rounded cursor-pointer border border-white/5 transition"
+                                  className="px-2 py-1 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-850 text-[10px] font-bold rounded cursor-pointer border border-slate-200 transition"
                                 >
                                   {expandedTaskId === t.id ? 'Hide Specs' : 'View Specs'}
                                 </button>
@@ -1332,7 +1361,7 @@ export const AdminDashboard: React.FC = () => {
                                         await adminReviewClientTask(t.id, 'publish', rate);
                                         alert('Campaign approved and published successfully!');
                                       }}
-                                      className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 font-bold text-[10px] text-white rounded cursor-pointer transition uppercase tracking-wider"
+                                      className="px-2.5 py-1 bg-gradient-to-r from-indigo-600 to-violet-600 hover:opacity-95 font-bold text-[10px] text-white rounded cursor-pointer transition uppercase tracking-wider shadow-xs"
                                     >
                                       Approve Campaign
                                     </button>
@@ -1344,7 +1373,7 @@ export const AdminDashboard: React.FC = () => {
                                           alert('Proposal sent to client revisions.');
                                         }
                                       }}
-                                      className="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 font-semibold text-[10px] text-zinc-400 hover:text-white rounded cursor-pointer transition uppercase"
+                                      className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 border border-rose-200 font-bold text-[10px] text-rose-700 rounded cursor-pointer transition uppercase"
                                     >
                                       Revert
                                     </button>
@@ -1360,7 +1389,7 @@ export const AdminDashboard: React.FC = () => {
                                         alert('Campaign force credited and marked completed!');
                                       }
                                     }}
-                                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 border border-emerald-500/10 text-white font-bold text-[10px] rounded cursor-pointer transition uppercase"
+                                    className="px-2.5 py-1 bg-gradient-to-r from-emerald-650 to-teal-600 hover:opacity-95 text-white font-bold text-[10px] rounded cursor-pointer transition uppercase shadow-sm"
                                   >
                                     Force Complete
                                   </button>
@@ -1380,7 +1409,7 @@ export const AdminDashboard: React.FC = () => {
                                       });
                                       setDeletionReason('');
                                     }}
-                                    className="px-2.5 py-1 bg-red-600 hover:bg-red-500 text-white font-bold text-[10px] rounded cursor-pointer transition uppercase flex items-center gap-1"
+                                    className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold text-[10px] rounded cursor-pointer transition uppercase flex items-center gap-1 shadow-xs"
                                   >
                                     <Trash2 className="w-3 h-3 text-white" /> Delete Permanently
                                   </button>
@@ -1391,10 +1420,10 @@ export const AdminDashboard: React.FC = () => {
                                       const note = prompt('Enter audit removal reason (notifies client and creator):', adminTaskAuditReason[t.id] || '');
                                       if (note !== null) {
                                         await adminReviewClientTask(t.id, 'remove', undefined, note);
-                                        alert('Campaign has been auditted and removed.');
+                                        alert('Campaign has been audited and removed.');
                                       }
                                     }}
-                                    className="px-2.5 py-1 bg-red-650/20 hover:bg-red-650 border border-red-500/30 text-red-400 hover:text-white font-bold text-[10px] rounded cursor-pointer transition uppercase"
+                                    className="px-2.5 py-1 bg-rose-50 hover:bg-rose-150 border border-rose-200 text-rose-750 font-bold text-[10px] rounded cursor-pointer transition uppercase"
                                   >
                                     Remove
                                   </button>
@@ -1405,25 +1434,25 @@ export const AdminDashboard: React.FC = () => {
 
                           {/* Expanded detail specifications */}
                           {expandedTaskId === t.id && (
-                            <tr className="bg-zinc-950/40">
-                              <td colSpan={adminTaskFilter === 'Removed' ? 8 : 7} className="p-4 px-6 border-l-2 border-indigo-500 text-xs text-zinc-300 leading-relaxed font-normal">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 select-text">
+                            <tr className="bg-slate-50/70">
+                              <td colSpan={adminTaskFilter === 'Removed' ? 8 : 7} className="p-4 px-6 border-l-4 border-l-indigo-650 text-xs text-slate-655 leading-relaxed font-normal">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 select-text py-1">
                                   <div className="space-y-2">
-                                    <h4 className="font-bold text-white uppercase tracking-wider text-[10px] text-indigo-400">Campaign Guidelines & Description</h4>
-                                    <p className="bg-zinc-950 p-3 rounded-lg border border-white/5 whitespace-pre-wrap">{t.description || 'No description provided.'}</p>
-                                    <p className="bg-zinc-950 p-3 rounded-lg border border-white/5 whitespace-pre-wrap"><strong className="text-zinc-400 font-bold block mb-1">Brand Guidelines:</strong>{t.guidelines}</p>
+                                    <h4 className="font-bold text-indigo-600 uppercase tracking-wider text-[10px]">Campaign Guidelines & Description</h4>
+                                    <p className="bg-white p-3 rounded-lg border border-slate-200 text-slate-705 whitespace-pre-wrap shadow-xs">{t.description || 'No description provided.'}</p>
+                                    {t.guidelines && <p className="bg-white p-3 rounded-lg border border-slate-200 text-slate-705 whitespace-pre-wrap shadow-xs"><strong className="text-slate-500 font-bold block mb-1">Brand Guidelines:</strong>{t.guidelines}</p>}
                                   </div>
                                   <div className="space-y-2">
-                                    <h4 className="font-bold text-white uppercase tracking-wider text-[10px] text-indigo-400">Target Specifications & Private Notes</h4>
-                                    <div className="bg-zinc-950 p-3 rounded-lg border border-white/5 space-y-1.5 font-mono text-[10px]">
-                                      {t.targetSubreddit && <p><strong>Target Subreddit:</strong> r/{t.targetSubreddit.replace(/^r\//, '')}</p>}
-                                      {t.postUrlToCommentOn && <p><strong>Post URL to comment on:</strong> <a href={t.postUrlToCommentOn} target="_blank" rel="noreferrer" className="text-indigo-400 hover:underline">{t.postUrlToCommentOn}</a></p>}
+                                    <h4 className="font-bold text-indigo-600 uppercase tracking-wider text-[10px]">Target Specifications & Private Notes</h4>
+                                    <div className="bg-white p-3 rounded-lg border border-slate-200 text-slate-705 space-y-1.5 font-mono text-[10px] shadow-xs">
+                                      {t.targetSubreddit && <p><strong>Target Subreddit:</strong> <span className="bg-slate-100 px-1 py-0.5 rounded text-slate-805">r/{t.targetSubreddit.replace(/^r\//, '')}</span></p>}
+                                      {t.postUrlToCommentOn && <p><strong>Post URL to comment on:</strong> <a href={t.postUrlToCommentOn} target="_blank" rel="noreferrer" className="text-indigo-650 hover:underline">{t.postUrlToCommentOn}</a></p>}
                                       <p><strong>Proposed Agency Payout:</strong> ${t.agencyPay.toFixed(2)} USDT</p>
                                       <p><strong>Creator Reward set:</strong> ${rate ? Number(rate).toFixed(2) : 'N/A'}</p>
-                                      {t.notes && <p className="font-sans whitespace-pre-wrap"><strong className="text-zinc-400 block mb-1 font-mono">Brand Private Notes:</strong> {t.notes}</p>}
-                                      {t.revisionNote && <p className="font-sans text-amber-500"><strong className="block mb-1 font-mono">Revision Note / Feedback:</strong> {t.revisionNote}</p>}
+                                      {t.notes && <p className="font-sans whitespace-pre-wrap text-slate-600"><strong className="text-slate-500 block mb-1 font-mono">Brand Private Notes:</strong> {t.notes}</p>}
+                                      {t.revisionNote && <p className="font-sans text-amber-700 bg-amber-50 p-2 border border-amber-200 rounded"><strong className="block mb-1 font-mono">Revision Note / Feedback:</strong> {t.revisionNote}</p>}
                                     </div>
-                                    <div className="flex gap-4 text-[10px] text-zinc-500 pt-1 font-mono">
+                                    <div className="flex gap-4 text-[10px] text-slate-400 pt-1 font-mono">
                                       <span>Proposed: {t.createdAt ? new Date(t.createdAt).toLocaleString() : 'N/A'}</span>
                                       {t.approvedAt && <span>Approved: {new Date(t.approvedAt).toLocaleString()}</span>}
                                     </div>
@@ -2946,6 +2975,57 @@ export const AdminDashboard: React.FC = () => {
                       onChange={(e) => setTaskDeadline(e.target.value)}
                       className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-3 py-2 rounded-xl focus:border-purple-500 focus:outline-none select-none"
                     />
+                  </div>
+                </div>
+
+                {/* Reddit Markdown Preview section */}
+                <div className="border border-white/10 bg-zinc-950/60 rounded-xl p-3.5 space-y-2.5">
+                  <div className="flex justify-between items-center border-b border-white/5 pb-1.5">
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-purple-400">Reddit Markdown Preview</span>
+                    <span className="text-[9px] bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded font-bold uppercase">Live Render</span>
+                  </div>
+                  
+                  <div className="space-y-2 text-[11px] leading-relaxed">
+                    {taskTitle && (
+                      <div>
+                        <span className="text-[8px] text-zinc-500 font-extrabold uppercase block tracking-wider font-mono">Title Preview</span>
+                        <div className="text-white font-bold">{renderRedditMarkdown(taskTitle)}</div>
+                      </div>
+                    )}
+                    {taskDescription && (
+                      <div className="border-t border-white/5 pt-1.5">
+                        <span className="text-[8px] text-zinc-500 font-extrabold uppercase block tracking-wider font-mono">Description/Instructions Preview</span>
+                        <div className="text-zinc-300">{renderRedditMarkdown(taskDescription)}</div>
+                      </div>
+                    )}
+                    {taskType === 'post' ? (
+                      <>
+                        {requiredTitle && (
+                          <div className="border-t border-white/5 pt-1.5">
+                            <span className="text-[8px] text-zinc-500 font-extrabold uppercase block tracking-wider font-mono">Required Title Preview</span>
+                            <div className="text-zinc-300">"{renderRedditMarkdown(requiredTitle)}"</div>
+                          </div>
+                        )}
+                        {postGuidelines && (
+                          <div className="border-t border-white/5 pt-1.5">
+                            <span className="text-[8px] text-zinc-500 font-extrabold uppercase block tracking-wider font-mono">Guidelines Preview</span>
+                            <div className="text-zinc-300">{renderRedditMarkdown(postGuidelines)}</div>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        {commentGuidelines && (
+                          <div className="border-t border-white/5 pt-1.5">
+                            <span className="text-[8px] text-zinc-500 font-extrabold uppercase block tracking-wider font-mono">Comment Description/Guidelines Preview</span>
+                            <div className="text-zinc-300">{renderRedditMarkdown(commentGuidelines)}</div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    {!taskTitle && !taskDescription && !requiredTitle && !postGuidelines && !commentGuidelines && (
+                      <p className="text-zinc-500 italic font-medium">No task content provided to render preview. Start typing to see results...</p>
+                    )}
                   </div>
                 </div>
 

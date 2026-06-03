@@ -23,7 +23,14 @@ export const Logo: React.FC<LogoProps> = ({
     xl: { box: 'w-24 h-24', text: 'text-3xl' },
   }[size];
 
-  const [isLight, setIsLight] = React.useState(false);
+  const [isLight, setIsLight] = React.useState(() => {
+    if (theme === 'light') return true;
+    if (theme === 'dark') return false;
+    if (typeof document !== 'undefined') {
+      return document.documentElement.classList.contains('light');
+    }
+    return false;
+  });
 
   React.useEffect(() => {
     if (theme === 'light') {
@@ -155,9 +162,11 @@ export const Logo: React.FC<LogoProps> = ({
         <div className="flex flex-col justify-center leading-none">
           <span 
             className={`font-black tracking-[0.25em] uppercase font-sans ${dimensions.text} ${
-              isLight 
-                ? 'text-[#111111]' 
-                : 'text-white'
+              textClassName && textClassName.includes('text-')
+                ? textClassName
+                : isLight 
+                  ? 'text-[#111111]' 
+                  : 'text-white'
             }`}
           >
             Influencer

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { renderRedditMarkdown } from '../utils/markdownHelper';
 import { Task, Submission } from '../types';
 import { Search, Filter, ShieldAlert, CheckCircle, Clock, ExternalLink, Calendar, PlusCircle, Sparkles, BookOpen, UserMinus, X, Copy } from 'lucide-react';
 import { getTierRequirementText, getKarmaTier } from '../utils/tierHelper';
@@ -544,12 +545,12 @@ export const Marketplace: React.FC = () => {
                 )}
 
                 <h3 className="text-base font-extrabold text-zinc-900 mb-2 leading-tight group-hover:text-purple-600 transition-all select-text font-display">
-                  {task.title}
+                  {renderRedditMarkdown(task.title, true)}
                 </h3>
                 
-                <p className="text-zinc-650 text-xs leading-relaxed line-clamp-3 mb-4 select-text">
-                  {task.description}
-                </p>
+                <div className="text-zinc-650 text-xs leading-relaxed line-clamp-3 mb-4 select-text">
+                  {renderRedditMarkdown(task.description, true)}
+                </div>
                 
                 {/* Premium Reddit post actions details inside the card */}
                 {task.type === 'post' && (
@@ -569,7 +570,7 @@ export const Marketplace: React.FC = () => {
                               <Copy className="w-2.5 h-2.5" /> Copy Title
                             </button>
                           </div>
-                          <p className="text-zinc-800 font-mono font-bold leading-normal text-xs break-words">"{task.requiredPostTitle}"</p>
+                          <div className="text-zinc-800 font-mono font-bold leading-normal text-xs break-words">"{renderRedditMarkdown(task.requiredPostTitle, true)}"</div>
                         </div>
                       )}
 
@@ -605,17 +606,17 @@ export const Marketplace: React.FC = () => {
                             </button>
                           </div>
                         </div>
-                        <p className="text-zinc-600 font-normal leading-normal select-text break-words line-clamp-2 hover:line-clamp-none transition-all duration-300">
-                          {task.description}
-                        </p>
+                        <div className="text-zinc-600 font-normal leading-normal select-text break-words line-clamp-2 hover:line-clamp-none transition-all duration-300">
+                          {renderRedditMarkdown(task.description, true)}
+                        </div>
                       </div>
 
                       {task.postGuidelines && (
                         <div className="space-y-1 border-t border-slate-205 pt-2 select-text">
                           <span className="text-[9px] text-zinc-455 uppercase tracking-widest font-extrabold block text-zinc-400">Task Guidelines</span>
-                          <p className="text-zinc-500 font-normal leading-relaxed text-[11px] break-words">
-                            {task.postGuidelines}
-                          </p>
+                          <div className="text-zinc-500 font-normal leading-relaxed text-[11px] break-words">
+                            {renderRedditMarkdown(task.postGuidelines, true)}
+                          </div>
                         </div>
                       )}
 
@@ -699,9 +700,9 @@ export const Marketplace: React.FC = () => {
                               </button>
                             </div>
                           </div>
-                          <p className="text-zinc-600 font-normal leading-normal select-text break-words line-clamp-2 hover:line-clamp-none transition-all duration-300">
-                            {task.commentGuidelines}
-                          </p>
+                          <div className="text-zinc-600 font-normal leading-normal select-text break-words line-clamp-2 hover:line-clamp-none transition-all duration-300">
+                            {renderRedditMarkdown(task.commentGuidelines, true)}
+                          </div>
                         </div>
                       )}
 
@@ -894,9 +895,9 @@ export const Marketplace: React.FC = () => {
                               <Copy className="w-2.5 h-2.5" /> Copy Title
                             </button>
                           </div>
-                          <p className="text-zinc-850 font-mono font-bold text-[11px] select-text break-words">
-                            "{selectedTask.requiredPostTitle}"
-                          </p>
+                          <div className="text-zinc-850 font-mono font-bold text-[11px] select-text break-words">
+                            "{renderRedditMarkdown(selectedTask.requiredPostTitle, true)}"
+                          </div>
                         </div>
                       )}
 
@@ -928,17 +929,17 @@ export const Marketplace: React.FC = () => {
                             </button>
                           </div>
                         </div>
-                        <p className="text-zinc-600 font-normal text-[11px] select-text break-words whitespace-pre-wrap leading-relaxed">
-                          {selectedTask.description}
-                        </p>
+                        <div className="text-zinc-600 font-normal text-[11px] select-text break-words whitespace-pre-wrap leading-relaxed">
+                          {renderRedditMarkdown(selectedTask.description, true)}
+                        </div>
                       </div>
 
                       {selectedTask.postGuidelines && (
                         <div className="space-y-1 bg-white border border-slate-205 p-2.5 rounded-xl">
                           <span className="text-[9px] text-zinc-400 uppercase tracking-widest font-extrabold block text-zinc-400">Task Guidelines</span>
-                          <p className="text-zinc-500 font-normal text-[11px] select-text break-words whitespace-pre-wrap leading-relaxed">
-                            {selectedTask.postGuidelines}
-                          </p>
+                          <div className="text-zinc-500 font-normal text-[11px] select-text break-words whitespace-pre-wrap leading-relaxed">
+                            {renderRedditMarkdown(selectedTask.postGuidelines, true)}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1012,9 +1013,9 @@ export const Marketplace: React.FC = () => {
                               </button>
                             </div>
                           </div>
-                          <p className="text-zinc-600 text-[11px] select-text break-words whitespace-pre-wrap leading-relaxed">
-                            {selectedTask.commentGuidelines}
-                          </p>
+                          <div className="text-zinc-600 text-[11px] select-text break-words whitespace-pre-wrap leading-relaxed">
+                            {renderRedditMarkdown(selectedTask.commentGuidelines, true)}
+                          </div>
                         </div>
                       )}
                     </div>
