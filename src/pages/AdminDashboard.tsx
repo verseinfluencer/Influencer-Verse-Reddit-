@@ -1100,7 +1100,7 @@ export const AdminDashboard: React.FC = () => {
                                 <button
                                   type="button"
                                   onClick={() => adminReviewClient(c.id, 'approved')}
-                                  className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600 border border-emerald-500/30 text-emerald-400 hover:text-white text-[10px] font-black rounded cursor-pointer inline-block"
+                                  className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 text-[10px] font-bold rounded-lg cursor-pointer inline-block transition"
                                 >
                                   Restore Brand
                                 </button>
@@ -1108,7 +1108,7 @@ export const AdminDashboard: React.FC = () => {
                             )}
 
                             {(currentUser?.role === 'admin' || currentUser?.role === 'moderator') && (
-                              <div className="pt-2 border-t border-white/5 flex justify-end">
+                              <div className="pt-2 border-t border-slate-200 flex justify-end">
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -1118,7 +1118,7 @@ export const AdminDashboard: React.FC = () => {
                                     }
                                     setClientToDelete(c);
                                   }}
-                                  className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold uppercase rounded cursor-pointer bg-red-950/20 hover:bg-red-650 border border-red-500/15 text-red-500 hover:text-white select-none transition-all"
+                                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-[10.5px] font-bold uppercase rounded-lg cursor-pointer bg-red-50 hover:bg-red-650 border border-red-200 text-red-600 hover:text-white select-none transition-all shadow-xs"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" /> Delete Account
                                 </button>
@@ -1471,18 +1471,18 @@ export const AdminDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* ================= CLIENT PAYMENT DESK TAB ================= */}
+         {/* ================= CLIENT PAYMENT DESK TAB ================= */}
         {activeTab === 'client-payments' && (
           currentUser?.role !== 'admin' ? (
-            <div className="p-8 text-center bg-zinc-950/40 rounded-3xl border border-white/10 max-w-2xl mx-auto space-y-4 my-8 font-sans">
-              <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto text-red-500">
+            <div className="p-8 text-center bg-slate-50 rounded-3xl border border-slate-200 max-w-2xl mx-auto space-y-4 my-8 font-sans shadow-sm">
+              <div className="w-12 h-12 rounded-full bg-red-50 border border-red-200 flex items-center justify-center mx-auto text-red-650">
                 <ShieldAlert className="w-6 h-6 animate-pulse" />
               </div>
-              <h3 className="text-lg font-black text-white">Shield Guard: Restricted Access</h3>
-              <p className="text-xs text-zinc-400 max-w-md mx-auto leading-relaxed font-semibold">
-                Agency payment proofs, financial configurations, incoming invoice channels, and accounting logs require senior Administrator clearance.
+              <h3 className="text-lg font-black text-slate-800">Shield Guard: Restricted Access</h3>
+              <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed font-semibold">
+                Agency payment proofs, financial configurations, incoming invoice channels, and accounting logs require senior Platform Administrator clearance.
               </p>
-              <div className="pt-2 text-[10px] text-zinc-500 font-mono font-bold uppercase tracking-wider">
+              <div className="pt-2 text-[10px] text-slate-450 font-mono font-bold uppercase tracking-wider">
                 Role Context: Moderator Level II Desk
               </div>
             </div>
@@ -1490,46 +1490,46 @@ export const AdminDashboard: React.FC = () => {
             <div className="space-y-10">
             {/* STYLED SUMMARY STATS STRIP FOR ADMINISTRATORS */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-              <div className="p-5 bg-zinc-950 rounded-2xl border border-white/5 flex flex-col justify-between">
-                <span className="text-[10px] text-zinc-500 font-extrabold uppercase tracking-widest block mb-1">Pending Proof Queue</span>
-                <span className="text-3xl font-black font-mono text-amber-500">
+              <div className="p-6 bg-white rounded-2xl border border-slate-200 flex flex-col justify-between shadow-sm">
+                <span className="text-[10px] text-slate-500 font-extrabold uppercase tracking-widest block mb-1">Pending Proof Queue</span>
+                <span className="text-3xl font-black font-mono text-amber-600">
                   {(clientPaymentProofs || []).filter(p => p.status === 'pending').length}
                 </span>
-                <span className="text-[10px] text-zinc-500 mt-2">Proofs awaiting approval verification</span>
+                <span className="text-[10px] text-slate-500 mt-2">Proofs awaiting approval verification</span>
               </div>
-              <div className="p-5 bg-zinc-950 rounded-2xl border border-white/5 flex flex-col justify-between">
-                <span className="text-[10px] text-zinc-500 font-extrabold uppercase tracking-widest block mb-1">Owed Client Balances</span>
-                <span className="text-3xl font-black font-mono text-indigo-400">
+              <div className="p-6 bg-white rounded-2xl border border-slate-200 flex flex-col justify-between shadow-sm">
+                <span className="text-[10px] text-slate-500 font-extrabold uppercase tracking-widest block mb-1">Owed Client Balances</span>
+                <span className="text-3xl font-black font-mono text-indigo-600">
                   ${(clients || []).reduce((acc, curr) => acc + (curr.payAgencyBalance || 0), 0).toFixed(2)}
                 </span>
-                <span className="text-[10px] text-zinc-500 mt-2">Combined outstanding dues across all brands</span>
+                <span className="text-[10px] text-slate-500 mt-2">Combined outstanding dues across all brands</span>
               </div>
-              <div className="p-5 bg-zinc-950 rounded-2xl border border-white/5 flex flex-col justify-between">
-                <span className="text-[10px] text-zinc-500 font-extrabold uppercase tracking-widest block mb-1">Total Settled Invoices</span>
-                <span className="text-3xl font-black font-mono text-emerald-400">
+              <div className="p-6 bg-white rounded-2xl border border-slate-200 flex flex-col justify-between shadow-sm">
+                <span className="text-[10px] text-slate-500 font-extrabold uppercase tracking-widest block mb-1">Total Settled Invoices</span>
+                <span className="text-3xl font-black font-mono text-emerald-600">
                   ${(clientPayments || []).reduce((acc, curr) => acc + curr.amount, 0).toFixed(2)}
                 </span>
-                <span className="text-[10px] text-zinc-500 mt-2">Officially confirmed settled value</span>
+                <span className="text-[10px] text-slate-500 mt-2">Officially confirmed settled value</span>
               </div>
             </div>
 
             {/* 1. BRAND DEPOSIT PROOFS PIPELINE SECTION */}
-            <div className="p-6 bg-zinc-950/40 rounded-3xl border border-white/5 space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-white/5 pb-4">
+            <div className="p-6 bg-white rounded-3xl border border-slate-200 space-y-6 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-4">
                 <div>
-                  <h2 className="text-base font-black text-white flex items-center gap-2">
-                    <CheckSquare className="w-5 h-5 text-indigo-400" /> Confirm Deposit Verification Proofs
+                  <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
+                    <CheckSquare className="w-5 h-5 text-indigo-600" /> Confirm Deposit Verification Proofs
                   </h2>
-                  <p className="text-xs text-zinc-500 mt-0.5">Audit transaction proofs dispatched by agency clients. Approving credentials automatically credits outstanding dues.</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Audit transaction proofs dispatched by agency clients. Approving credentials automatically credits outstanding dues.</p>
                 </div>
 
                 {/* Filter Selector */}
                 <div className="flex gap-2 items-center">
-                  <span className="text-xs font-semibold text-zinc-400 font-sans">Filter status:</span>
+                  <span className="text-xs font-semibold text-slate-500 font-sans">Filter status:</span>
                   <select
                     value={proofFilterStatus}
                     onChange={(e: any) => setProofFilterStatus(e.target.value)}
-                    className="text-xs text-white bg-zinc-950 border border-white/5 px-2.5 py-1.5 rounded-lg focus:outline-none"
+                    className="text-xs text-slate-700 bg-white border border-slate-200 px-2.5 py-1.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   >
                     <option value="all">All Submissions</option>
                     <option value="pending">Pending Review</option>
@@ -1543,7 +1543,7 @@ export const AdminDashboard: React.FC = () => {
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="border-b border-white/5 text-[10px] font-bold text-zinc-500 uppercase tracking-wider bg-neutral-900/30">
+                    <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider bg-slate-50">
                       <th className="py-3 px-3">Brand Manager / Company</th>
                       <th className="py-3 px-3 text-right">Amount Submitted</th>
                       <th className="py-3 px-3">Tx Hash Reference</th>
@@ -1553,10 +1553,10 @@ export const AdminDashboard: React.FC = () => {
                       <th className="py-3 px-3 text-right">Moderator Audit Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/5">
+                  <tbody className="divide-y divide-slate-100">
                     {(!clientPaymentProofs || clientPaymentProofs.length === 0) ? (
                       <tr>
-                        <td colSpan={7} className="py-10 text-center text-zinc-500 italic font-semibold">
+                        <td colSpan={7} className="py-10 text-center text-slate-400 italic font-semibold">
                           No deposit proofs submitted by clients yet.
                         </td>
                       </tr>
@@ -1567,31 +1567,31 @@ export const AdminDashboard: React.FC = () => {
                           return proof.status === proofFilterStatus;
                         })
                         .map(proof => (
-                          <tr key={proof.id} className="hover:bg-white/[0.01] transition">
+                          <tr key={proof.id} className="hover:bg-slate-50/50 transition">
                             <td className="py-4 px-3">
-                              <span className="font-bold text-white block">{proof.clientCompany}</span>
-                              <span className="text-[10px] text-zinc-500">{proof.clientName} (ID: {proof.clientId.substring(0, 8)})</span>
+                              <span className="font-bold text-slate-900 block">{proof.clientCompany}</span>
+                              <span className="text-[10px] text-slate-500">{proof.clientName} (ID: {proof.clientId.substring(0, 8)})</span>
                             </td>
-                            <td className="py-4 px-3 text-right font-mono font-black text-emerald-400">
+                            <td className="py-4 px-3 text-right font-mono font-black text-emerald-600">
                               ${proof.amount.toFixed(2)} USDT
                             </td>
                             <td className="py-4 px-3 select-all truncate max-w-[150px]" title={proof.transactionId || 'None'}>
-                              <span className="text-[10px] text-zinc-300 font-mono">
+                              <span className="text-[10px] text-slate-700 font-mono">
                                 {proof.transactionId || 'N/A'}
                               </span>
                               {proof.paymentMethod && (
-                                <span className="text-[9px] text-indigo-400 font-bold block uppercase mt-0.5 font-mono">
+                                <span className="text-[9px] text-indigo-600 font-bold block uppercase mt-0.5 font-mono">
                                   Method: {proof.paymentMethod.replace('_', ' ')}
                                 </span>
                               )}
                               {proof.notes && (
-                                <span className="text-[9px] text-zinc-500 block italic leading-none truncate mt-1">{proof.notes}</span>
+                                <span className="text-[9px] text-slate-500 block italic leading-none truncate mt-1">{proof.notes}</span>
                               )}
                             </td>
-                            <td className="py-4 px-3 text-zinc-400 font-mono text-[10px]">
+                            <td className="py-4 px-3 text-slate-500 font-mono text-[10px]">
                               <p>Sub: {new Date(proof.submittedAt).toLocaleDateString()}</p>
                               {proof.verifiedAt && (
-                                <p className="text-[9px] text-zinc-650 font-sans">Ver: {new Date(proof.verifiedAt).toLocaleDateString()}</p>
+                                <p className="text-[9px] text-slate-400 font-sans">Ver: {new Date(proof.verifiedAt).toLocaleDateString()}</p>
                               )}
                             </td>
                             <td className="py-4 px-3">
@@ -1600,19 +1600,19 @@ export const AdminDashboard: React.FC = () => {
                                   href={proof.proofImageUrl}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="text-xs text-indigo-400 hover:underline font-bold inline-flex items-center gap-1"
+                                  className="text-xs text-indigo-600 hover:underline font-bold inline-flex items-center gap-1"
                                 >
                                   View Receipt <ExternalLink className="w-3 h-3" />
                                 </a>
                               )}
                             </td>
                             <td className="py-4 px-3 text-center">
-                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                              <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${
                                 proof.status === 'verified'
-                                  ? 'bg-emerald-950/80 border border-emerald-900 text-emerald-400'
+                                  ? 'bg-emerald-50 border-emerald-250 text-emerald-705'
                                   : proof.status === 'rejected'
-                                  ? 'bg-red-950/80 border border-red-955 text-red-400'
-                                  : 'bg-amber-955/80 border border-amber-900 text-amber-400'
+                                  ? 'bg-red-50 border-red-200 text-red-700'
+                                  : 'bg-amber-50 border-amber-250 text-amber-700'
                               }`}>
                                 {proof.status}
                               </span>
@@ -1621,13 +1621,13 @@ export const AdminDashboard: React.FC = () => {
                               {proof.status === 'pending' ? (
                                 <div className="space-y-2">
                                   {proofRejectionId === proof.id ? (
-                                    <div className="flex flex-col items-end gap-2 bg-neutral-900 p-3 rounded-lg border border-red-900/30">
+                                    <div className="flex flex-col items-end gap-2 bg-red-50/50 p-3 rounded-lg border border-red-150">
                                       <input
                                         type="text"
                                         placeholder="Reason for rejection..."
                                         value={proofRejectionReasonInput}
                                         onChange={(e) => setProofRejectionReasonInput(e.target.value)}
-                                        className="w-full text-xs text-white bg-zinc-950 border border-red-900/40 p-1.5 rounded-md focus:outline-none placeholder-zinc-600"
+                                        className="w-full text-xs text-slate-800 bg-white border border-red-200 p-1.5 rounded-md focus:outline-none placeholder-slate-400 focus:ring-1 focus:ring-red-500"
                                       />
                                       <div className="flex gap-2">
                                         <button
@@ -1635,7 +1635,7 @@ export const AdminDashboard: React.FC = () => {
                                             setProofRejectionId(null);
                                             setProofRejectionReasonInput('');
                                           }}
-                                          className="px-2 py-1 bg-zinc-850 hover:bg-zinc-800 text-zinc-400 text-[10px] rounded font-bold uppercase cursor-pointer"
+                                          className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] rounded font-bold uppercase cursor-pointer"
                                         >
                                           Cancel
                                         </button>
@@ -1649,7 +1649,7 @@ export const AdminDashboard: React.FC = () => {
                                             setProofRejectionId(null);
                                             setProofRejectionReasonInput('');
                                           }}
-                                          className="px-2 py-1 bg-red-650 hover:bg-red-600 text-white text-[10px] rounded font-bold uppercase transition cursor-pointer"
+                                          className="px-2 py-1 bg-red-600 hover:bg-red-500 text-white text-[10px] rounded font-bold uppercase transition cursor-pointer"
                                         >
                                           Confirm Reject
                                         </button>
@@ -1662,7 +1662,7 @@ export const AdminDashboard: React.FC = () => {
                                           setProofRejectionId(proof.id);
                                           setProofRejectionReasonInput('');
                                         }}
-                                        className="px-2.5 py-1.5 bg-red-950/45 hover:bg-red-900/50 text-red-400 border border-red-900/20 text-[10px] rounded-lg font-bold uppercase transition cursor-pointer"
+                                        className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-[10px] rounded-lg font-bold uppercase transition cursor-pointer"
                                       >
                                         Reject Proof
                                       </button>
@@ -1672,7 +1672,7 @@ export const AdminDashboard: React.FC = () => {
                                             adminVerifyPaymentProof(proof.id, 'admin@socialpanel.com');
                                           }
                                         }}
-                                        className="px-2.5 py-1.5 bg-emerald-950/45 hover:bg-emerald-900/50 text-emerald-400 border border-emerald-900/20 text-[10px] rounded-lg font-bold uppercase transition cursor-pointer"
+                                        className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-[10px] rounded-lg font-bold uppercase transition cursor-pointer"
                                       >
                                         Verify & Credit
                                       </button>
@@ -1680,13 +1680,13 @@ export const AdminDashboard: React.FC = () => {
                                   )}
                                 </div>
                               ) : (
-                                <div className="text-[10px] text-zinc-500 font-medium">
+                                <div className="text-[10px] text-slate-500 font-medium">
                                   {proof.status === 'verified' ? (
                                     <p>Verified by {proof.verifiedBy || 'Admin'}</p>
                                   ) : (
                                     <div className="text-right">
-                                      <p className="text-red-400 font-bold text-[9px] uppercase">Reason of rejection:</p>
-                                      <p className="text-zinc-400 italic max-w-[200px] inline-block font-sans">{proof.rejectionReason}</p>
+                                      <p className="text-red-600 font-bold text-[9px] uppercase">Reason of rejection:</p>
+                                      <p className="text-slate-500 italic max-w-[200px] inline-block font-sans">{proof.rejectionReason}</p>
                                     </div>
                                   )}
                                 </div>
@@ -1704,18 +1704,18 @@ export const AdminDashboard: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               
               {/* Form panel */}
-              <div className="space-y-6 lg:border-r lg:border-white/5 lg:pr-8">
-                <h2 className="text-sm font-black uppercase text-zinc-300 border-b border-white/5 pb-3 flex items-center gap-2 font-sans tracking-wide">
-                  <CreditCard className="w-4 h-4 text-emerald-400" /> Mark Invoice Paid (Manual)
+              <div className="space-y-6 lg:border-r lg:border-slate-200 lg:pr-8">
+                <h2 className="text-sm font-black uppercase text-slate-900 border-b border-slate-200 pb-3 flex items-center gap-2 font-sans tracking-wide">
+                  <CreditCard className="w-4 h-4 text-emerald-605" /> Mark Invoice Paid (Manual)
                 </h2>
 
-                <div className="p-4 bg-zinc-950 rounded-2xl border border-white/5 text-xs text-zinc-400 font-normal space-y-2">
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-xs text-slate-600 font-normal space-y-2">
                   <p>✨ Select an onboarding client with outstanding dues below to log their Crypto or Bank transfer receipt manually without their submission.</p>
                 </div>
 
                 <div className="space-y-4">
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Select Owed Client</label>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Select Owed Client</label>
                     <select
                       value={selectedClientForPayment}
                       onChange={(e: any) => {
@@ -1724,7 +1724,7 @@ export const AdminDashboard: React.FC = () => {
                         const cl = clients.find(c => c.id === cid);
                         setConfirmPayAmount(cl ? cl.payAgencyBalance : 0);
                       }}
-                      className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-3 py-2.5 rounded-xl focus:border-purple-550 focus:outline-none bg-zinc-900"
+                      className="w-full text-xs text-slate-800 bg-white border border-slate-200 px-3 py-2.5 rounded-xl focus:border-indigo-500 focus:outline-none"
                     >
                       <option value="">-- Choose Client Profile --</option>
                       {(clients || []).filter(c => c.payAgencyBalance > 0).map(c => (
@@ -1736,36 +1736,36 @@ export const AdminDashboard: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Receipt Clearing Amount (USDT)</label>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Receipt Clearing Amount (USDT)</label>
                     <input
                       type="number"
                       step="0.01"
                       value={confirmPayAmount}
                       onChange={(e: any) => setConfirmPayAmount(Number(e.target.value))}
                       placeholder="e.g. 150.00"
-                      className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-3 py-2.5 rounded-xl focus:border-purple-550 font-mono"
+                      className="w-full text-xs text-slate-900 bg-white border border-slate-200 px-3 py-2.5 rounded-xl focus:border-indigo-500 font-mono"
                     />
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Notes / Transaction Hash Reference</label>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Notes / Transaction Hash Reference</label>
                     <input
                       type="text"
                       value={confirmPayNote}
                       onChange={(e: any) => setConfirmPayNote(e.target.value)}
                       placeholder="e.g. USDT BEP20 TxHash: 0x47a9ff..."
-                      className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-3 py-2.5 rounded-xl focus:border-purple-550 focus:outline-none"
+                      className="w-full text-xs text-slate-900 bg-white border border-slate-200 px-3 py-2.5 rounded-xl focus:border-indigo-500 focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Receipt Screenshot / PDF URL</label>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Receipt Screenshot / PDF URL</label>
                     <input
                       type="text"
                       value={confirmPayReceiptUrl}
                       onChange={(e: any) => setConfirmPayReceiptUrl(e.target.value)}
                       placeholder="https://ipfs.io/... or transaction image url"
-                      className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-3 py-2.5 rounded-xl focus:border-purple-550 font-mono focus:outline-none"
+                      className="w-full text-xs text-slate-900 bg-white border border-slate-200 px-3 py-2.5 rounded-xl focus:border-indigo-500 font-mono focus:outline-none"
                     />
                   </div>
 
@@ -1783,7 +1783,7 @@ export const AdminDashboard: React.FC = () => {
                       setConfirmPayNote('');
                       setConfirmPayReceiptUrl('');
                     }}
-                    className="w-full py-3 bg-emerald-650 hover:bg-emerald-600 text-white font-black text-xs rounded-xl shadow-lg shadow-emerald-500/10 cursor-pointer text-center uppercase tracking-widest"
+                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl shadow-md cursor-pointer text-center uppercase tracking-widest"
                   >
                     Clear Dues & Broadcast Receipt
                   </button>
@@ -1792,47 +1792,47 @@ export const AdminDashboard: React.FC = () => {
 
               {/* History list */}
               <div className="lg:col-span-2 space-y-6">
-                <h2 className="text-sm font-black uppercase tracking-wider text-zinc-300 border-b border-white/5 pb-3">History of Paid Client Receipts</h2>
+                <h2 className="text-sm font-black uppercase tracking-wider text-slate-900 border-b border-slate-250 pb-3">History of Paid Client Receipts</h2>
                 
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
-                      <tr className="border-b border-white/5 text-[10px] font-bold text-zinc-550 uppercase tracking-wider">
-                        <th className="py-2 px-1">Brand Name</th>
-                        <th className="py-2 px-1 text-right">Clearing Value</th>
-                        <th className="py-2 px-1">Receipt Ref</th>
-                        <th className="py-2 px-1">Log Date</th>
-                        <th className="py-2 px-1 text-right">Proof</th>
+                      <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider bg-slate-50">
+                        <th className="py-3 px-3">Brand Name</th>
+                        <th className="py-3 px-3 text-right">Clearing Value</th>
+                        <th className="py-3 px-3">Receipt Ref</th>
+                        <th className="py-3 px-3">Log Date</th>
+                        <th className="py-3 px-3 text-right">Proof</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/5">
+                    <tbody className="divide-y divide-slate-100">
                       {(clientPayments || []).length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="py-8 text-center text-zinc-500 italic font-semibold">
+                          <td colSpan={5} className="py-8 text-center text-slate-400 italic font-semibold">
                             No agency payment audits logged yet.
                           </td>
                         </tr>
                       ) : (
                         (clientPayments || []).map(p => (
-                          <tr key={p.id} className="hover:bg-white/[0.01]">
-                            <td className="py-3 px-1 font-bold text-white">
+                          <tr key={p.id} className="hover:bg-slate-50/50 transition">
+                            <td className="py-3 px-3 font-bold text-slate-900">
                               {p.clientName}
                             </td>
-                            <td className="py-3 px-1 text-right font-mono font-black text-emerald-400">
+                            <td className="py-3 px-3 text-right font-mono font-black text-emerald-600">
                               ${p.amount.toFixed(2)} USDT
                             </td>
-                            <td className="py-3 px-1 font-mono text-[10px] text-zinc-400 select-text max-w-xs truncate" title={p.referenceNote}>
+                            <td className="py-3 px-3 font-mono text-[10px] text-slate-600 select-text max-w-xs truncate" title={p.referenceNote}>
                               {p.referenceNote}
                             </td>
-                            <td className="py-3 px-1 text-zinc-500 font-mono">
+                            <td className="py-3 px-3 text-slate-500 font-mono">
                               {new Date(p.paidAt).toLocaleDateString()}
                             </td>
-                            <td className="py-3 px-1 text-right">
+                            <td className="py-3 px-3 text-right">
                               <a
                                 href={p.receiptUrl}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="text-[10px] bg-zinc-950 hover:bg-white/10 px-2 py-1 rounded inline-flex items-center gap-1 border border-white/5 hover:text-white"
+                                className="text-[10px] bg-slate-100 hover:bg-slate-200 px-2 py-1.5 rounded inline-flex items-center gap-1 border border-slate-200 text-slate-700 transition"
                               >
                                 View Doc <ExternalLink className="w-3 h-3" />
                               </a>
@@ -1852,22 +1852,22 @@ export const AdminDashboard: React.FC = () => {
         {/* ================= CLIENT SUPPORT CHAT DESK TAB ================= */}
         {activeTab === 'client-chats' && (
           <div className="space-y-6">
-            <div className="pb-4 border-b border-white/5">
-              <h2 className="text-base font-black text-indigo-400 flex items-center gap-2">
+            <div className="pb-4 border-b border-slate-200">
+              <h2 className="text-base font-black text-indigo-600 flex items-center gap-2">
                 <MessageSquare className="w-5 h-5" /> Brand Support Direct Inbox
               </h2>
-              <p className="text-xs text-zinc-500 mt-1">Resolve outstanding support inquiries submitted by onboarding brand managers. Unread messages show real-time double checkticks.</p>
+              <p className="text-xs text-slate-500 mt-1">Resolve outstanding support inquiries submitted by onboarding brand managers. Unread messages show real-time double checkticks.</p>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 min-h-[500px]">
               
               {/* Inbox lists left */}
-              <div className="space-y-3 bg-zinc-950/30 p-4 border border-white/5 rounded-2xl select-none">
-                <span className="text-[10px] font-black uppercase text-zinc-500 tracking-wider block border-b border-white/5 pb-2">Conversations</span>
+              <div className="space-y-3 bg-white p-4 border border-slate-200 rounded-2xl select-none shadow-sm font-sans">
+                <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider block border-b border-slate-100 pb-2">Conversations</span>
                 
                 <div className="space-y-2 max-h-[450px] overflow-y-auto">
                   {(clientChats || []).length === 0 ? (
-                    <div className="text-center py-10 text-zinc-500 italic text-xs">
+                    <div className="text-center py-10 text-slate-400 italic text-xs">
                       No customer chat logs detected.
                     </div>
                   ) : (
@@ -1883,20 +1883,20 @@ export const AdminDashboard: React.FC = () => {
                           onClick={() => setOpenChatId(chat.clientId)}
                           className={`p-3 rounded-xl border text-left cursor-pointer transition-all duration-200 relative ${
                             isOpened 
-                              ? 'bg-indigo-600/15 border-indigo-500/30' 
-                              : 'bg-zinc-900 border-zinc-950 hover:bg-zinc-800'
+                              ? 'bg-indigo-50/80 border-indigo-200 shadow-sm' 
+                              : 'bg-slate-50/50 border-slate-200 hover:bg-slate-100/70'
                           }`}
                         >
                           <div className="flex justify-between items-start gap-2">
-                            <span className="font-extrabold text-xs text-white block truncate">{chat.clientName}</span>
+                            <span className={`font-extrabold text-xs block truncate ${isOpened ? 'text-indigo-950' : 'text-slate-900'}`}>{chat.clientName}</span>
                             {hasUnread && (
-                              <span className="w-2 h-2 rounded-full bg-indigo-500 shrink-0 mt-1 animate-pulse"></span>
+                              <span className="w-2 h-2 rounded-full bg-indigo-600 shrink-0 mt-1 animate-pulse"></span>
                             )}
                           </div>
                           
-                          <p className="text-[11px] text-zinc-400 font-normal mt-1 leading-snug line-clamp-1">{snippet}</p>
+                          <p className={`text-[11px] font-normal mt-1 leading-snug line-clamp-1 ${isOpened ? 'text-slate-700' : 'text-slate-500'}`}>{snippet}</p>
                           
-                          <div className="flex justify-between items-center text-[9px] text-zinc-500 font-mono mt-2 pt-1 border-t border-white/[0.03]">
+                          <div className="flex justify-between items-center text-[9px] text-slate-405 font-mono mt-2 pt-1 border-t border-slate-200/50">
                             <span>Status: {chat.resolvedStatus === 'resolved' ? '✅ Resolved' : '🛠️ Open'}</span>
                             <span>{new Date(chat.lastMessageTimestamp).toLocaleDateString()}</span>
                           </div>
@@ -1908,11 +1908,11 @@ export const AdminDashboard: React.FC = () => {
               </div>
 
               {/* Chat screen helper right */}
-              <div className="lg:col-span-2 bg-zinc-950/50 rounded-2xl border border-white/5 flex flex-col justify-between overflow-hidden">
+              <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 flex flex-col justify-between overflow-hidden shadow-sm">
                 {!openChatId ? (
                   <div className="m-auto text-center py-20 pointer-events-none select-none">
-                    <MessageCircle className="w-12 h-12 text-zinc-600 mx-auto opacity-40 mb-3" />
-                    <p className="text-zinc-500 text-xs font-bold">Pick an active client thread from the sidebar list to chat.</p>
+                    <MessageCircle className="w-12 h-12 text-slate-300 mx-auto opacity-60 mb-3" />
+                    <p className="text-slate-400 text-xs font-bold">Pick an active client thread from the sidebar list to chat.</p>
                   </div>
                 ) : (
                   <>
@@ -1921,10 +1921,10 @@ export const AdminDashboard: React.FC = () => {
                       const activeChat = (clientChats || []).find(ch => ch.clientId === openChatId);
                       if (!activeChat) return null;
                       return (
-                        <div className="p-4 bg-zinc-900 border-b border-white/5 flex justify-between items-center select-none">
+                        <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center select-none">
                           <div>
-                            <span className="font-black text-xs text-white">{activeChat.clientName} Profile Stream</span>
-                            <span className="block text-[10px] text-zinc-500 mt-0.5">Status: <span className={activeChat.resolvedStatus === 'resolved' ? 'text-emerald-400 font-bold' : 'text-amber-400 font-bold'}>{activeChat.resolvedStatus?.toUpperCase() || 'UNRESOLVED'}</span></span>
+                            <span className="font-extrabold text-xs text-slate-800">{activeChat.clientName} Profile Stream</span>
+                            <span className="block text-[10px] text-slate-500 mt-1">Status: <span className={activeChat.resolvedStatus === 'resolved' ? 'text-emerald-600 font-bold' : 'text-amber-600 font-bold'}>{activeChat.resolvedStatus?.toUpperCase() || 'UNRESOLVED'}</span></span>
                           </div>
 
                           <div className="flex gap-2">
@@ -1933,7 +1933,7 @@ export const AdminDashboard: React.FC = () => {
                                 const nextStat = activeChat.resolvedStatus === 'resolved' ? 'unresolved' : 'resolved';
                                 adminToggleChatResolution(openChatId, nextStat);
                               }}
-                              className="px-2.5 py-1 text-[10px] uppercase font-black tracking-wide border border-white/10 hover:border-white/20 hover:bg-white/5 text-zinc-300 rounded cursor-pointer transition-colors"
+                              className="px-2.5 py-1 text-[10px] uppercase font-black tracking-wide border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded cursor-pointer transition-colors shadow-sm"
                             >
                               Toggle {activeChat.resolvedStatus === 'resolved' ? 'Open' : 'Resolved'}
                             </button>
@@ -1943,7 +1943,7 @@ export const AdminDashboard: React.FC = () => {
                     })()}
 
                     {/* Messages Body */}
-                    <div className="flex-1 p-4 space-y-3.5 overflow-y-auto max-h-[350px]">
+                    <div className="flex-1 p-4 space-y-3.5 overflow-y-auto max-h-[350px] bg-slate-50/50">
                       {(() => {
                         const activeChat = (clientChats || []).find(ch => ch.clientId === openChatId);
                         if (!activeChat) return null;
@@ -1951,28 +1951,28 @@ export const AdminDashboard: React.FC = () => {
                           const isAdmin = m.senderId === 'admin';
                           return (
                             <div key={m.id} className={`flex ${isAdmin ? 'justify-end' : 'justify-start'}`}>
-                              <div className={`p-3 rounded-2xl max-w-sm text-xs font-normal leading-relaxed ${
+                              <div className={`p-3 rounded-2xl max-w-sm text-xs font-normal leading-relaxed shadow-sm ${
                                 isAdmin 
-                                  ? 'bg-indigo-600 text-white rounded-br-none' 
-                                  : 'bg-zinc-800 text-zinc-200 rounded-bl-none'
+                                  ? 'bg-indigo-650 text-white rounded-br-none' 
+                                  : 'bg-white text-slate-800 rounded-bl-none border border-slate-200'
                               }`}>
-                                <span className="block text-[9px] text-[#A5B4FC] font-extrabold pb-0.5 uppercase tracking-wide">
+                                <span className={`block text-[9px] font-extrabold pb-0.5 uppercase tracking-wide ${isAdmin ? 'text-[#C7D2FE]' : 'text-slate-500'}`}>
                                   {m.senderName}
                                 </span>
                                 
-                                <p className="text-white font-medium select-text">{m.text}</p>
+                                <p className={`font-medium select-text ${isAdmin ? 'text-white' : 'text-slate-900'}`}>{m.text}</p>
                                 
                                 {m.fileUrl && (
-                                  <div className="mt-2 text-[10px] bg-black/20 p-1.5 rounded flex items-center gap-1 select-all">
+                                  <div className={`mt-2 text-[10px] p-2 rounded flex items-center gap-1 select-all ${isAdmin ? 'bg-indigo-805/42' : 'bg-slate-100 border border-slate-150'}`}>
                                     <span className="truncate flex-1 font-mono text-[9px]">{m.fileUrl}</span>
-                                    <a href={m.fileUrl} target="_blank" rel="noreferrer" className="text-indigo-200 hover:underline font-bold shrink-0">Open ↗</a>
+                                    <a href={m.fileUrl} target="_blank" rel="noreferrer" className={`font-black shrink-0 ${isAdmin ? 'text-indigo-200 hover:text-white' : 'text-indigo-600 hover:underline'}`}>Open ↗</a>
                                   </div>
                                 )}
 
-                                <div className="text-[8px] opacity-70 text-right mt-1.5 font-mono flex items-center justify-end gap-1 select-none">
+                                <div className={`text-[8px] opacity-70 text-right mt-1.5 font-mono flex items-center justify-end gap-1 select-none ${isAdmin ? 'text-indigo-200' : 'text-slate-400'}`}>
                                   <span>{new Date(m.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                                   {isAdmin && (
-                                    <span className="text-indigo-300 tracking-tight font-extrabold" title="Double checktick status">✓✓</span>
+                                    <span className="text-indigo-350 tracking-tight font-extrabold" title="Double checktick status">✓✓</span>
                                   )}
                                 </div>
                               </div>
@@ -1983,7 +1983,7 @@ export const AdminDashboard: React.FC = () => {
                     </div>
 
                     {/* Compose Footer */}
-                    <div className="p-3 bg-zinc-900 border-t border-white/5 flex gap-2 select-none">
+                    <div className="p-3 bg-slate-50 border-t border-slate-200 flex gap-2 select-none">
                       <input
                         type="text"
                         value={adminReplyMessage}
@@ -1995,7 +1995,7 @@ export const AdminDashboard: React.FC = () => {
                             setAdminReplyMessage('');
                           }
                         }}
-                        className="flex-1 bg-zinc-950 border border-white/10 px-3 py-2 rounded-xl text-xs focus:border-indigo-500 focus:outline-none"
+                        className="flex-1 bg-white border border-slate-200 px-3 py-2 rounded-xl text-xs focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                       />
                       <button
                         onClick={() => {
@@ -2003,7 +2003,7 @@ export const AdminDashboard: React.FC = () => {
                           adminSendMessage(openChatId, adminReplyMessage);
                           setAdminReplyMessage('');
                         }}
-                        className="p-2 px-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl cursor-pointer transition-all flex items-center justify-center"
+                        className="p-2.5 px-3.5 bg-indigo-650 hover:bg-indigo-600 text-white font-bold rounded-xl cursor-pointer transition-all flex items-center justify-center shadow-sm"
                       >
                         <SendHorizontal className="w-4 h-4" />
                       </button>
@@ -2019,31 +2019,31 @@ export const AdminDashboard: React.FC = () => {
         {/* ================= USERS TAB ================= */}
         {activeTab === 'users' && (
           <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-white/5">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-200">
                 <div className="space-y-1">
-                  <h2 className="text-base font-black">User Management</h2>
-                  <div className="flex items-center gap-2 text-[10px] text-zinc-500 font-semibold uppercase">
+                  <h2 className="text-base font-black text-slate-900">User Management</h2>
+                  <div className="flex items-center gap-2 text-[10px] text-slate-500 font-semibold uppercase">
                     <span>Total registered creators: {users.length}</span>
                     {selectedAdminRoleFilter !== 'all' && (
-                      <span className="text-emerald-400 font-bold">• Role: {selectedAdminRoleFilter}</span>
+                      <span className="text-emerald-600 font-bold">• Role: {selectedAdminRoleFilter}</span>
                     )}
                     {selectedAdminTierFilter !== 'all' && (
-                      <span className="text-purple-400 font-bold">• Filtered by: {selectedAdminTierFilter} Tier ({filteredUsersForAdmin.length} matching)</span>
+                      <span className="text-purple-600 font-bold">• Filtered by: {selectedAdminTierFilter} Tier ({filteredUsersForAdmin.length} matching)</span>
                     )}
                     {selectedAdminStatusFilter !== 'all' && (
-                      <span className="text-yellow-400 font-bold">• Status: {selectedAdminStatusFilter} ({filteredUsersForAdmin.length} matching)</span>
+                      <span className="text-yellow-600 font-bold">• Status: {selectedAdminStatusFilter} ({filteredUsersForAdmin.length} matching)</span>
                     )}
                   </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
                   {/* Role filter dropdown */}
-                  <div className="flex items-center gap-2 bg-zinc-950 px-3 py-1.5 rounded-xl border border-white/5 font-semibold text-xs text-zinc-400 select-none">
+                  <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200 font-semibold text-xs text-slate-650 select-none shadow-sm">
                     <span>Role:</span>
                     <select
                       value={selectedAdminRoleFilter}
                       onChange={(e) => setSelectedAdminRoleFilter(e.target.value)}
-                      className="bg-zinc-900 border border-white/10 text-white rounded-lg focus:outline-none focus:ring-0 cursor-pointer text-xs font-black p-1 px-2"
+                      className="bg-slate-50 border border-slate-200 text-slate-800 rounded-lg focus:outline-none focus:ring-0 cursor-pointer text-xs font-black p-1 px-2"
                     >
                       <option value="all">🛡️ All Roles</option>
                       <option value="members">👤 Members</option>
@@ -2053,12 +2053,12 @@ export const AdminDashboard: React.FC = () => {
                   </div>
 
                   {/* Tier filter dropdown */}
-                  <div className="flex items-center gap-2 bg-zinc-950 px-3 py-1.5 rounded-xl border border-white/5 font-semibold text-xs text-zinc-400 select-none">
+                  <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200 font-semibold text-xs text-slate-650 select-none shadow-sm">
                     <span>Filter by Custom Tier:</span>
                     <select
                       value={selectedAdminTierFilter}
                       onChange={(e) => setSelectedAdminTierFilter(e.target.value)}
-                      className="bg-zinc-900 border border-white/10 text-white rounded-lg focus:outline-none focus:ring-0 cursor-pointer text-xs font-black p-1 px-2"
+                      className="bg-slate-50 border border-slate-200 text-slate-800 rounded-lg focus:outline-none focus:ring-0 cursor-pointer text-xs font-black p-1 px-2"
                     >
                       <option value="all">👑 All Tiers</option>
                       <option value="bronze">🥉 Bronze</option>
@@ -2074,22 +2074,22 @@ export const AdminDashboard: React.FC = () => {
               </div>
 
               {/* Creator Search Bar */}
-              <div className="bg-zinc-950/40 border border-white/5 p-4 rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+              <div className="bg-white border border-slate-200 p-4 rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 shadow-sm">
                 <div className="flex-1 space-y-1">
-                  <label className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400">Search Members & Creators</label>
+                  <label className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500">Search Members & Creators</label>
                   <div className="relative">
                     <input
                       type="text"
                       value={userSearchQuery}
                       onChange={(e) => setUserSearchQuery(e.target.value)}
                       placeholder="Search by full name, email, reddit username..."
-                      className="w-full text-xs bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500/50"
+                      className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                     />
                     {userSearchQuery && (
                       <button 
                         type="button"
                         onClick={() => setUserSearchQuery('')}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white text-[10px] uppercase font-black"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-[10px] uppercase font-black"
                       >
                         Clear
                       </button>
@@ -2099,7 +2099,7 @@ export const AdminDashboard: React.FC = () => {
               </div>
 
               {/* Users sub-tabs for User Management */}
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-3 bg-zinc-950/40 border border-white/5 rounded-2xl select-none">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-3 bg-slate-50 border border-slate-200 rounded-2xl select-none">
                 <div className="flex flex-wrap gap-1">
                   {[
                     { id: 'active_pending', label: '👥 Active & Pending', count: users.filter(u => (u.status || '').toLowerCase() !== 'rejected').length },
@@ -2117,29 +2117,29 @@ export const AdminDashboard: React.FC = () => {
                       onClick={() => setSelectedAdminStatusFilter(sTab.id)}
                       className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                         selectedAdminStatusFilter === sTab.id
-                          ? 'bg-purple-600 text-white shadow-md'
-                          : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'text-slate-550 hover:text-slate-800 hover:bg-slate-200/50'
                       }`}
                     >
                       <span>{sTab.label}</span>
                       {sTab.count > 0 ? (
                         <span className={`px-1.5 py-0.2 select-none font-extrabold text-[9px] rounded-full ${
                           selectedAdminStatusFilter === sTab.id
-                            ? 'bg-purple-800 text-purple-100'
-                            : 'bg-zinc-800 text-zinc-400'
+                            ? 'bg-indigo-800 text-indigo-100'
+                            : 'bg-slate-200 text-slate-550'
                         }`}>
                           {sTab.count}
                         </span>
                       ) : (
-                        <span className="text-[10px] text-zinc-650 font-normal">0</span>
+                        <span className="text-[10px] text-slate-400 font-normal">0</span>
                       )}
                     </button>
                   ))}
                 </div>
-                <div className="flex items-center gap-1.5 text-[10px] text-purple-400/80 font-black uppercase tracking-wider">
+                <div className="flex items-center gap-1.5 text-[10px] text-indigo-600 font-black uppercase tracking-wider">
                   <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-450 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-550"></span>
                   </span>
                   <span>Real-time listener active</span>
                 </div>
@@ -2148,63 +2148,63 @@ export const AdminDashboard: React.FC = () => {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-white/5 text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
-                      <th className="py-3 px-2">Core Profile</th>
-                      <th className="py-3 px-2">Reddit username</th>
-                      <th className="py-3 px-2">Reddit Karma / Badge</th>
-                      <th className="py-3 px-2">Audit Link</th>
-                      <th className="py-3 px-2">Current Status</th>
-                      <th className="py-3 px-2 text-right">Actions</th>
+                    <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-550 uppercase tracking-wider bg-slate-50">
+                      <th className="py-3 px-3">Core Profile</th>
+                      <th className="py-3 px-3">Reddit username</th>
+                      <th className="py-3 px-3">Reddit Karma / Badge</th>
+                      <th className="py-3 px-3">Audit Link</th>
+                      <th className="py-3 px-3">Current Status</th>
+                      <th className="py-3 px-3 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/5 text-xs">
+                  <tbody className="divide-y divide-slate-100 text-xs">
                     {filteredUsersForAdmin.map(u => {
                       const isCooldownActive = u.cooldown_expires_at && new Date(u.cooldown_expires_at) > new Date();
                       const ut = getKarmaTier(u.karma);
                       return (
-                        <tr key={u.id} className="hover:bg-white/[0.02]">
-                          <td className="py-4 px-2 space-y-1.5">
+                        <tr key={u.id} className="hover:bg-slate-50/55 transition">
+                          <td className="py-4 px-3 space-y-1.5">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <p className="font-extrabold text-white text-sm">{u.fullName}</p>
-                              <span className="px-1.5 py-0.2 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded font-extrabold text-[9px] uppercase tracking-wider select-none">
+                              <p className="font-extrabold text-slate-900 text-sm">{u.fullName}</p>
+                              <span className="px-1.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded font-extrabold text-[9px] uppercase tracking-wider select-none">
                                 {ut.emoji} {ut.name}
                               </span>
                               {(u.role === 'admin') ? (
-                                <span className="px-1.5 py-0.2 bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded font-extrabold text-[9px] uppercase tracking-wider select-none">
+                                <span className="px-1.5 py-0.5 bg-red-50 text-red-700 border border-red-200 rounded font-extrabold text-[9px] uppercase tracking-wider select-none">
                                   👑 Admin
                                 </span>
                               ) : (u.role === 'moderator' || (u.role as string) === 'Moderator') ? (
-                                <span className="px-1.5 py-0.2 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded font-extrabold text-[9px] uppercase tracking-wider select-none">
+                                <span className="px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-250 rounded font-extrabold text-[9px] uppercase tracking-wider select-none">
                                   🔰 Moderator
                                 </span>
                               ) : (
-                                <span className="px-1.5 py-0.2 bg-zinc-500/20 text-zinc-300 border border-zinc-500/30 rounded font-extrabold text-[9px] uppercase tracking-wider select-none">
+                                <span className="px-1.5 py-0.5 bg-slate-100 text-slate-600 border border-slate-200/80 rounded font-extrabold text-[9px] uppercase tracking-wider select-none">
                                   👤 Member
                                 </span>
                               )}
                             </div>
-                            <p className="text-zinc-500 font-mono font-bold text-[10px]">{u.email}</p>
-                            <div className="flex items-center gap-1 text-[10px] text-zinc-400 font-bold mt-1">
+                            <p className="text-slate-500 font-mono font-bold text-[10px]">{u.email}</p>
+                            <div className="flex items-center gap-1 text-[10px] font-bold mt-1">
                               {(u.emailVerified || u.gmailVerified || u.email?.toLowerCase() === 'kalloldeyprivate20@gmail.com') ? (
-                                <span className="text-emerald-450">📧 Email: ✅ Verified</span>
+                                <span className="text-emerald-600">📧 Email: ✅ Verified</span>
                               ) : (
-                                <span className="text-rose-450">📧 Email: ❌ Not Verified</span>
+                                <span className="text-rose-600">📧 Email: ❌ Not Verified</span>
                               )}
                             </div>
                             {/* Display private gender field strictly to admin */}
-                            <p className="text-[10px] text-zinc-400 font-semibold flex items-center gap-1.5">
-                              <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">Private Gender:</span>
-                              <span className="text-zinc-300 font-bold bg-white/5 px-2 py-0.5 rounded border border-white/5 inline-block">{u.gender || "Not specified"}</span>
+                            <p className="text-[10px] text-slate-500 font-semibold flex items-center gap-1.5">
+                              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Private Gender:</span>
+                              <span className="text-slate-700 font-bold bg-slate-100 px-2 py-0.5 rounded border border-slate-200 inline-block">{u.gender || "Not specified"}</span>
                             </p>
                           </td>
-                        <td className="py-4 px-2">
-                          <span className="text-purple-400 font-bold">{u.redditUsername}</span>
+                        <td className="py-4 px-3">
+                          <span className="text-indigo-600 font-extrabold font-mono">{u.redditUsername}</span>
                         </td>
-                        <td className="py-4 px-2">
+                        <td className="py-4 px-3">
                           {editingUsers[u.id] ? (
-                            <div className="space-y-1.5 min-w-[130px] p-1.5 bg-zinc-900 rounded-lg border border-white/5">
+                            <div className="space-y-1.5 min-w-[130px] p-2 bg-slate-50 rounded-lg border border-slate-200 shadow-sm">
                               <div>
-                                <label className="text-[9px] text-zinc-500 font-bold block">KARMA</label>
+                                <label className="text-[9px] text-slate-500 font-bold block">KARMA</label>
                                 <input 
                                   type="number"
                                   value={editingUsers[u.id].karma}
@@ -2215,11 +2215,11 @@ export const AdminDashboard: React.FC = () => {
                                       [u.id]: { ...prev[u.id], karma: val }
                                     }));
                                   }}
-                                  className="bg-black text-[10px] text-white p-1 rounded border border-white/10 w-full focus:outline-none"
+                                  className="bg-white text-[10px] text-slate-850 p-1.5 rounded border border-slate-200 w-full focus:outline-none focus:ring-1 focus:ring-indigo-500"
                                 />
                               </div>
                               <div>
-                                <label className="text-[9px] text-zinc-500 font-bold block">TIER</label>
+                                <label className="text-[9px] text-slate-500 font-bold block">TIER</label>
                                 <select
                                   value={editingUsers[u.id].tier}
                                   onChange={(e) => {
@@ -2229,7 +2229,7 @@ export const AdminDashboard: React.FC = () => {
                                       [u.id]: { ...prev[u.id], tier: val }
                                     }));
                                   }}
-                                  className="bg-black text-[10px] text-white p-1 rounded border border-white/10 w-full focus:outline-none cursor-pointer font-sans"
+                                  className="bg-white text-[10px] text-slate-850 p-1.5 rounded border border-slate-200 w-full focus:outline-none cursor-pointer font-sans"
                                 >
                                   <option value="Bronze">🥉 Bronze</option>
                                   <option value="Silver">🥈 Silver</option>
@@ -2241,7 +2241,7 @@ export const AdminDashboard: React.FC = () => {
                                 <button
                                   type="button"
                                   onClick={() => handleSaveUserKarmaAndTier(u.id, editingUsers[u.id].karma, editingUsers[u.id].tier)}
-                                  className="text-[9px] px-2 py-0.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded flex-1 transition-all cursor-pointer"
+                                  className="text-[9px] px-2 py-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded flex-1 transition-all cursor-pointer"
                                 >
                                   Save
                                 </button>
@@ -2254,7 +2254,7 @@ export const AdminDashboard: React.FC = () => {
                                       return copy;
                                     });
                                   }}
-                                  className="text-[9px] px-2 py-0.5 bg-zinc-700 hover:bg-zinc-600 text-white font-bold rounded transition-all cursor-pointer"
+                                  className="text-[9px] px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded transition-all cursor-pointer"
                                 >
                                   Close
                                 </button>
@@ -2262,9 +2262,9 @@ export const AdminDashboard: React.FC = () => {
                             </div>
                           ) : (
                             <div className="text-[11px] space-y-0.5 min-w-[120px] select-text">
-                              <div className="font-extrabold text-white flex items-center gap-1.5 flex-wrap">
+                              <div className="font-extrabold text-slate-800 flex items-center gap-1.5 flex-wrap">
                                 <span>{(u.karma || 0).toLocaleString()}</span>
-                                <span className="text-[8px] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-1.5 py-0.2 rounded font-black uppercase tracking-wider">{u.karmaBadge || u.karmaTier || 'Bronze'}</span>
+                                <span className="text-[8px] bg-indigo-50 text-indigo-700 border border-indigo-150 px-1.5 py-0.2 rounded font-black uppercase tracking-wider">{u.karmaBadge || u.karmaTier || 'Bronze'}</span>
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -2273,14 +2273,14 @@ export const AdminDashboard: React.FC = () => {
                                       [u.id]: { karma: u.karma || 0, tier: u.karmaBadge || u.karmaTier || 'Bronze' }
                                     }));
                                   }}
-                                  className="text-[10px] text-purple-400 hover:text-purple-300 ml-1 cursor-pointer font-sans"
+                                  className="text-[10px] text-indigo-650 hover:text-indigo-500 ml-1 cursor-pointer font-sans"
                                   title="Edit Karma and Tier manually"
                                 >
                                   ✏️ Edit
                                 </button>
                               </div>
                               {u.karmaYesterday !== undefined && (
-                                <div className={`text-[9px] font-bold font-mono ${(u.karma || 0) - (u.karmaYesterday || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                <div className={`text-[9px] font-bold font-mono ${(u.karma || 0) - (u.karmaYesterday || 0) >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                                   {(u.karma || 0) - (u.karmaYesterday || 0) >= 0 ? '▲ +' : '▼ '}
                                   {((u.karma || 0) - (u.karmaYesterday || 0)).toLocaleString()} yesterday
                                 </div>
@@ -2290,7 +2290,7 @@ export const AdminDashboard: React.FC = () => {
                                   <button 
                                     type="button"
                                     onClick={() => handleSaveUserKarmaAndTier(u.id, (u.karma || 0) + 1000, getKarmaTier((u.karma || 0) + 1000).name)}
-                                    className="text-[8px] font-extrabold text-zinc-400 bg-zinc-950 px-1.5 py-0.5 rounded border border-white/5 hover:text-white cursor-pointer"
+                                    className="text-[8px] font-extrabold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 hover:bg-slate-200 cursor-pointer"
                                     title="Add 1,000 Karma"
                                   >
                                     +1K
@@ -2298,7 +2298,7 @@ export const AdminDashboard: React.FC = () => {
                                   <button 
                                     type="button"
                                     onClick={() => handleSaveUserKarmaAndTier(u.id, Math.max(0, (u.karma || 0) - 1000), getKarmaTier(Math.max(0, (u.karma || 0) - 1000)).name)}
-                                    className="text-[8px] font-extrabold text-zinc-400 bg-zinc-950 px-1.5 py-0.5 rounded border border-white/5 hover:text-white cursor-pointer"
+                                    className="text-[8px] font-extrabold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 hover:bg-slate-200 cursor-pointer"
                                     title="Subtract 1,000 Karma"
                                   >
                                     -1K
@@ -2308,23 +2308,23 @@ export const AdminDashboard: React.FC = () => {
                             </div>
                           )}
                         </td>
-                        <td className="py-4 px-2">
+                        <td className="py-4 px-3">
                           <a 
                             href={u.redditProfileLink} 
                             target="_blank" 
                             rel="noreferrer" 
-                            className="text-blue-400 hover:underline font-bold inline-flex items-center gap-1"
+                            className="text-indigo-600 hover:underline font-bold inline-flex items-center gap-1"
                           >
-                            Manual Review Link <ExternalLink className="w-3.5 h-3.5" />
+                            Review Link <ExternalLink className="w-3.5 h-3.5" />
                           </a>
                         </td>
-                        <td className="py-4 px-2">
-                          <span className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] ${
-                            u.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-500' :
-                            (u.status === 'Pending' || u.status === 'pending') ? 'bg-yellow-500/10 text-yellow-500 animate-pulse' :
-                            (u.status === 'Rejected' || u.status === 'rejected') ? 'bg-zinc-800 text-zinc-400 font-semibold' :
-                            (u.status === 'Suspended' || u.status === 'suspended' || u.isSuspended) ? 'bg-amber-500/10 text-amber-550 font-semibold' :
-                            'bg-red-500/10 text-red-500' // Banned / banned
+                        <td className="py-4 px-3">
+                          <span className={`px-2.5 py-1 rounded-full font-black text-[10px] uppercase border tracking-wider inline-block ${
+                            u.status === 'Approved' ? 'bg-emerald-50 border-emerald-250 text-emerald-705' :
+                            (u.status === 'Pending' || u.status === 'pending') ? 'bg-amber-50 border-amber-250 text-amber-700 animate-pulse' :
+                            (u.status === 'Rejected' || u.status === 'rejected') ? 'bg-slate-100 border-slate-200 text-slate-500 font-semibold' :
+                            (u.status === 'Suspended' || u.status === 'suspended' || u.isSuspended) ? 'bg-yellow-50 border-yellow-250 text-yellow-700 font-semibold' :
+                            'bg-red-50 border-red-200 text-red-700' // Banned / banned
                           }`}>
                             {u.status === 'Approved' ? 'Approved' :
                              (u.status === 'Pending' || u.status === 'pending') ? 'Pending' :
@@ -2332,18 +2332,18 @@ export const AdminDashboard: React.FC = () => {
                              (u.status === 'Suspended' || u.status === 'suspended' || u.isSuspended) ? 'Suspended' : 'Banned'}
                           </span>
                           {isCooldownActive && (
-                            <span className="block mt-1 bg-yellow-500/10 border border-yellow-500/25 px-1.5 py-0.5 rounded text-[9px] font-black text-yellow-400 font-mono w-max animate-pulse">
+                            <span className="block mt-1 bg-amber-50 border border-amber-250 px-1.5 py-0.5 rounded text-[9px] font-black text-amber-700 font-mono w-max animate-pulse">
                               ⏳ ON COOLDOWN
                             </span>
                           )}
                         </td>
-                        <td className="py-4 px-2 text-right space-y-1.5 min-w-[200px]">
+                        <td className="py-4 px-3 text-right space-y-1.5 min-w-[200px]">
                           {/* If on cooldown, allow administrator to instantly reset it */}
                           {isCooldownActive && u.role !== 'admin' && (
                             <div className="pb-1.5">
                               <button 
                                 onClick={() => resetCooldown(u.id)}
-                                className="w-full py-1 bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 hover:bg-yellow-500 hover:text-black font-extrabold text-[9px] rounded transition-all cursor-pointer"
+                                className="w-full py-1.5 bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 font-bold text-[10px] rounded-lg transition-all cursor-pointer"
                               >
                                 Reset Claim Cooldown ⏳
                               </button>
@@ -2355,7 +2355,7 @@ export const AdminDashboard: React.FC = () => {
                             <div className="flex gap-1.5 justify-end">
                               <button 
                                 onClick={() => adminApproveUser(u.id)}
-                                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-[10px] font-black rounded text-white cursor-pointer"
+                                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-[10px] font-bold rounded-lg text-white cursor-pointer transition shadow-xs"
                               >
                                 Approve User
                               </button>
@@ -2364,7 +2364,7 @@ export const AdminDashboard: React.FC = () => {
                                   const reason = rejectReason[u.id] || 'Reddit profile failed minimum age/authenticity check';
                                   adminRejectUser(u.id, reason);
                                 }}
-                                className="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-[10px] font-black rounded text-zinc-300 cursor-pointer"
+                                className="px-2.5 py-1 bg-slate-200 hover:bg-slate-300 text-[10px] font-bold rounded-lg text-slate-700 cursor-pointer transition"
                               >
                                 Reject User
                               </button>
@@ -2374,7 +2374,7 @@ export const AdminDashboard: React.FC = () => {
                               value={rejectReason[u.id] || ''}
                               onChange={(e) => setRejectReason({ ...rejectReason, [u.id]: e.target.value })}
                               placeholder="Reason for rejection description..."
-                              className="w-full text-[10px] bg-zinc-950 border border-white/5 rounded px-2 py-1 text-white text-right"
+                              className="w-full text-[10px] bg-white border border-slate-200 rounded px-2.5 py-1.5 text-slate-800 text-right focus:border-indigo-500 focus:outline-none placeholder-slate-400 font-medium"
                             />
                           </div>
                         )}
@@ -2386,7 +2386,7 @@ export const AdminDashboard: React.FC = () => {
                                 setSuspendReasonInput('');
                                 setSuspendDuration('1 day');
                               }}
-                              className="px-2.5 py-1 bg-amber-600/15 hover:bg-amber-600 border border-amber-500/25 text-amber-400 hover:text-white text-[10px] font-black rounded cursor-pointer"
+                              className="px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-705 text-[10px] font-bold rounded-lg cursor-pointer transition shadow-xs"
                             >
                               Suspend
                             </button>
@@ -2395,7 +2395,7 @@ export const AdminDashboard: React.FC = () => {
                                 setBanTargetUser(u);
                                 setBanReasonInput('');
                               }}
-                              className="px-2.5 py-1 bg-red-600/15 hover:bg-red-600 border border-red-500/25 text-red-505 hover:text-white text-[10px] font-black rounded cursor-pointer"
+                              className="px-2.5 py-1.5 bg-white border border-red-200 text-red-650 hover:bg-red-50 text-[10px] font-bold rounded-lg cursor-pointer transition shadow-xs"
                             >
                               Ban
                             </button>
@@ -2403,12 +2403,12 @@ export const AdminDashboard: React.FC = () => {
                         )}
                         {(u.status === 'banned' || u.status === 'Banned' || u.isBanned) && u.role !== 'admin' && (
                           <div className="space-y-1.5 text-right">
-                            <p className="text-[10px] text-zinc-500 italic max-w-[180px] ml-auto">
+                            <p className="text-[10px] text-slate-500 italic max-w-[180px] ml-auto font-medium">
                               Ban Reason: {u.banReason || 'None specified'}
                             </p>
                             <button 
                               onClick={() => adminUnbanUser(u.id)}
-                              className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600 border border-emerald-500/30 text-emerald-400 hover:text-white text-[10px] font-black rounded cursor-pointer inline-block"
+                              className="px-2.5 py-1.5 bg-white border border-slate-250 text-slate-700 hover:bg-slate-50 text-[10px] font-bold rounded-lg cursor-pointer inline-block transition shadow-xs"
                             >
                               Unban
                             </button>
@@ -2416,12 +2416,12 @@ export const AdminDashboard: React.FC = () => {
                         )}
                         {(u.status === 'suspended' || u.status === 'Suspended' || u.isSuspended) && u.role !== 'admin' && (
                           <div className="space-y-1.5 text-right">
-                            <p className="text-[10px] text-zinc-500 italic max-w-[180px] ml-auto">
-                              Suspension Reason: {u.suspensionReason || u.banReason || 'None specified'} ({u.suspensionDuration || 'permanent'})
+                            <p className="text-[10px] text-slate-500 italic max-w-[180px] ml-auto font-medium">
+                              Suspension: {u.suspensionReason || u.banReason || 'None specified'} ({u.suspensionDuration || 'permanent'})
                             </p>
                             <button 
                               onClick={() => adminUnsuspendUser(u.id)}
-                              className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600 border border-emerald-500/30 text-emerald-400 hover:text-white text-[10px] font-black rounded cursor-pointer inline-block"
+                              className="px-2.5 py-1.5 bg-white border border-slate-250 text-slate-700 hover:bg-slate-50 text-[10px] font-bold rounded-lg cursor-pointer inline-block transition shadow-xs"
                             >
                               Unsuspend
                             </button>
@@ -2429,13 +2429,13 @@ export const AdminDashboard: React.FC = () => {
                         )}
                         {(u.status === 'Rejected' || u.status === 'rejected') && (
                           <div className="space-y-1.5 text-right pb-1.5">
-                            <p className="text-[10px] text-zinc-500 italic max-w-[180px] ml-auto">
-                              Reason: "{u.rejectionReason || 'identity/reddit profile validation standard check failed'}"
+                            <p className="text-[10px] text-slate-500 italic max-w-[180px] ml-auto font-medium">
+                              Reason: "{u.rejectionReason || 'identity check failed'}"
                             </p>
                             <button 
                               type="button"
                               onClick={() => adminApproveUser(u.id)}
-                              className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600 border border-emerald-500/30 text-emerald-400 hover:text-white text-[10px] font-black rounded cursor-pointer inline-block"
+                              className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold rounded-lg cursor-pointer inline-block transition shadow-xs"
                             >
                               Restore & Approve User
                             </button>
@@ -2449,7 +2449,7 @@ export const AdminDashboard: React.FC = () => {
                               onClick={() => {
                                 setDeductionHistoryUser(u);
                               }}
-                              className="px-2.5 py-1 bg-zinc-850 hover:bg-zinc-800 border border-zinc-700/50 text-zinc-300 hover:text-white text-[10px] font-black rounded cursor-pointer transition-all uppercase tracking-wider inline-flex items-center gap-1"
+                              className="px-2.5 py-1.5 bg-white hover:bg-slate-50 border border-slate-205 text-slate-700 hover:text-slate-900 text-[10px] font-extrabold rounded-lg cursor-pointer transition-all uppercase tracking-wider inline-flex items-center gap-1 shadow-xs"
                             >
                               📋 History ({u.deductionHistory?.length || 0})
                             </button>
@@ -2465,19 +2465,19 @@ export const AdminDashboard: React.FC = () => {
                                 setDeductReasonInput('');
                                 setDeductTaskNameInput('');
                               }}
-                              className="px-2.5 py-1 bg-red-650/15 hover:bg-red-600 border border-red-500/25 text-red-400 hover:text-white text-[10px] font-black rounded cursor-pointer transition-all uppercase tracking-wider inline-flex items-center gap-1"
+                              className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 font-extrabold text-[10px] rounded-lg cursor-pointer transition-all uppercase tracking-wider inline-flex items-center gap-1"
                             >
                               💸 Deduct Balance
                             </button>
                           </div>
                         )}
                         {u.email?.toLowerCase() === 'kalloldeyprivate20@gmail.com' ? (
-                          <span className="text-[10px] text-emerald-400 font-extrabold uppercase bg-emerald-500/10 px-2.5 py-1 rounded border border-emerald-500/20 tracking-wider">Protected Owner Account</span>
+                          <span className="text-[10px] text-emerald-700 font-extrabold uppercase bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200 tracking-wider">Protected Owner Account</span>
                         ) : u.role === 'admin' ? (
-                          <span className="text-[10px] text-zinc-500 font-extrabold uppercase">Platform Admin Locked</span>
+                          <span className="text-[10px] text-slate-500 font-extrabold uppercase bg-slate-100 px-2.5 py-1 rounded-md">Platform Admin Locked</span>
                         ) : null}
                         {(currentUser?.role === 'admin' || currentUser?.role === 'moderator') && u.role !== 'admin' && (
-                          <div className="pt-2 border-t border-white/5 flex gap-1.5 justify-end flex-wrap">
+                          <div className="pt-2 border-t border-slate-200 flex gap-1.5 justify-end flex-wrap">
                             {u.role === 'moderator' ? (
                               <button
                                 type="button"
@@ -2488,7 +2488,7 @@ export const AdminDashboard: React.FC = () => {
                                   }
                                   setDemoteTargetUser(u);
                                 }}
-                                className="px-2.5 py-1 bg-amber-600 hover:bg-amber-500 text-white text-[10px] font-black rounded cursor-pointer transition-all uppercase tracking-wider"
+                                className="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-[10.5px] font-black rounded-lg cursor-pointer transition-all uppercase tracking-wider shadow-sm"
                               >
                                 Remove Moderator
                               </button>
@@ -2502,7 +2502,7 @@ export const AdminDashboard: React.FC = () => {
                                   }
                                   setPromoteTargetUser(u);
                                 }}
-                                className="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-black rounded cursor-pointer transition-all uppercase tracking-wider"
+                                className="px-2.5 py-1.5 bg-indigo-650 hover:bg-indigo-600 text-white text-[10.5px] font-black rounded-lg cursor-pointer transition-all uppercase tracking-wider shadow-sm"
                               >
                                 Promote to Moderator
                               </button>
@@ -2513,10 +2513,10 @@ export const AdminDashboard: React.FC = () => {
                                 if (currentUser?.role === 'moderator') {
                                   setShowPermissionRestrictedModal("Permanently deleting member profiles is restricted to senior Platform Administrators.");
                                   return;
-                                }
-                                setUserToDelete(u);
+                                  }
+                                  setUserToDelete(u);
                               }}
-                              className="px-2.5 py-1 bg-red-950/20 hover:bg-red-650 border border-red-500/15 text-red-500 hover:text-white text-[10px] font-black rounded cursor-pointer transition-all uppercase tracking-wider inline-flex items-center gap-1"
+                              className="px-2.5 py-1.5 bg-red-50 hover:bg-red-650 border border-red-200 text-red-600 hover:text-white text-[10.5px] font-black rounded-lg cursor-pointer transition-all uppercase tracking-wider inline-flex items-center gap-1 shadow-sm"
                             >
                               <Trash2 className="w-3.5 h-3.5" /> Delete Account
                             </button>
@@ -2535,30 +2535,30 @@ export const AdminDashboard: React.FC = () => {
         {/* ================= LIVE WALLET BALANCES SECTION ================= */}
         {activeTab === 'live-wallet' && (
           <div className="space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-white/5">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-slate-200">
               <div>
-                <h2 className="text-base font-black flex items-center gap-2 text-purple-400">
+                <h2 className="text-base font-black flex items-center gap-2 text-indigo-600">
                   💳 Live Wallet Balances
                 </h2>
-                <p className="text-xs text-zinc-400">
+                <p className="text-xs text-slate-500">
                   Real-time auditing of current available user balances. No transactions or lifetime records are exposed here.
                 </p>
               </div>
 
               {/* Action/Indicator card */}
               <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                <div className="bg-zinc-950/60 px-4 py-2 border border-white/5 rounded-2xl flex flex-col justify-center min-w-[160px]">
-                  <span className="text-[9px] font-extrabold uppercase tracking-widest text-zinc-400">Total Network Holding</span>
-                  <span className="text-sm font-black text-emerald-400 font-mono">
+                <div className="bg-white px-4 py-2.5 border border-slate-200 rounded-2xl flex flex-col justify-center min-w-[160px] shadow-sm">
+                  <span className="text-[9px] font-extrabold uppercase tracking-widest text-slate-400">Total Network Holding</span>
+                  <span className="text-sm font-black text-slate-900 font-mono">
                     ${(users || []).reduce((sum, u) => sum + (u.balance || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT
                   </span>
                 </div>
 
                 {currentUser?.role === 'admin' && (
-                  <div className="bg-zinc-950/60 px-4 py-2 border border-white/5 rounded-2xl flex items-center justify-between gap-4 min-w-[280px]">
+                  <div className="bg-slate-50 px-4 py-2.5 border border-slate-200 rounded-2xl flex items-center justify-between gap-4 min-w-[280px]">
                     <div>
-                      <span className="text-[9px] font-extrabold uppercase tracking-widest text-zinc-400 block">Mod Wallet Edit</span>
-                      <span className="text-[10px] text-zinc-500 font-medium font-sans">Allow moderators to edit balances</span>
+                      <span className="text-[9px] font-extrabold uppercase tracking-widest text-slate-500 block">Mod Wallet Edit</span>
+                      <span className="text-[10px] text-slate-405 font-medium font-sans">Allow moderators to edit balances</span>
                     </div>
                     <button
                       type="button"
@@ -2569,10 +2569,10 @@ export const AdminDashboard: React.FC = () => {
                         });
                         setToastMessage(settings?.allowModeratorsEditWallets ? "Disabled moderator wallet modifications" : "Enabled moderator wallet modifications");
                       }}
-                      className={`p-1 rounded-lg border text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                      className={`p-1.5 px-3 rounded-lg border text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
                         settings?.allowModeratorsEditWallets
-                          ? 'bg-purple-500/20 text-purple-400 border-purple-500/30'
-                          : 'bg-zinc-900 text-zinc-500 border-zinc-800'
+                          ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                          : 'bg-slate-200 text-slate-500 border-slate-350'
                       }`}
                     >
                       {settings?.allowModeratorsEditWallets ? 'Allowed' : 'Locked'}
@@ -2583,23 +2583,23 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             {/* Filter and Search Bar */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 bg-zinc-950/60 p-4 rounded-2xl border border-white/5 items-center">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 bg-white p-4 rounded-2xl border border-slate-200 items-center shadow-sm">
               {/* Search input */}
               <div className="md:col-span-5 space-y-1">
-                <label className="text-[9px] font-extrabold uppercase tracking-widest text-zinc-400 block">Search Members</label>
+                <label className="text-[9px] font-extrabold uppercase tracking-widest text-slate-500 block">Search Members</label>
                 <div className="relative">
                   <input
                     type="text"
                     value={walletSearchQuery}
                     onChange={(e) => setWalletSearchQuery(e.target.value)}
                     placeholder="Search by name, email, account ID..."
-                    className="w-full text-xs font-semibold bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500/50"
+                    className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                   />
                   {walletSearchQuery && (
                     <button
                       type="button"
                       onClick={() => setWalletSearchQuery('')}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white text-xs px-1 cursor-pointer font-bold"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs px-1 cursor-pointer font-bold"
                     >
                       ✕
                     </button>
@@ -2609,11 +2609,11 @@ export const AdminDashboard: React.FC = () => {
 
               {/* Sort by selection */}
               <div className="md:col-span-3 space-y-1">
-                <label className="text-[9px] font-extrabold uppercase tracking-widest text-zinc-400 block">Sort By</label>
+                <label className="text-[9px] font-extrabold uppercase tracking-widest text-slate-500 block">Sort By</label>
                 <select
                   value={walletSortBy}
                   onChange={(e: any) => setWalletSortBy(e.target.value)}
-                  className="w-full text-xs font-semibold bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-purple-500/50"
+                  className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:border-indigo-500 cursor-pointer"
                 >
                   <option value="highest">Highest Balance</option>
                   <option value="lowest">Lowest Balance</option>
@@ -2623,11 +2623,11 @@ export const AdminDashboard: React.FC = () => {
 
               {/* Filtering selection */}
               <div className="md:col-span-4 space-y-1">
-                <label className="text-[9px] font-extrabold uppercase tracking-widest text-zinc-400 block">Account status / Balance level</label>
+                <label className="text-[9px] font-extrabold uppercase tracking-widest text-slate-500 block">Account status / Balance level</label>
                 <select
                   value={walletFilterStatus}
                   onChange={(e: any) => setWalletFilterStatus(e.target.value)}
-                  className="w-full text-xs font-semibold bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-purple-500/50"
+                  className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:border-indigo-500 cursor-pointer"
                 >
                   <option value="all">All Network Members</option>
                   <option value="active">Active Members Only</option>
@@ -2639,20 +2639,20 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             {/* Results Table */}
-            <div className="overflow-x-auto rounded-2xl border border-white/5 bg-zinc-950/20">
+            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-xs">
               <table className="w-full text-[11px] text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-white/5 bg-zinc-950/40 text-[9px] tracking-widest uppercase text-zinc-400 font-extrabold">
-                    <th className="px-4 py-3">Member Name</th>
-                    <th className="px-4 py-3">Email Address</th>
-                    <th className="px-4 py-3">User ID</th>
-                    <th className="px-4 py-3 text-right">Available Balance</th>
-                    <th className="px-4 py-3 text-center">Last Wallet Update</th>
-                    <th className="px-4 py-3 text-center">Status</th>
-                    <th className="px-4 py-3 text-center">Actions</th>
+                  <tr className="border-b border-slate-200 bg-slate-50 text-[9px] tracking-widest uppercase text-slate-500 font-extrabold">
+                    <th className="px-5 py-3">Member Name</th>
+                    <th className="px-5 py-3">Email Address</th>
+                    <th className="px-5 py-3">User ID</th>
+                    <th className="px-5 py-3 text-right">Available Balance</th>
+                    <th className="px-5 py-3 text-center">Last Wallet Update</th>
+                    <th className="px-5 py-3 text-center">Status</th>
+                    <th className="px-5 py-3 text-center">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-slate-100">
                   {(() => {
                     const filtered = (users || [])
                       .filter(u => {
@@ -2690,8 +2690,8 @@ export const AdminDashboard: React.FC = () => {
                     if (filtered.length === 0) {
                       return (
                         <tr>
-                          <td colSpan={7} className="px-4 py-12 text-center text-zinc-500 font-normal italic">
-                            No member available balances matching the selected criteria.
+                          <td colSpan={7} className="px-5 py-12 text-center text-slate-400 font-normal italic">
+                            No member available available balances matching the selected criteria.
                           </td>
                         </tr>
                       );
@@ -2702,49 +2702,49 @@ export const AdminDashboard: React.FC = () => {
                       const isSuspended = !!u.isSuspended;
                       const isBanned = !!u.isBanned;
                       let statusBadge = (
-                        <span className="inline-flex px-2 py-0.5 rounded text-[8px] font-black tracking-wide uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        <span className="inline-flex px-2 py-0.5 rounded text-[8px] font-black tracking-wide uppercase border bg-emerald-50 border-emerald-250 text-emerald-700">
                           Active
                         </span>
                       );
                       if (isBanned) {
                         statusBadge = (
-                          <span className="inline-flex px-2 py-0.5 rounded text-[8px] font-black tracking-wide uppercase bg-red-500/10 text-red-500 border border-red-500/30">
+                          <span className="inline-flex px-2 py-0.5 rounded text-[8px] font-black tracking-wide uppercase border bg-red-50 border-red-200 text-red-600">
                             Banned
                           </span>
                         );
                       } else if (isSuspended) {
                         statusBadge = (
-                          <span className="inline-flex px-2 py-0.5 rounded text-[8px] font-black tracking-wide uppercase bg-amber-500/10 text-amber-500 border border-amber-500/30">
+                          <span className="inline-flex px-2 py-0.5 rounded text-[8px] font-black tracking-wide uppercase border bg-yellow-50 border-yellow-250 text-yellow-700">
                             Suspended
                           </span>
                         );
                       }
 
                       return (
-                        <tr key={u.id} className="hover:bg-white/[0.02]">
-                          <td className="px-4 py-3">
+                        <tr key={u.id} className="hover:bg-slate-50/50 transition">
+                          <td className="px-5 py-3">
                             <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 rounded-full bg-purple-500/10 border border-purple-500/20 text-[9px] font-black uppercase text-purple-400 flex items-center justify-center">
+                              <div className="w-6 h-6 rounded-full bg-indigo-50 border border-indigo-150 text-[9px] font-black uppercase text-indigo-700 flex items-center justify-center">
                                 {(u.fullName || 'C')[0]}
                               </div>
                               <div>
-                                <span className="font-extrabold text-zinc-200 block">{u.fullName || 'Anonymous Account'}</span>
-                                <span className="text-[8px] text-zinc-500 uppercase tracking-widest font-black">Member Node</span>
+                                <span className="font-extrabold text-slate-800 block">{u.fullName || 'Anonymous Account'}</span>
+                                <span className="text-[8px] text-slate-400 uppercase tracking-widest font-black">Member Node</span>
                               </div>
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-zinc-400 max-w-[180px] truncate">{u.email}</td>
-                          <td className="px-4 py-3 text-zinc-500 font-mono text-[9px]">{u.id}</td>
-                          <td className="px-4 py-3 text-right font-bold text-emerald-400 text-xs font-mono">
+                          <td className="px-5 py-3 text-slate-600 max-w-[180px] truncate font-medium">{u.email}</td>
+                          <td className="px-5 py-3 text-slate-400 font-mono text-[9px]">{u.id}</td>
+                          <td className="px-5 py-3 text-right font-extrabold text-slate-800 text-xs font-mono">
                             ${(u.balance || 0).toFixed(2)} USDT
                           </td>
-                          <td className="px-4 py-3 text-center text-zinc-400 font-mono text-[9px]">
+                          <td className="px-5 py-3 text-center text-slate-500 font-mono text-[9px]">
                             {u.lastWalletUpdate ? new Date(u.lastWalletUpdate).toLocaleString() : 'Never Updated'}
                           </td>
-                          <td className="px-4 py-3 text-center">{statusBadge}</td>
-                          <td className="px-4 py-3 text-center">
+                          <td className="px-5 py-3 text-center">{statusBadge}</td>
+                          <td className="px-5 py-3 text-center">
                             {isOwner ? (
-                              <span className="text-[8px] font-black text-emerald-400 uppercase tracking-wider bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20">
+                              <span className="text-[8px] font-black text-emerald-700 uppercase tracking-wider bg-emerald-50 px-2 py-1 rounded border border-emerald-250">
                                 Protected
                               </span>
                             ) : (
@@ -2758,7 +2758,7 @@ export const AdminDashboard: React.FC = () => {
                                   setAdjustTargetUser(u);
                                   setAdjustAmountInput(String(u.balance || 0));
                                 }}
-                                className="px-2.5 py-1 bg-white/5 hover:bg-white/15 border border-white/10 hover:border-purple-500/30 text-zinc-300 hover:text-purple-400 text-[9px] font-extrabold rounded-lg cursor-pointer transition-all uppercase tracking-wider flex items-center gap-1 mx-auto"
+                                className="px-2.5 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 hover:text-indigo-600 text-[9px] font-extrabold rounded-lg cursor-pointer transition shadow-xs uppercase tracking-wider flex items-center gap-1 mx-auto"
                               >
                                 ✏️ Adjust Balance
                               </button>
@@ -2779,20 +2779,20 @@ export const AdminDashboard: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
             {/* Create form col */}
-            <div className="space-y-6 lg:border-r lg:border-white/5 lg:pr-8">
-              <h2 className="text-base font-black border-b border-white/5 pb-3 flex items-center gap-2">
-                <Plus className="w-5 h-5 text-purple-400" /> Spawn New Reddit Task
+            <div className="space-y-6 lg:border-r lg:border-slate-200 lg:pr-8">
+              <h2 className="text-base font-black border-b border-slate-200 pb-3 flex items-center gap-2 text-indigo-600">
+                <Plus className="w-5 h-5 text-indigo-650" /> Spawn New Reddit Task
               </h2>
 
               <form onSubmit={handleCreateTask} className="space-y-4">
                 <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Campaign Category Type</label>
-                  <div className="grid grid-cols-2 gap-2 bg-zinc-950 p-1 rounded-xl">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Campaign Category Type</label>
+                  <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200">
                     <button 
                       type="button" 
                       onClick={() => setTaskType('post')}
-                      className={`py-1 rounded-lg text-xs font-bold transition-all ${
-                        taskType === 'post' ? 'bg-purple-600 text-white' : 'text-zinc-400'
+                      className={`py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        taskType === 'post' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-500'
                       }`}
                     >
                       Reddit Post Task
@@ -2800,8 +2800,8 @@ export const AdminDashboard: React.FC = () => {
                     <button 
                       type="button" 
                       onClick={() => setTaskType('comment')}
-                      className={`py-1 rounded-lg text-xs font-bold transition-all ${
-                        taskType === 'comment' ? 'bg-purple-600 text-white' : 'text-zinc-400'
+                      className={`py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        taskType === 'comment' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-500'
                       }`}
                     >
                       Reddit Comment Task
@@ -2810,11 +2810,11 @@ export const AdminDashboard: React.FC = () => {
                 </div>
 
                 {/* Special Task Switch */}
-                <div className="p-3 bg-zinc-950 rounded-xl border border-white/5 space-y-3">
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-[11px] font-black text-white block">⭐ Special Task Campaign</span>
-                      <span className="text-[9px] text-zinc-500 block">Restricted to high karma creators</span>
+                      <span className="text-[11px] font-black text-slate-800 block">⭐ Special Task Campaign</span>
+                      <span className="text-[9px] text-slate-500 block">Restricted to high karma creators</span>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input 
@@ -2823,29 +2823,29 @@ export const AdminDashboard: React.FC = () => {
                         onChange={(e) => setIsSpecialTask(e.target.checked)}
                         className="sr-only peer" 
                       />
-                      <div className="w-9 h-5 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-zinc-400 after:border-zinc-350 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600 peer-checked:after:bg-white"></div>
+                      <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:border-slate-350 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 peer-checked:after:bg-white"></div>
                     </label>
                   </div>
 
                   {isSpecialTask && (
-                    <div className="space-y-3 pt-1.5 border-t border-white/5">
+                    <div className="space-y-3 pt-1.5 border-t border-slate-200">
                       <div>
-                        <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Minimum Reddit Karma Required</label>
+                        <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Minimum Reddit Karma Required</label>
                         <input 
                           type="number" 
                           value={minKarmaRequired}
                           onChange={(e) => setMinKarmaRequired(Number(e.target.value))}
-                          className="w-full text-xs text-white bg-zinc-900 border border-white/10 px-2.5 py-1.5 rounded-lg focus:border-purple-500 font-mono"
+                          className="w-full text-xs text-slate-800 bg-white border border-slate-200 px-2.5 py-1.5 rounded-lg focus:border-indigo-500 font-mono"
                           placeholder="e.g. 1000"
                         />
                       </div>
                       <div>
-                        <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Special Badge Label</label>
+                        <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Special Badge Label</label>
                         <input 
                           type="text" 
                           value={specialLabel}
                           onChange={(e) => setSpecialLabel(e.target.value)}
-                          className="w-full text-xs text-white bg-zinc-900 border border-white/10 px-2.5 py-1.5 rounded-lg focus:border-purple-500 font-bold"
+                          className="w-full text-xs text-slate-800 bg-white border border-slate-200 px-2.5 py-1.5 rounded-lg focus:border-indigo-500 font-bold"
                           placeholder="e.g. ⭐ SPECIAL"
                         />
                       </div>
@@ -2854,43 +2854,43 @@ export const AdminDashboard: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Task Title</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Task Title</label>
                   <input 
                     type="text" 
                     value={taskTitle}
                     onChange={(e) => setTaskTitle(e.target.value)}
                     placeholder="e.g., Post scaling thread in r/cryptocurrency" 
-                    className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-3 py-2.5 rounded-xl focus:border-purple-500 focus:outline-none"
+                    className="w-full text-xs text-slate-800 bg-white border border-slate-200 px-3 py-2.5 rounded-xl focus:border-indigo-500 focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Task Description</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Task Description/Markdown Requirements</label>
                   <textarea 
                     value={taskDescription}
                     onChange={(e) => setTaskDescription(e.target.value)}
                     placeholder="Provide overview of the campaign purpose." 
-                    className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-3 py-2.5 rounded-xl h-20 focus:border-purple-500 focus:outline-none"
+                    className="w-full text-xs text-slate-800 bg-white border border-slate-200 px-3 py-2.5 rounded-xl h-20 focus:border-indigo-500 focus:outline-none"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Reward (USDT Base)</label>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Reward (USDT Base)</label>
                     <input 
                       type="number" 
                       step="0.01"
                       value={taskReward}
                       onChange={(e) => setTaskReward(Number(e.target.value))}
-                      className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-3 py-2 rounded-xl focus:border-purple-500 focus:outline-none font-mono"
+                      className="w-full text-xs text-slate-800 bg-white border border-slate-200 px-3 py-2 rounded-xl focus:border-indigo-500 focus:outline-none font-mono"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Diff Level</label>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Diff Level</label>
                     <select 
                       value={taskDifficulty}
                       onChange={(e: any) => setTaskDifficulty(e.target.value)}
-                      className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-3 py-2 rounded-xl focus:border-purple-500 focus:outline-none bg-zinc-900"
+                      className="w-full text-xs text-slate-800 bg-white border border-slate-200 px-3 py-2 rounded-xl focus:border-indigo-500 focus:outline-none"
                     >
                       <option value="Easy">Easy</option>
                       <option value="Medium">Medium</option>
@@ -2903,32 +2903,32 @@ export const AdminDashboard: React.FC = () => {
                 {taskType === 'post' ? (
                   <div className="space-y-4 pt-1">
                     <div>
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-purple-400 block mb-1">Target Subreddit</label>
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-indigo-650 block mb-1">Target Subreddit</label>
                       <input 
                         type="text" 
                         value={subreddit}
                         onChange={(e) => setSubreddit(e.target.value)}
                         placeholder="e.g., r/personalfinance" 
-                        className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-3 py-2.5 rounded-xl focus:border-purple-500"
+                        className="w-full text-xs text-slate-800 bg-white border border-slate-200 px-3 py-2.5 rounded-xl focus:border-indigo-500 focus:outline-none"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-purple-400 block mb-1">Required Post Title</label>
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-indigo-650 block mb-1">Required Post Title</label>
                       <input 
                         type="text" 
                         value={requiredTitle}
                         onChange={(e) => setRequiredTitle(e.target.value)}
                         placeholder="Must match title exactly" 
-                        className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-3 py-2.5 rounded-xl focus:border-purple-500"
+                        className="w-full text-xs text-slate-800 bg-white border border-slate-200 px-3 py-2.5 rounded-xl focus:border-indigo-500 focus:outline-none"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-purple-400 block mb-1">Guidelines/Required keywords</label>
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-indigo-650 block mb-1">Guidelines/Required keywords</label>
                       <textarea 
                         value={postGuidelines}
                         onChange={(e) => setPostGuidelines(e.target.value)}
                         placeholder="e.g. Must write copy minimum 150 words. Do not refer to spam URLs." 
-                        className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-3 py-2 rounded-xl h-16 focus:border-purple-500"
+                        className="w-full text-xs text-slate-800 bg-white border border-slate-200 px-3 py-2 rounded-xl h-16 focus:border-indigo-500 focus:outline-none"
                       />
                     </div>
                   </div>
@@ -2936,22 +2936,22 @@ export const AdminDashboard: React.FC = () => {
                   /* Comment specific fields */
                   <div className="space-y-4 pt-1">
                     <div>
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-purple-400 block mb-1">Target Reddit Post URL to comment on</label>
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-indigo-650 block mb-1">Target Reddit Post URL to comment on</label>
                       <input 
                         type="text" 
                         value={commentPostUrl}
                         onChange={(e) => setCommentPostUrl(e.target.value)}
                         placeholder="https://reddit.com/r/.../best_thread" 
-                        className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-3 py-2.5 rounded-xl focus:border-purple-500"
+                        className="w-full text-xs text-slate-800 bg-white border border-slate-200 px-3 py-2.5 rounded-xl focus:border-indigo-550 focus:outline-none"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-purple-400 block mb-1">Comment Guidelines/Required keywords</label>
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-indigo-650 block mb-1">Comment Guidelines/Required keywords</label>
                       <textarea 
                         value={commentGuidelines}
                         onChange={(e) => setCommentGuidelines(e.target.value)}
                         placeholder="e.g. Must comment about 'high gas fees' or 'zero scalability benefits'. Minimum 2 sentences." 
-                        className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-3 py-2 rounded-xl h-20 focus:border-purple-500"
+                        className="w-full text-xs text-slate-800 bg-white border border-slate-200 px-3 py-2 rounded-xl h-20 focus:border-indigo-550 focus:outline-none"
                       />
                     </div>
                   </div>
@@ -2959,79 +2959,79 @@ export const AdminDashboard: React.FC = () => {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Max slots limit</label>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Max slots limit</label>
                     <input 
                       type="number" 
                       value={taskMaxSubmissions}
                       onChange={(e) => setTaskMaxSubmissions(Number(e.target.value))}
-                      className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-3 py-2 rounded-xl focus:border-purple-500 font-mono"
+                      className="w-full text-xs text-slate-800 bg-white border border-slate-200 px-3 py-2 rounded-xl focus:border-indigo-500 focus:outline-none font-mono"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Deadline Date</label>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Deadline Date</label>
                     <input 
                       type="date" 
                       value={taskDeadline}
                       onChange={(e) => setTaskDeadline(e.target.value)}
-                      className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-3 py-2 rounded-xl focus:border-purple-500 focus:outline-none select-none"
+                      className="w-full text-xs text-slate-800 bg-white border border-slate-200 px-3 py-2.5 rounded-xl focus:border-indigo-500 focus:outline-none select-none font-bold"
                     />
                   </div>
                 </div>
 
                 {/* Reddit Markdown Preview section */}
-                <div className="border border-white/10 bg-zinc-950/60 rounded-xl p-3.5 space-y-2.5">
-                  <div className="flex justify-between items-center border-b border-white/5 pb-1.5">
-                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-purple-400">Reddit Markdown Preview</span>
-                    <span className="text-[9px] bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded font-bold uppercase">Live Render</span>
+                <div className="border border-slate-200 bg-slate-50 rounded-xl p-3.5 space-y-2.5 shadow-sm">
+                  <div className="flex justify-between items-center border-b border-slate-200 pb-1.5">
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-700">Reddit Markdown Preview</span>
+                    <span className="text-[9px] bg-indigo-50 border border-indigo-150 text-indigo-700 px-2 py-0.5 rounded-md font-bold uppercase">Live Render</span>
                   </div>
                   
                   <div className="space-y-2 text-[11px] leading-relaxed">
                     {taskTitle && (
                       <div>
-                        <span className="text-[8px] text-zinc-500 font-extrabold uppercase block tracking-wider font-mono">Title Preview</span>
-                        <div className="text-white font-bold">{renderRedditMarkdown(taskTitle)}</div>
+                        <span className="text-[8px] text-slate-450 font-extrabold uppercase block tracking-wider font-mono">Title Preview</span>
+                        <div className="text-slate-850 font-extrabold">{renderRedditMarkdown(taskTitle)}</div>
                       </div>
                     )}
                     {taskDescription && (
-                      <div className="border-t border-white/5 pt-1.5">
-                        <span className="text-[8px] text-zinc-500 font-extrabold uppercase block tracking-wider font-mono">Description/Instructions Preview</span>
-                        <div className="text-zinc-300">{renderRedditMarkdown(taskDescription)}</div>
+                      <div className="border-t border-slate-150 pt-1.5">
+                        <span className="text-[8px] text-slate-455 font-extrabold uppercase block tracking-wider font-mono">Description/Instructions Preview</span>
+                        <div className="text-slate-705">{renderRedditMarkdown(taskDescription)}</div>
                       </div>
                     )}
                     {taskType === 'post' ? (
                       <>
                         {requiredTitle && (
-                          <div className="border-t border-white/5 pt-1.5">
-                            <span className="text-[8px] text-zinc-500 font-extrabold uppercase block tracking-wider font-mono">Required Title Preview</span>
-                            <div className="text-zinc-300">"{renderRedditMarkdown(requiredTitle)}"</div>
+                          <div className="border-t border-slate-150 pt-1.5">
+                            <span className="text-[8px] text-slate-450 font-extrabold uppercase block tracking-wider font-mono">Required Title Preview</span>
+                            <div className="text-slate-705">"{renderRedditMarkdown(requiredTitle)}"</div>
                           </div>
                         )}
                         {postGuidelines && (
-                          <div className="border-t border-white/5 pt-1.5">
-                            <span className="text-[8px] text-zinc-500 font-extrabold uppercase block tracking-wider font-mono">Guidelines Preview</span>
-                            <div className="text-zinc-300">{renderRedditMarkdown(postGuidelines)}</div>
+                          <div className="border-t border-slate-150 pt-1.5">
+                            <span className="text-[8px] text-slate-450 font-extrabold uppercase block tracking-wider font-mono">Guidelines Preview</span>
+                            <div className="text-slate-705">{renderRedditMarkdown(postGuidelines)}</div>
                           </div>
                         )}
                       </>
                     ) : (
                       <>
                         {commentGuidelines && (
-                          <div className="border-t border-white/5 pt-1.5">
-                            <span className="text-[8px] text-zinc-500 font-extrabold uppercase block tracking-wider font-mono">Comment Description/Guidelines Preview</span>
-                            <div className="text-zinc-300">{renderRedditMarkdown(commentGuidelines)}</div>
+                          <div className="border-t border-slate-150 pt-1.5">
+                            <span className="text-[8px] text-slate-450 font-extrabold uppercase block tracking-wider font-mono">Comment Description/Guidelines Preview</span>
+                            <div className="text-slate-705">{renderRedditMarkdown(commentGuidelines)}</div>
                           </div>
                         )}
                       </>
                     )}
                     {!taskTitle && !taskDescription && !requiredTitle && !postGuidelines && !commentGuidelines && (
-                      <p className="text-zinc-500 italic font-medium">No task content provided to render preview. Start typing to see results...</p>
+                      <p className="text-slate-400 italic font-medium">No task content provided to render preview. Start typing to see results...</p>
                     )}
                   </div>
                 </div>
 
                 <button 
                   type="submit"
-                  className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-500 text-xs font-black text-white hover:opacity-95 shadow-md shadow-purple-500/10 rounded-xl cursor-pointer"
+                  className="w-full py-3.5 bg-indigo-650 hover:bg-indigo-600 text-xs font-black text-white rounded-xl cursor-pointer shadow-sm shadow-indigo-100 transition uppercase tracking-wider"
                 >
                   Confirm & Broadcast Campaign
                 </button>
@@ -3040,29 +3040,29 @@ export const AdminDashboard: React.FC = () => {
 
             {/* View current tasks list */}
             <div className="lg:col-span-2 space-y-6">
-              <h2 className="text-base font-black border-b border-white/5 pb-3 flex justify-between items-center">
+              <h2 className="text-base font-black border-b border-slate-200 pb-3 flex justify-between items-center text-slate-800">
                 <span>Active Live Task Desk</span>
-                <span className="text-xs text-zinc-500">Total active: {tasks.length} campaigns</span>
+                <span className="text-xs text-slate-500 font-medium">Total active: {tasks.length} campaigns</span>
               </h2>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+              <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+                <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="border-b border-white/5 text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
-                      <th className="py-2 px-1">Campaign Info</th>
-                      <th className="py-2 px-1">Type</th>
-                      <th className="py-2 px-1">Karma Required</th>
-                      <th className="py-2 px-1">Claimed By</th>
-                      <th className="py-2 px-1">Claim Time</th>
-                      <th className="py-2 px-1">Deadline</th>
-                      <th className="py-2 px-1">Status</th>
-                      <th className="py-2 px-1 text-right">Actions</th>
+                    <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-slate-50">
+                      <th className="py-3 px-3">Campaign Info</th>
+                      <th className="py-3 px-1">Type</th>
+                      <th className="py-3 px-1">Karma Required</th>
+                      <th className="py-3 px-1">Claimed By</th>
+                      <th className="py-3 px-1">Claim Time</th>
+                      <th className="py-3 px-1">Deadline</th>
+                      <th className="py-3 px-1">Status</th>
+                      <th className="py-3 px-3 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/5 text-[11px]">
+                  <tbody className="divide-y divide-slate-150 text-[11px]">
                     {tasks.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="py-8 text-center text-zinc-500 font-semibold select-text">
+                        <td colSpan={8} className="py-8 text-center text-slate-400 font-semibold select-text">
                           No active campaigns created yet. Deploy the first one!
                         </td>
                       </tr>
@@ -3073,43 +3073,43 @@ export const AdminDashboard: React.FC = () => {
                         const isClaimed = t.status === 'claimed';
 
                         return (
-                          <tr key={t.id} className="hover:bg-white/[0.01]">
-                            <td className="py-3 px-1 space-y-0.5">
-                              <p className="font-bold text-white text-xs">{t.title}</p>
-                              <div className="flex gap-2 text-[9px] font-bold text-zinc-500 font-mono">
+                          <tr key={t.id} className="hover:bg-slate-50/50 transition">
+                            <td className="py-3.5 px-3 space-y-0.5">
+                              <p className="font-extrabold text-slate-800 text-xs">{t.title}</p>
+                              <div className="flex gap-2 text-[9px] font-bold text-slate-450 font-mono">
                                 <span>Slots: {t.completedSubmissionsCount} / {t.maxSubmissions}</span>
-                                <span className="text-rose-400 font-black">${t.reward.toFixed(2)} USDT</span>
+                                <span className="text-indigo-650 font-black">${t.reward.toFixed(2)} USDT</span>
                               </div>
                             </td>
-                            <td className="py-3 px-1">
-                              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                            <td className="py-3.5 px-1 col-span-1">
+                              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest font-mono">
                                 {t.type}
                               </span>
                             </td>
-                            <td className="py-3 px-1 select-text">
+                            <td className="py-3.5 px-1 select-text">
                               {isSpecial ? (
-                                <span className="text-amber-400 font-extrabold flex items-center gap-0.5 font-mono">
+                                <span className="text-amber-600 font-extrabold flex items-center gap-0.5 font-mono">
                                   ⭐ {t.minKarmaRequired?.toLocaleString()}
                                 </span>
                               ) : (
-                                <span className="text-zinc-500 font-semibold">None (Regular)</span>
+                                <span className="text-slate-400 font-semibold">None (Regular)</span>
                               )}
                             </td>
                             <td className="py-3 px-1 select-text">
                               {claimedUser ? (
                                 <div>
-                                  <p className="font-extrabold text-purple-400 text-xs">{claimedUser.fullName}</p>
-                                  <p className="text-[9px] text-zinc-500 font-mono font-bold">{claimedUser.redditUsername}</p>
+                                  <p className="font-extrabold text-indigo-600 text-xs">{claimedUser.fullName}</p>
+                                  <p className="text-[9px] text-slate-450 font-mono font-bold">u/{claimedUser.redditUsername}</p>
                                 </div>
                               ) : (
-                                <span className="text-zinc-500 italic">None</span>
+                                <span className="text-slate-400 italic">None</span>
                               )}
                             </td>
-                            <td className="py-3 px-1 font-mono text-[10px] text-zinc-400 select-text">
+                            <td className="py-3 px-1 font-mono text-[10px] text-slate-500 select-text">
                               {isClaimed && t.claimed_at ? (
                                 <span>{new Date(t.claimed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                               ) : (
-                                <span className="text-zinc-600">-</span>
+                                <span className="text-slate-400">-</span>
                               )}
                             </td>
                             <td className="py-3 px-1 font-mono text-[10px] select-text">
@@ -3125,29 +3125,29 @@ export const AdminDashboard: React.FC = () => {
                                 const s = totalSecs % 60;
                                 return (
                                   <div className="space-y-0.5">
-                                    <p className="text-rose-400 font-black text-xs animate-pulse">
+                                    <p className="text-rose-600 font-black text-xs animate-pulse">
                                       {m}:{s < 10 ? '0' : ''}{s} mins
                                     </p>
-                                    <p className="text-[8px] text-zinc-500 font-bold uppercase">
+                                    <p className="text-[8px] text-slate-400 font-bold uppercase">
                                       Ends: {new Date(t.claim_expires_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </p>
                                   </div>
                                 );
                               })() : (
-                                <span className="text-zinc-400 text-[10px]">{t.deadline.split(' ')[0]}</span>
+                                <span className="text-slate-400 text-[10px]">{t.deadline.split(' ')[0]}</span>
                               )}
                             </td>
                             <td className="py-3 px-1 select-none">
                               {isClaimed ? (
-                                <span className="px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 font-black text-[9px] uppercase tracking-wider animate-pulse">
+                                <span className="px-2 py-0.5 rounded bg-purple-50 text-purple-705 border border-purple-200 font-bold text-[9px] uppercase tracking-wider animate-pulse">
                                   Claimed
                                 </span>
                               ) : t.completedSubmissionsCount >= t.maxSubmissions ? (
-                                <span className="px-2 py-0.5 rounded bg-zinc-800 text-zinc-500 font-bold text-[9px] uppercase tracking-wider">
+                                <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-205 font-bold text-[9px] uppercase tracking-wider">
                                   Slots Full
                                 </span>
                               ) : (
-                                <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold text-[9px] uppercase tracking-wider">
+                                <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-705 border border-emerald-250 font-bold text-[9px] uppercase tracking-wider">
                                   Available
                                 </span>
                               )}
@@ -3163,7 +3163,7 @@ export const AdminDashboard: React.FC = () => {
                                         alert('Claim released successfully!');
                                       }
                                     }}
-                                    className="px-2 py-0.5 bg-red-600/10 hover:bg-red-600 border border-red-500/20 text-red-400 hover:text-white text-[9px] font-black rounded cursor-pointer transition-colors"
+                                    className="px-2 py-1 bg-red-50 hover:bg-red-650 border border-red-200 text-red-600 hover:text-white text-[9px] font-black rounded cursor-pointer transition shadow-xs"
                                     title="Force Unclaim"
                                   >
                                     Force Unclaim 🔓
@@ -3188,10 +3188,10 @@ export const AdminDashboard: React.FC = () => {
                                       }
                                     }}
                                     disabled={disabledExtensionTasks[t.id]}
-                                    className={`px-2 py-0.5 border text-[9px] font-black rounded transition-colors ${
+                                    className={`px-2 py-1 border text-[9px] font-black rounded transition cursor-pointer ${
                                       disabledExtensionTasks[t.id]
-                                        ? "bg-zinc-800 border-zinc-700 text-zinc-500 cursor-not-allowed opacity-50"
-                                        : "bg-purple-600/20 hover:bg-purple-600 border-purple-500/25 text-purple-400 hover:text-white cursor-pointer"
+                                        ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
+                                        : "bg-indigo-50 hover:bg-indigo-650 border-indigo-200 text-indigo-700 hover:text-white"
                                     }`}
                                     title="Extend 30 Minutes"
                                   >
@@ -3207,10 +3207,10 @@ export const AdminDashboard: React.FC = () => {
                                       adminDeleteTask(t.id);
                                     }
                                   }}
-                                  className="p-1 px-[5px] bg-zinc-950 border border-red-500/10 text-red-500 hover:bg-red-600 hover:text-white rounded text-[10px] font-bold cursor-pointer transition-all"
+                                  className="p-1.5 px-2 bg-red-50 border border-red-200 text-red-600 hover:bg-red-650 hover:text-white rounded cursor-pointer transition shadow-xs"
                                   title="Delete campaign"
                                 >
-                                  <Trash2 className="w-3 h-3" />
+                                  <Trash2 className="w-3.5 h-3.5" />
                                 </button>
                               </div>
                             </td>
@@ -3229,14 +3229,14 @@ export const AdminDashboard: React.FC = () => {
         {/* ================= SUBMISSIONS TAB ================= */}
         {activeTab === 'submissions' && (
           <div className="space-y-6">
-            <div className="flex justify-between items-center pb-4 border-b border-white/5">
-              <h2 className="text-base font-black">Reddit Proof Submissions Desk</h2>
-              <span className="text-xs text-zinc-500 font-semibold">Under review queue: {pendingSubmissionsCount}</span>
+            <div className="flex justify-between items-center pb-4 border-b border-slate-200">
+              <h2 className="text-base font-black text-slate-800">Reddit Proof Submissions Desk</h2>
+              <span className="text-xs text-slate-500 font-semibold bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg">Under review queue: {pendingSubmissionsCount}</span>
             </div>
 
             <div className="space-y-6">
               {submissions.filter(s => !s.archived).length === 0 ? (
-                <div className="text-center py-10 text-zinc-500 text-xs text-balance">
+                <div className="text-center py-10 text-slate-450 text-xs text-balance bg-white rounded-2xl border border-slate-200">
                   Awesome! There are no submissions awaiting administrative checks in your queue.
                 </div>
               ) : (
@@ -3246,170 +3246,170 @@ export const AdminDashboard: React.FC = () => {
                   return (
                     <div 
                       key={sub.id} 
-                      className={`p-5 rounded-2xl border flex flex-col md:flex-row justify-between gap-6 ${
+                      className={`p-5 rounded-2xl border flex flex-col md:flex-row justify-between gap-6 transition ${
                         (sub.status === 'Pending' || sub.status === 'Under Admin Review') 
-                          ? 'bg-purple-600/[0.03] border-purple-500/25' 
+                          ? 'bg-amber-50/30 border-amber-200' 
                           : sub.status === 'Admin Approved (Waiting for Client Approval)'
-                          ? 'bg-indigo-600/[0.02] border-indigo-500/20'
-                          : 'bg-zinc-950 border-white/5'
+                          ? 'bg-indigo-50/20 border-indigo-200'
+                          : 'bg-white border-slate-200 shadow-xs'
                       }`}
                     >
                       {/* Submission Details */}
                       <div className="space-y-3 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs font-black text-zinc-400 uppercase tracking-wider">{sub.taskType} Audit</span>
-                          <span className="text-sm font-extrabold text-white">{sub.taskTitle}</span>
+                          <span className="text-xs font-black text-indigo-650 uppercase tracking-wider">{sub.taskType} Audit</span>
+                          <span className="text-sm font-extrabold text-slate-850">{sub.taskTitle}</span>
                           <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                            sub.status === 'Client Approved (Payment Released)' || sub.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-500' :
-                            (sub.status === 'Pending' || sub.status === 'Under Admin Review') ? 'bg-yellow-500/10 text-yellow-500 animate-pulse' :
-                            sub.status === 'Admin Approved (Waiting for Client Approval)' ? 'bg-sky-500/10 text-sky-400 font-bold' :
-                            'bg-red-500/10 text-red-500'
+                            sub.status === 'Client Approved (Payment Released)' || sub.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                            (sub.status === 'Pending' || sub.status === 'Under Admin Review') ? 'bg-amber-50 text-amber-705 border border-amber-200 animate-pulse' :
+                            sub.status === 'Admin Approved (Waiting for Client Approval)' ? 'bg-indigo-50 text-indigo-705 border border-indigo-200 font-bold' :
+                            'bg-rose-50 text-rose-705 border border-rose-200'
                           }`}>
                             {sub.status}
                           </span>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4 bg-zinc-950/60 p-3 rounded-xl border border-white/5 text-xs font-semibold">
+                        <div className="grid grid-cols-2 gap-4 bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs font-semibold">
                           <div>
-                            <span className="text-[10px] text-zinc-500 font-bold block uppercase tracking-wider">Creator Account</span>
-                            <span className="text-white font-extrabold block flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[10px] text-slate-450 font-bold block uppercase tracking-wider">Creator Account</span>
+                            <span className="text-slate-800 font-extrabold block flex items-center gap-1.5 flex-wrap">
                               <span>{sub.userFullName}</span>
                               {subUserTier && (
-                                <span className="px-1.5 py-0.2 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded text-[9px] font-extrabold uppercase">
+                                <span className="px-1.5 py-0.2 bg-indigo-50 text-indigo-600 border border-indigo-150 rounded text-[9px] font-extrabold uppercase">
                                   {subUserTier.emoji} {subUserTier.name}
                                 </span>
                               )}
                             </span>
-                            <span className="text-purple-400 font-bold tracking-wide text-[11px] block">{sub.redditUsername}</span>
+                            <span className="text-indigo-600 font-bold tracking-wide text-[11px] block select-text">u/{sub.redditUsername}</span>
                           </div>
                           <div>
-                            <span className="text-[10px] text-zinc-500 font-bold block uppercase tracking-wider">Earning payout</span>
-                            <span className="text-white font-mono font-black text-sm block">${sub.reward.toFixed(2)} USDT</span>
-                            <span className="text-[9px] text-zinc-500 block">Submitted {new Date(sub.submittedAt).toLocaleDateString()}</span>
+                            <span className="text-[10px] text-slate-450 font-bold block uppercase tracking-wider">Earning payout</span>
+                            <span className="text-indigo-650 font-mono font-black text-sm block">${sub.reward.toFixed(2)} USDT</span>
+                            <span className="text-[9px] text-slate-450 block">Submitted {new Date(sub.submittedAt).toLocaleDateString()}</span>
                           </div>
                         </div>
 
-                      {/* Proof display (handles link / screenshots gracefully) */}
-                      <div>
-                        {((sub.proofUrl || '').toLowerCase().includes('reddit.com') || (sub.submissionLink || '').toLowerCase().includes('reddit.com')) ? (
-                          <div>
-                            <span className="text-[10px] text-zinc-500 font-bold block uppercase tracking-wider mb-1">Submitted Reddit Proof Link</span>
-                            <a 
-                              href={sub.submissionLink || sub.proofUrl} 
-                              target="_blank" 
-                              rel="noreferrer" 
-                              className="text-blue-400 hover:underline font-bold inline-flex items-center gap-1 mt-0.5 break-all max-w-md font-mono text-xs"
-                            >
-                              Browse Reddit Proof Link <ExternalLink className="w-3.5 h-3.5" />
-                            </a>
-                            <span className="text-[10px] text-zinc-500 block truncate max-w-xs mt-1 select-text">{sub.submissionLink || sub.proofUrl}</span>
-                          </div>
-                        ) : (
-                          <div>
-                            {sub.submissionLink && (
-                              <div className="text-xs mb-3">
-                                <span className="text-zinc-500 block font-bold uppercase tracking-wider text-[10px]">Comment permalink url</span>
-                                <a 
-                                  href={sub.submissionLink} 
-                                  target="_blank" 
-                                  rel="noreferrer" 
-                                  className="text-blue-400 hover:underline font-bold inline-flex items-center gap-1 mt-0.5 break-all max-w-md"
-                                >
-                                  Browse Reddit Comment Link <ExternalLink className="w-3.5 h-3.5" />
+                        {/* Proof display (handles link / screenshots gracefully) */}
+                        <div className="pt-1">
+                          {((sub.proofUrl || '').toLowerCase().includes('reddit.com') || (sub.submissionLink || '').toLowerCase().includes('reddit.com')) ? (
+                            <div className="p-3 bg-white border border-slate-200 rounded-xl">
+                              <span className="text-[10px] text-slate-450 font-bold block uppercase tracking-wider mb-1">Submitted Reddit Proof Link</span>
+                              <a 
+                                href={sub.submissionLink || sub.proofUrl} 
+                                target="_blank" 
+                                rel="noreferrer" 
+                                className="text-indigo-600 hover:text-indigo-500 font-black inline-flex items-center gap-1 mt-0.5 break-all max-w-md font-mono text-xs cursor-pointer"
+                              >
+                                Browse Reddit Proof Link <ExternalLink className="w-3.5 h-3.5" />
+                              </a>
+                              <span className="text-[10px] text-slate-400 block truncate max-w-xs mt-1 select-text">{sub.submissionLink || sub.proofUrl}</span>
+                            </div>
+                          ) : (
+                            <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-3">
+                              {sub.submissionLink && (
+                                <div className="text-xs">
+                                  <span className="text-slate-450 block font-bold uppercase tracking-wider text-[10px]">Comment permalink url</span>
+                                  <a 
+                                    href={sub.submissionLink} 
+                                    target="_blank" 
+                                    rel="noreferrer" 
+                                    className="text-indigo-600 hover:text-indigo-500 font-black inline-flex items-center gap-1 mt-0.5 break-all max-w-md cursor-pointer"
+                                  >
+                                    Browse Reddit Comment Link <ExternalLink className="w-3.5 h-3.5" />
+                                  </a>
+                                </div>
+                              )}
+                              <div>
+                                <span className="text-[10px] text-slate-450 font-bold block uppercase tracking-wider mb-1.5">Submitted Screenshot Proof</span>
+                                <a href={sub.proofUrl} target="_blank" rel="noreferrer" className="inline-block relative group cursor-pointer">
+                                  <img 
+                                    src={sub.proofUrl} 
+                                    alt="Proof Screenshot" 
+                                    className="w-48 h-32 object-cover rounded-xl border border-slate-200 hover:border-indigo-500 transition-colors"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                  <div className="absolute inset-0 bg-transparent group-hover:bg-slate-900/10 rounded-xl transition-all flex items-center justify-center">
+                                    <span className="text-[10px] bg-slate-900/90 px-2 py-1 rounded text-white hidden group-hover:inline-block font-extrabold shadow-sm">Open Screenshot</span>
+                                  </div>
                                 </a>
                               </div>
-                            )}
-                            <div>
-                              <span className="text-[10px] text-zinc-500 font-bold block uppercase tracking-wider mb-1.5">Submitted Screenshot Proof</span>
-                              <a href={sub.proofUrl} target="_blank" rel="noreferrer" className="inline-block relative group">
-                                <img 
-                                  src={sub.proofUrl} 
-                                  alt="Proof Screenshot" 
-                                  className="w-48 h-32 object-cover rounded-xl border border-white/10 hover:border-purple-500/40 transition-colors"
-                                  referrerPolicy="no-referrer"
-                                />
-                                <div className="absolute inset-0 bg-transparent group-hover:bg-zinc-950/20 rounded-xl transition-all flex items-center justify-center">
-                                  <span className="text-[10px] bg-zinc-950/80 px-2 py-1 rounded text-white hidden group-hover:inline-block font-extrabold">Open Screenshot</span>
-                                </div>
-                              </a>
                             </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Review Action area */}
-                    <div className="md:w-64 flex flex-col justify-between items-stretch md:border-l md:border-white/5 md:pl-6 shrink-0">
-                      <div>
-                        <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-2">Audit Action Panel</span>
-                        
-                        {(sub.status === 'Pending' || sub.status === 'Under Admin Review') ? (
-                          <div className="space-y-2.5">
-                            <button 
-                              onClick={() => adminReviewSubmission(sub.id, 'Approved', submissionFeedback[sub.id])}
-                              className="w-full py-2 bg-purple-600 hover:bg-purple-500 text-xs font-black text-white rounded-xl shadow-md cursor-pointer transition uppercase tracking-wider text-center"
-                            >
-                              Pass Admin pre-review
-                            </button>
-                            <button 
-                              onClick={() => adminReviewSubmission(sub.id, 'Rejected', submissionFeedback[sub.id] || 'Guidelines not met')}
-                              className="w-full py-2 bg-zinc-900 border border-white/5 hover:bg-zinc-800 text-xs font-extrabold text-zinc-300 rounded-xl cursor-pointer transition uppercase tracking-wider text-center"
-                            >
-                              Admin Reject Proof
-                            </button>
-
-                            <input 
-                              type="text"
-                              value={submissionFeedback[sub.id] || ''}
-                              onChange={(e) => setSubmissionFeedback({ ...submissionFeedback, [sub.id]: e.target.value })}
-                              placeholder="Feedback / Rejection Reason description..."
-                              className="w-full text-[10px] bg-zinc-950 border border-white/5 px-2.5 py-1.5 rounded-lg text-white block"
-                            />
-                          </div>
-                        ) : sub.status === 'Admin Approved (Waiting for Client Approval)' ? (
-                          <div className="space-y-2.5">
-                            <span className="text-[10px] text-indigo-400 block font-bold mb-1">Pre-review Passed! Awaiting Client final action.</span>
-                            <button 
-                              onClick={() => adminFinalReleasePayment(sub.id, 'Approve', submissionFeedback[sub.id])}
-                              className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-xs font-black text-white rounded-xl shadow-md cursor-pointer transition uppercase tracking-wider text-center"
-                            >
-                              Force Approve & Pay
-                            </button>
-                            <button 
-                              onClick={() => adminFinalReleasePayment(sub.id, 'Reject', submissionFeedback[sub.id] || 'Rejected')}
-                              className="w-full py-2 bg-red-650 hover:bg-red-650 text-xs font-black text-white rounded-xl shadow-md cursor-pointer transition uppercase tracking-wider text-center"
-                            >
-                              Force Reject
-                            </button>
-
-                            <input 
-                              type="text"
-                              value={submissionFeedback[sub.id] || ''}
-                              onChange={(e) => setSubmissionFeedback({ ...submissionFeedback, [sub.id]: e.target.value })}
-                              placeholder="Override Note / Feedback..."
-                              className="w-full text-[10px] bg-zinc-950 border border-white/5 px-2.5 py-1.5 rounded-lg text-white block"
-                            />
-                          </div>
-                        ) : (
-                          <div className="p-3 bg-zinc-950/60 rounded-xl text-[11px] font-semibold text-zinc-500 border border-white/5">
-                            <span className="text-zinc-400 block font-bold mb-0.5">Audit complete</span>
-                            Reviewed status: <strong className="text-indigo-400 uppercase tracking-widest text-[10px] block mt-1">{sub.status}</strong>
-                            {sub.feedback && <span className="block mt-1.5 text-[10px] italic">Feedback: "{sub.feedback}"</span>}
-                            {(sub.status === 'Approved' || sub.status === 'Client Approved (Payment Released)') && (
-                              <button
-                                onClick={() => handleArchiveSubmission(sub)}
-                                className="mt-2 w-full py-1.5 bg-zinc-900 hover:bg-zinc-850 hover:text-white border border-white/5 text-zinc-400 text-[10px] font-bold uppercase rounded-lg transition cursor-pointer"
+                      {/* Review Action area */}
+                      <div className="md:w-64 flex flex-col justify-between items-stretch md:border-l md:border-slate-200 md:pl-6 shrink-0 space-y-4 md:space-y-0">
+                        <div>
+                          <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block mb-2 font-mono">Audit Action Panel</span>
+                          
+                          {(sub.status === 'Pending' || sub.status === 'Under Admin Review') ? (
+                            <div className="space-y-2.5">
+                              <button 
+                                onClick={() => adminReviewSubmission(sub.id, 'Approved', submissionFeedback[sub.id])}
+                                className="w-full py-2 bg-indigo-600 hover:bg-indigo-550 text-xs font-black text-white rounded-xl shadow-xs cursor-pointer transition uppercase tracking-wider text-center"
                               >
-                                Archive Record
+                                Pass Admin pre-review
                               </button>
-                            )}
-                          </div>
-                        )}
+                              <button 
+                                onClick={() => adminReviewSubmission(sub.id, 'Rejected', submissionFeedback[sub.id] || 'Guidelines not met')}
+                                className="w-full py-2 bg-white border border-slate-200 hover:bg-slate-50 text-xs font-extrabold text-slate-700 rounded-xl cursor-pointer transition uppercase tracking-wider text-center"
+                              >
+                                Admin Reject Proof
+                              </button>
+
+                              <input 
+                                type="text"
+                                value={submissionFeedback[sub.id] || ''}
+                                onChange={(e) => setSubmissionFeedback({ ...submissionFeedback, [sub.id]: e.target.value })}
+                                placeholder="Feedback / Rejection Reason description..."
+                                className="w-full text-[10px] bg-white border border-slate-200 px-2.5 py-2 rounded-lg text-slate-800 placeholder-slate-400 block outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                              />
+                            </div>
+                          ) : sub.status === 'Admin Approved (Waiting for Client Approval)' ? (
+                            <div className="space-y-2.5">
+                              <span className="text-[10px] text-indigo-600 block font-bold mb-1">Pre-review Passed! Awaiting Client final action.</span>
+                              <button 
+                                onClick={() => adminFinalReleasePayment(sub.id, 'Approve', submissionFeedback[sub.id])}
+                                className="w-full py-2 bg-emerald-600 hover:bg-emerald-555 text-xs font-black text-white rounded-xl shadow-xs cursor-pointer transition uppercase tracking-wider text-center"
+                              >
+                                Force Approve & Pay
+                              </button>
+                              <button 
+                                onClick={() => adminFinalReleasePayment(sub.id, 'Reject', submissionFeedback[sub.id] || 'Rejected')}
+                                className="w-full py-2 bg-red-600 hover:bg-red-550 text-xs font-black text-white rounded-xl shadow-xs cursor-pointer transition uppercase tracking-wider text-center"
+                              >
+                                Force Reject
+                              </button>
+
+                              <input 
+                                type="text"
+                                value={submissionFeedback[sub.id] || ''}
+                                onChange={(e) => setSubmissionFeedback({ ...submissionFeedback, [sub.id]: e.target.value })}
+                                placeholder="Override Note / Feedback..."
+                                className="w-full text-[10px] bg-white border border-slate-200 px-2.5 py-2 rounded-lg text-slate-800 placeholder-slate-400 block outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                              />
+                            </div>
+                          ) : (
+                            <div className="p-3 bg-slate-50 rounded-xl text-[11px] font-semibold text-slate-550 border border-slate-200">
+                              <span className="text-slate-500 block font-bold mb-0.5">Audit complete</span>
+                              Reviewed status: <strong className="text-indigo-600 uppercase tracking-widest text-[10px] block mt-1">{sub.status}</strong>
+                              {sub.feedback && <span className="block mt-1.5 text-[10px] italic">Feedback: "{sub.feedback}"</span>}
+                              {(sub.status === 'Approved' || sub.status === 'Client Approved (Payment Released)') && (
+                                <button
+                                  onClick={() => handleArchiveSubmission(sub)}
+                                  className="mt-2.5 w-full py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 text-[10px] font-bold uppercase rounded-lg transition cursor-pointer"
+                                >
+                                  Archive Record
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })
+                  );
+                })
               )}
             </div>
           </div>
@@ -3418,105 +3418,105 @@ export const AdminDashboard: React.FC = () => {
         {/* ================= WITHDRAWALS TAB ================= */}
         {activeTab === 'withdrawals' && (
           currentUser?.role !== 'admin' ? (
-            <div className="p-8 text-center bg-zinc-950/40 rounded-3xl border border-white/10 max-w-2xl mx-auto space-y-4 my-8 font-sans">
-              <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto text-red-500">
+            <div className="p-8 text-center bg-white rounded-2xl border border-rose-205 max-w-2xl mx-auto space-y-4 my-8 font-sans shadow-xs">
+              <div className="w-12 h-12 rounded-full bg-red-50 border border-red-200 flex items-center justify-center mx-auto text-red-650">
                 <ShieldAlert className="w-6 h-6 animate-pulse" />
               </div>
-              <h3 className="text-lg font-black text-white">Shield Guard: Restricted Access</h3>
-              <p className="text-xs text-zinc-400 max-w-md mx-auto leading-relaxed font-semibold">
+              <h3 className="text-lg font-black text-slate-800">Shield Guard: Restricted Access</h3>
+              <p className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed font-semibold">
                 Earning payouts, creator cashout ledgers, direct wallet transfers, and financial transaction sheets require senior Administrator clearance.
               </p>
-              <div className="pt-2 text-[10px] text-zinc-500 font-mono font-bold uppercase tracking-wider">
+              <div className="pt-2 text-[10px] text-slate-450 font-mono font-bold uppercase tracking-wider">
                 Role Context: Moderator Level II Desk
               </div>
             </div>
           ) : (
             <div className="space-y-6">
-            <div className="flex justify-between items-center pb-4 border-b border-white/5">
-              <h2 className="text-base font-black">Earning Withdrawal Desk</h2>
-              <span className="text-xs text-zinc-500 font-semibold">Cashouts queue: {pendingWithdrawalsCount} pending</span>
-            </div>
+              <div className="flex justify-between items-center pb-4 border-b border-slate-200">
+                <h2 className="text-base font-black text-slate-805">Earning Withdrawal Desk</h2>
+                <span className="text-xs text-indigo-705 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-lg font-bold">Cashouts queue: {pendingWithdrawalsCount} pending</span>
+              </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-white/5 text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
-                    <th className="py-3 px-2">Influencer Core</th>
-                    <th className="py-3 px-2">Method Type</th>
-                    <th className="py-3 px-2">Recipient Address / BinPay ID</th>
-                    <th className="py-3 px-2">Amount Requested</th>
-                    <th className="py-3 px-2">Status</th>
-                    <th className="py-3 px-2 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5 text-xs">
-                  {withdrawals.filter(w => !w.archived).map(w => {
-                    const wUser = users.find(u => u.id === w.userId);
-                    const t = wUser ? getKarmaTier(wUser.karma) : null;
-                    return (
-                      <tr key={w.id} className="hover:bg-white/[0.02]">
-                        <td className="py-4 px-2 space-y-0.5">
-                          <p className="font-extrabold text-white text-sm flex items-center gap-1">
-                            {w.userFullName}
-                            {t && <span className="text-xs" title={`${t.name} Tier`}>{t.emoji}</span>}
-                          </p>
-                          <p className="text-zinc-500 font-mono font-bold text-[10px]">{w.email}</p>
-                        </td>
-                      <td className="py-4 px-2 leading-none">
-                        <span className="px-2 py-0.5 bg-zinc-950 border border-zinc-850 rounded text-xs text-purple-400 font-bold font-mono">
-                          {w.withdrawalMethod === 'USDT_BEP20' ? 'USDT BEP20 (BSC)' : 'Binance Pay ID'}
-                        </span>
-                      </td>
-                      <td className="py-4 px-2">
-                        <span className="font-mono text-zinc-400 font-bold text-wrap select-text break-all tracking-wide">{w.paymentAddress}</span>
-                      </td>
-                      <td className="py-4 px-2">
-                        <span className="font-mono font-extrabold text-white text-sm">${w.amount.toFixed(2)} USDT</span>
-                      </td>
-                      <td className="py-4 px-2 select-none">
-                        <span className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] ${
-                          w.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-500' :
-                          w.status === 'Pending' ? 'bg-yellow-500/10 text-yellow-500 animate-pulse' : 'bg-red-500/10 text-red-500'
-                        }`}>
-                          {w.status}
-                        </span>
-                      </td>
-                      <td className="py-4 px-2 text-right">
-                        {w.status === 'Pending' ? (
-                          <div className="flex gap-1.5 justify-end">
-                            <button 
-                              onClick={() => adminReviewWithdrawal(w.id, 'Approved')}
-                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-[10px] font-black rounded text-white cursor-pointer"
-                            >
-                              Approve & Cashout
-                            </button>
-                            <button 
-                              onClick={() => adminReviewWithdrawal(w.id, 'Rejected')}
-                              className="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-[10px] font-black rounded text-zinc-300 cursor-pointer"
-                            >
-                              Reject Request
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col items-end gap-1 justify-end">
-                            <span className="text-[10px] text-zinc-500 italic">Processed</span>
-                            {w.status === 'Approved' && (
-                              <button
-                                onClick={() => handleArchiveWithdrawal(w)}
-                                className="px-2 py-0.5 bg-zinc-950 border border-zinc-850 text-zinc-400 hover:text-white rounded text-[10px] uppercase font-bold cursor-pointer transition-colors"
-                              >
-                                Archive Record
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      <th className="py-3.5 px-2">Influencer Core</th>
+                      <th className="py-3.5 px-2">Method Type</th>
+                      <th className="py-3.5 px-2">Recipient Address / BinPay ID</th>
+                      <th className="py-3.5 px-2">Amount Requested</th>
+                      <th className="py-3.5 px-2">Status</th>
+                      <th className="py-3.5 px-2 text-right">Actions</th>
                     </tr>
-                  )})}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs">
+                    {withdrawals.filter(w => !w.archived).map(w => {
+                      const wUser = users.find(u => u.id === w.userId);
+                      const t = wUser ? getKarmaTier(wUser.karma) : null;
+                      return (
+                        <tr key={w.id} className="hover:bg-slate-50/50 transition">
+                          <td className="py-4 px-2 space-y-0.5">
+                            <p className="font-extrabold text-slate-800 text-sm flex items-center gap-1">
+                              {w.userFullName}
+                              {t && <span className="text-xs animate-bounce" title={`${t.name} Tier`}>{t.emoji}</span>}
+                            </p>
+                            <p className="text-slate-400 font-mono font-bold text-[10px]">{w.email}</p>
+                          </td>
+                          <td className="py-4 px-2 leading-none">
+                            <span className="px-2 py-1 bg-slate-50 border border-slate-200 rounded text-[11px] text-slate-650 font-bold font-mono">
+                              {w.withdrawalMethod === 'USDT_BEP20' ? 'USDT BEP20' : 'Binance Pay ID'}
+                            </span>
+                          </td>
+                          <td className="py-4 px-2">
+                            <span className="font-mono text-slate-550 font-bold text-wrap select-text break-all tracking-wide">{w.paymentAddress}</span>
+                          </td>
+                          <td className="py-4 px-2">
+                            <span className="font-mono font-black text-indigo-650 text-sm">${w.amount.toFixed(2)} USDT</span>
+                          </td>
+                          <td className="py-4 px-2 select-none">
+                            <span className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] ${
+                              w.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                              w.status === 'Pending' ? 'bg-amber-50 text-amber-705 border border-amber-200 animate-pulse' : 'bg-rose-50 text-rose-705 border border-rose-200'
+                            }`}>
+                              {w.status}
+                            </span>
+                          </td>
+                          <td className="py-4 px-2 text-right">
+                            {w.status === 'Pending' ? (
+                              <div className="flex gap-1.5 justify-end">
+                                <button 
+                                  onClick={() => adminReviewWithdrawal(w.id, 'Approved')}
+                                  className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-550 text-[10px] font-black rounded-lg text-white shadow-xs cursor-pointer transition uppercase tracking-wider"
+                                >
+                                  Approve & Cashout
+                                </button>
+                                <button 
+                                  onClick={() => adminReviewWithdrawal(w.id, 'Rejected')}
+                                  className="px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-[10px] font-bold text-slate-700 rounded-lg shadow-xs cursor-pointer transition uppercase"
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-end gap-1.5 justify-end">
+                                <span className="text-[10px] text-slate-400 italic font-bold">Processed</span>
+                                {w.status === 'Approved' && (
+                                  <button
+                                    onClick={() => handleArchiveWithdrawal(w)}
+                                    className="px-2 py-1 bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 rounded text-[10px] uppercase font-bold cursor-pointer transition shadow-xs"
+                                  >
+                                    Archive Record
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      )})}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
           )
         )}
 
@@ -4536,8 +4536,8 @@ export const AdminDashboard: React.FC = () => {
                 }}
                 className={`px-4 py-2 rounded-xl text-xs font-black text-white cursor-pointer transition-all ${
                   banReasonInput.trim() 
-                    ? 'bg-red-600 hover:bg-red-500 shadow-md shadow-red-900/20' 
-                    : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                    ? 'bg-red-650 hover:bg-red-600' 
+                    : 'bg-slate-105 border border-slate-200 text-slate-400 cursor-not-allowed'
                 }`}
               >
                 Confirm Ban
@@ -4549,23 +4549,23 @@ export const AdminDashboard: React.FC = () => {
 
       {/* Suspend Confirmation Modal Overlay */}
       {suspendTargetUser && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 select-none animate-fade-in">
-          <div className="bg-zinc-950 border border-amber-550/30 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 select-none animate-fade-in">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-xl">
             <div>
-              <h3 className="text-lg font-black text-white">⚠️ Suspend User?</h3>
-              <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                Are you absolutely sure you want to suspend <span className="text-amber-400 font-extrabold">{suspendTargetUser.redditUsername || suspendTargetUser.fullName}</span>? They will be force-signed out immediately and blocked from accessing protected actions.
+              <h3 className="text-lg font-black text-slate-800">⚠️ Suspend User?</h3>
+              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                Are you absolutely sure you want to suspend <span className="text-amber-650 font-extrabold">{suspendTargetUser.redditUsername || suspendTargetUser.fullName}</span>? They will be force-signed out immediately and blocked from accessing protected actions.
               </p>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-405 block font-mono">
                 Suspension Duration
               </label>
               <select
                 value={suspendDuration}
                 onChange={(e) => setSuspendDuration(e.target.value)}
-                className="w-full bg-zinc-900 border border-white/10 text-white text-xs px-3 py-2.5 rounded-xl cursor-pointer font-bold focus:outline-none"
+                className="w-full bg-white border border-slate-200 text-slate-800 text-xs px-3 py-2.5 rounded-xl cursor-pointer font-bold focus:outline-none focus:border-indigo-550 focus:ring-1 focus:ring-indigo-550"
               >
                 <option value="1 day">1 Day</option>
                 <option value="3 days">3 Days</option>
@@ -4576,7 +4576,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-405 block font-mono">
                 Reason for Suspension (Required)
               </label>
               <input
@@ -4584,7 +4584,7 @@ export const AdminDashboard: React.FC = () => {
                 placeholder="e.g., Failed to submit correct proof links twice..."
                 value={suspendReasonInput}
                 onChange={(e) => setSuspendReasonInput(e.target.value)}
-                className="w-full bg-zinc-900 border border-white/10 text-white text-xs px-3 py-2.5 rounded-xl focus:outline-none focus:border-amber-500 font-semibold"
+                className="w-full bg-white border border-slate-200 text-slate-800 text-xs px-3 py-2.5 rounded-xl focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 font-semibold"
               />
             </div>
 
@@ -4595,7 +4595,7 @@ export const AdminDashboard: React.FC = () => {
                   setSuspendTargetUser(null);
                   setSuspendReasonInput('');
                 }}
-                className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-xl text-xs font-black cursor-pointer transition-all"
+                className="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 hover:text-slate-900 rounded-xl text-xs font-black cursor-pointer transition shadow-xs"
               >
                 Cancel
               </button>
@@ -4608,10 +4608,10 @@ export const AdminDashboard: React.FC = () => {
                   setSuspendTargetUser(null);
                   setSuspendReasonInput('');
                 }}
-                className={`px-4 py-2 rounded-xl text-xs font-black text-white cursor-pointer transition-all ${
+                className={`px-4 py-2 rounded-xl text-xs font-black text-white cursor-pointer transition-all shadow-xs ${
                   suspendReasonInput.trim() 
-                    ? 'bg-amber-600 hover:bg-amber-500 shadow-md shadow-amber-900/20' 
-                    : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                    ? 'bg-amber-600 hover:bg-amber-550' 
+                    : 'bg-slate-100 border border-slate-200 text-slate-400 cursor-not-allowed'
                 }`}
               >
                 Confirm Suspend
@@ -4623,12 +4623,12 @@ export const AdminDashboard: React.FC = () => {
 
       {/* Promote to Moderator Confirmation Modal Overlay */}
       {promoteTargetUser && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 select-none animate-fade-in">
-          <div className="bg-zinc-950 border border-purple-500/20 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 select-none animate-fade-in">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-xl">
             <div>
-              <h3 className="text-lg font-black text-white">🔰 Promote User to Moderator?</h3>
-              <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                Are you sure you want to promote <span className="text-purple-400 font-extrabold">{promoteTargetUser.fullName} (@{promoteTargetUser.redditUsername})</span>? They will gain access to the Moderator Control Panel with permissions to review/moderate tasks, submissions and members.
+              <h3 className="text-lg font-black text-slate-800">🔰 Promote User to Moderator?</h3>
+              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                Are you sure you want to promote <span className="text-indigo-650 font-extrabold">{promoteTargetUser.fullName} (@{promoteTargetUser.redditUsername})</span>? They will gain access to the Moderator Control Panel with permissions to review/moderate tasks, submissions and members.
               </p>
             </div>
 
@@ -4636,7 +4636,7 @@ export const AdminDashboard: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setPromoteTargetUser(null)}
-                className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-xl text-xs font-black cursor-pointer transition-all"
+                className="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 hover:text-slate-900 rounded-xl text-xs font-black cursor-pointer transition shadow-xs"
               >
                 Cancel
               </button>
@@ -4647,7 +4647,7 @@ export const AdminDashboard: React.FC = () => {
                   await adminPromoteToModerator(promoteTargetUser.id, currentUser);
                   setPromoteTargetUser(null);
                 }}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-xl text-xs font-black text-white cursor-pointer transition-all shadow-md shadow-purple-900/20"
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-550 rounded-xl text-xs font-black text-white cursor-pointer transition shadow-xs"
               >
                 Confirm Promotion
               </button>
@@ -4658,12 +4658,12 @@ export const AdminDashboard: React.FC = () => {
 
       {/* Demote Moderator Confirmation Modal Overlay */}
       {demoteTargetUser && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 select-none animate-fade-in">
-          <div className="bg-zinc-950 border border-amber-500/20 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 select-none animate-fade-in">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-xl">
             <div>
-              <h3 className="text-lg font-black text-white">👤 Remove Moderator Privileges?</h3>
-              <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                Are you sure you want to demote <span className="text-amber-400 font-extrabold">{demoteTargetUser.fullName}</span>? They will lose all Moderator Control Panel access and be reverted to a standard member.
+              <h3 className="text-lg font-black text-slate-800">👤 Remove Moderator Privileges?</h3>
+              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                Are you sure you want to demote <span className="text-amber-605 font-extrabold">{demoteTargetUser.fullName}</span>? They will lose all Moderator Control Panel access and be reverted to a standard member.
               </p>
             </div>
 
@@ -4671,7 +4671,7 @@ export const AdminDashboard: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setDemoteTargetUser(null)}
-                className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-350 hover:text-white rounded-xl text-xs font-black cursor-pointer transition-all"
+                className="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 hover:text-slate-900 rounded-xl text-xs font-black cursor-pointer transition shadow-xs"
               >
                 Cancel
               </button>
@@ -4682,7 +4682,7 @@ export const AdminDashboard: React.FC = () => {
                   await adminRemoveModerator(demoteTargetUser.id, currentUser);
                   setDemoteTargetUser(null);
                 }}
-                className="px-4 py-2 bg-amber-600 hover:bg-amber-500 rounded-xl text-xs font-black text-white cursor-pointer transition-all shadow-md shadow-amber-900/20"
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-550 rounded-xl text-xs font-black text-white cursor-pointer transition shadow-xs"
               >
                 Confirm Demotion
               </button>
@@ -4693,57 +4693,57 @@ export const AdminDashboard: React.FC = () => {
 
       {/* Deduction History Modal Overlay */}
       {deductionHistoryUser && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 select-none animate-fade-in">
-          <div className="bg-zinc-950 border border-white/10 rounded-2xl p-6 max-w-2xl w-full space-y-4 shadow-2xl">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 select-none animate-fade-in">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 max-w-2xl w-full space-y-4 shadow-xl">
             <div className="flex justify-between items-start">
               <div>
-                <h3 className="text-lg font-black text-white flex items-center gap-2">
+                <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
                   📋 Wallet Deduction History
                 </h3>
-                <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                  Viewing full list of balance deductions for <span className="text-red-400 font-extrabold">{deductionHistoryUser.fullName} (@{deductionHistoryUser.redditUsername})</span>. Total deductions recorded: <span className="text-zinc-200 font-bold">{deductionHistoryUser.deductionHistory?.length || 0}</span>.
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                  Viewing full list of balance deductions for <span className="text-red-600 font-extrabold">{deductionHistoryUser.fullName} (u/{deductionHistoryUser.redditUsername})</span>. Total deductions recorded: <span className="text-slate-800 font-bold">{deductionHistoryUser.deductionHistory?.length || 0}</span>.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setDeductionHistoryUser(null)}
-                className="text-zinc-400 hover:text-white text-xs font-bold bg-zinc-900 border border-white/5 hover:bg-zinc-808 px-3 py-1.5 rounded-lg cursor-pointer transition-all uppercase"
+                className="text-slate-500 hover:text-slate-705 text-xs font-bold bg-slate-100 border border-slate-200 hover:bg-slate-150 px-3 py-1.5 rounded-lg cursor-pointer transition uppercase"
               >
                 Close
               </button>
             </div>
 
-            <div className="border border-white/5 rounded-xl overflow-hidden bg-zinc-900/50">
+            <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
               <div className="max-h-[350px] overflow-y-auto select-text font-sans">
                 <table className="w-full text-left text-xs">
                   <thead>
-                    <tr className="border-b border-white/5 bg-zinc-900 uppercase font-black text-zinc-500 tracking-wider text-[9px] select-none">
+                    <tr className="border-b border-slate-200 bg-slate-100/80 uppercase font-black text-slate-500 tracking-wider text-[9px] select-none">
                       <th className="p-3">Date</th>
                       <th className="p-3">Associated Task</th>
                       <th className="p-3 text-right pr-6 md:text-left">Amount</th>
                       <th className="p-3">Reason</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/5 text-zinc-300">
+                  <tbody className="divide-y divide-slate-100 text-slate-700">
                     {!deductionHistoryUser.deductionHistory || deductionHistoryUser.deductionHistory.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="p-8 text-center text-zinc-500 italic select-none">
+                        <td colSpan={4} className="p-8 text-center text-slate-400 italic select-none">
                           No wallet deductions exist for this user.
                         </td>
                       </tr>
                     ) : (
                       deductionHistoryUser.deductionHistory.map((history) => (
-                        <tr key={history.id} className="hover:bg-white/2 transition-colors">
-                          <td className="p-3 font-medium whitespace-nowrap text-zinc-400">
+                        <tr key={history.id} className="hover:bg-slate-100/50 transition">
+                          <td className="p-3 font-medium whitespace-nowrap text-slate-500">
                             {new Date(history.date).toLocaleDateString()} {new Date(history.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </td>
-                          <td className="p-3 font-semibold text-zinc-200">
+                          <td className="p-3 font-semibold text-slate-800">
                             {history.taskName || 'Manual deduction'}
                           </td>
-                          <td className="p-3 font-bold text-red-400 whitespace-nowrap text-right pr-6 md:text-left">
+                          <td className="p-3 font-bold text-red-650 whitespace-nowrap text-right pr-6 md:text-left">
                             -${parseFloat(history.amount as any).toFixed(2)} USDT
                           </td>
-                          <td className="p-3 leading-relaxed max-w-[200px] break-words text-zinc-400 font-normal">
+                          <td className="p-3 leading-relaxed max-w-[200px] break-words text-slate-500 font-normal">
                             {history.reason}
                           </td>
                         </tr>
@@ -4758,7 +4758,7 @@ export const AdminDashboard: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setDeductionHistoryUser(null)}
-                className="px-5 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-xl text-xs font-black cursor-pointer transition-all"
+                className="px-5 py-2.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 hover:text-slate-900 rounded-xl text-xs font-black cursor-pointer transition shadow-xs"
               >
                 Close History
               </button>
@@ -4776,20 +4776,20 @@ export const AdminDashboard: React.FC = () => {
         const canSubmit = deductReasonInput.trim() && deductAmountInput && !isNaN(amt) && amt > 0 && !isExceeding;
 
         return (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 select-none animate-fade-in">
-            <div className="bg-zinc-950 border border-red-500/20 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 select-none animate-fade-in">
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-xl">
               <div>
-                <h3 className="text-lg font-black text-white flex items-center gap-2">
+                <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
                   💸 Deduct Wallet Balance
                 </h3>
-                <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                  You are about to deduct funds from <span className="text-red-400 font-extrabold">{deductTargetUser.fullName} (@{deductTargetUser.redditUsername})</span>. Their current balance is <span className="text-emerald-400 font-bold">${(deductTargetUser.balance || 0).toFixed(2)} USDT</span>.
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                  You are about to deduct funds from <span className="text-red-600 font-extrabold">{deductTargetUser.fullName} (u/{deductTargetUser.redditUsername})</span>. Their current balance is <span className="text-emerald-700 font-bold">${(deductTargetUser.balance || 0).toFixed(2)} USDT</span>.
                 </p>
               </div>
 
               <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block font-mono">
                     Amount to Deduct (USDT)
                   </label>
                   <input
@@ -4799,24 +4799,24 @@ export const AdminDashboard: React.FC = () => {
                     placeholder="e.g., 5.00"
                     value={deductAmountInput}
                     onChange={(e) => setDeductAmountInput(e.target.value)}
-                    className={`w-full bg-zinc-900 border text-white text-xs px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-500 font-semibold ${
-                      isInputError ? 'border-red-500' : 'border-white/10'
+                    className={`w-full bg-white border text-slate-800 text-xs px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 font-semibold ${
+                      isInputError ? 'border-red-550' : 'border-slate-200'
                     }`}
                   />
                   {isNegativeOrZero && (
-                    <p className="text-[10px] text-red-500 font-black tracking-wide animate-pulse mt-1.5 uppercase">
+                    <p className="text-[10px] text-red-650 font-black tracking-wide animate-pulse mt-1.5 uppercase">
                       ⚠️ Deduct amount must be greater than zero USDT
                     </p>
                   )}
                   {isExceeding && (
-                    <p className="text-[10px] text-red-500 font-black tracking-wide animate-pulse mt-1.5 uppercase">
+                    <p className="text-[10px] text-red-656 font-black tracking-wide animate-pulse mt-1.5 uppercase">
                       ⚠️ Outstanding balance is insufficient (User has ${(deductTargetUser.balance || 0).toFixed(2)} USDT)
                     </p>
                   )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block font-mono">
                     Reason for Deduction (Required)
                   </label>
                   <input
@@ -4824,12 +4824,12 @@ export const AdminDashboard: React.FC = () => {
                     placeholder="e.g., Incomplete post body in Reddit submission..."
                     value={deductReasonInput}
                     onChange={(e) => setDeductReasonInput(e.target.value)}
-                    className="w-full bg-zinc-900 border border-white/10 text-white text-xs px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-500 font-semibold"
+                    className="w-full bg-white border border-slate-200 text-slate-800 text-xs px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-505 font-semibold"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block font-mono">
                     Associated Task Name (Optional)
                   </label>
                   <input
@@ -4837,7 +4837,7 @@ export const AdminDashboard: React.FC = () => {
                     placeholder="e.g., Crypto Promo Reddit Post"
                     value={deductTaskNameInput}
                     onChange={(e) => setDeductTaskNameInput(e.target.value)}
-                    className="w-full bg-zinc-900 border border-white/10 text-white text-xs px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-500 font-semibold"
+                    className="w-full bg-white border border-slate-200 text-slate-800 text-xs px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 font-semibold"
                   />
                 </div>
               </div>
@@ -4851,7 +4851,7 @@ export const AdminDashboard: React.FC = () => {
                     setDeductReasonInput('');
                     setDeductTaskNameInput('');
                   }}
-                  className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-350 hover:text-white rounded-xl text-xs font-black cursor-pointer transition-all"
+                  className="px-4 py-2 bg-white hover:bg-slate-55 border border-slate-200 text-slate-700 hover:text-slate-900 rounded-xl text-xs font-black cursor-pointer transition shadow-xs"
                 >
                   Cancel
                 </button>
@@ -4891,10 +4891,10 @@ export const AdminDashboard: React.FC = () => {
                       alert(`Failed to deduct balance: ${err.message || err}`);
                     }
                   }}
-                  className={`px-4 py-2 rounded-xl text-xs font-black text-white cursor-pointer transition-all ${
+                  className={`px-4 py-2 rounded-xl text-xs font-black text-white cursor-pointer transition shadow-xs ${
                     canSubmit
-                      ? 'bg-red-650 hover:bg-red-600 shadow-md shadow-red-900/20'
-                      : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                      ? 'bg-red-600 hover:bg-red-550'
+                      : 'bg-slate-100 border border-slate-200 text-slate-400 cursor-not-allowed'
                   }`}
                 >
                   Confirm Deduction
@@ -4913,20 +4913,20 @@ export const AdminDashboard: React.FC = () => {
         const canSubmit = adjustAmountInput.trim() !== '' && !isNaN(amt) && amt >= 0;
 
         return (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 select-none animate-fade-in">
-            <div className="bg-zinc-950 border border-purple-500/20 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 select-none animate-fade-in">
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-xl">
               <div>
-                <h3 className="text-lg font-black text-white flex items-center gap-2">
+                <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
                   💳 Adjust Available Balance
                 </h3>
-                <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                  You are manually setting a brand-new Available Balance for <span className="text-purple-400 font-extrabold">{adjustTargetUser.fullName}</span>. Their current available balance is <span className="text-emerald-400 font-bold">${(adjustTargetUser.balance || 0).toFixed(2)} USDT</span>.
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                  You are manually setting a brand-new Available Balance for <span className="text-indigo-650 font-extrabold">{adjustTargetUser.fullName}</span>. Their current available balance is <span className="text-emerald-700 font-bold">${(adjustTargetUser.balance || 0).toFixed(2)} USDT</span>.
                 </p>
               </div>
 
               <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block font-mono">
                     New Wallet Balance (USDT)
                   </label>
                   <input
@@ -4936,12 +4936,12 @@ export const AdminDashboard: React.FC = () => {
                     placeholder="e.g., 25.50"
                     value={adjustAmountInput}
                     onChange={(e) => setAdjustAmountInput(e.target.value)}
-                    className={`w-full bg-zinc-900 border text-white text-xs px-3 py-2.5 rounded-xl focus:outline-none focus:border-purple-500 font-semibold font-mono ${
-                      isInputError ? 'border-red-500' : 'border-white/10'
+                    className={`w-full bg-white border text-slate-850 text-xs px-3 py-2.5 rounded-xl focus:outline-none focus:border-indigo-505 focus:ring-1 focus:ring-indigo-500 font-semibold font-mono ${
+                      isInputError ? 'border-red-550' : 'border-slate-205'
                     }`}
                   />
                   {isNegative && (
-                    <p className="text-[10px] text-red-500 font-black tracking-wide animate-pulse mt-1.5 uppercase">
+                    <p className="text-[10px] text-red-650 font-black tracking-wide animate-pulse mt-1.5 uppercase">
                       ⚠️ Balance cannot be negative
                     </p>
                   )}
@@ -4955,7 +4955,7 @@ export const AdminDashboard: React.FC = () => {
                     setAdjustTargetUser(null);
                     setAdjustAmountInput('');
                   }}
-                  className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-350 hover:text-white rounded-xl text-xs font-black cursor-pointer transition-all"
+                  className="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 hover:text-slate-900 rounded-xl text-xs font-black cursor-pointer transition shadow-xs"
                 >
                   Cancel
                 </button>
@@ -4978,10 +4978,10 @@ export const AdminDashboard: React.FC = () => {
                       alert(`Failed to adjust balance: ${err.message || err}`);
                     }
                   }}
-                  className={`px-4 py-2 rounded-xl text-xs font-black text-white cursor-pointer transition-all ${
+                  className={`px-4 py-2 rounded-xl text-xs font-black text-white cursor-pointer transition shadow-xs ${
                     canSubmit
-                      ? 'bg-purple-600 hover:bg-purple-500 shadow-md shadow-purple-950/40'
-                      : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                      ? 'bg-indigo-600 hover:bg-indigo-550'
+                      : 'bg-slate-100 border border-slate-200 text-slate-400 cursor-not-allowed'
                   }`}
                 >
                   Save New Balance
@@ -4994,22 +4994,22 @@ export const AdminDashboard: React.FC = () => {
 
       {/* Member/User Account Permanent Deletion Modal */}
       {userToDelete && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-50 select-none animate-fade-in">
-          <div className="bg-zinc-950 border border-red-500/30 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl relative">
-            <div className="flex items-center gap-3 text-red-500">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 select-none animate-fade-in">
+          <div className="bg-white border border-red-200 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-xl relative">
+            <div className="flex items-center gap-3 text-red-600">
               <Trash2 className="w-6 h-6 animate-pulse" />
-              <h3 className="text-lg font-black tracking-tight text-white">Confirm Permanent Deletion</h3>
+              <h3 className="text-lg font-black tracking-tight text-slate-800">Confirm Permanent Deletion</h3>
             </div>
             
-            <p className="text-xs text-zinc-300 leading-relaxed font-semibold">
+            <p className="text-xs text-slate-650 leading-relaxed font-semibold">
               This action will permanently delete this account and associated data. This cannot be undone.
             </p>
 
-            <div className="bg-red-500/5 border border-red-500/10 p-3.5 rounded-xl font-sans">
-              <p className="text-[10px] text-red-400 font-extrabold uppercase tracking-wider mb-1">Target Creator Profile:</p>
-              <p className="text-xs text-zinc-100 font-extrabold">{userToDelete.fullName || userToDelete.redditUsername || 'Creator'}</p>
-              <p className="text-[10px] text-zinc-500 font-mono mt-0.5">{userToDelete.email}</p>
-              <ul className="text-[9px] text-zinc-400 list-disc pl-4 space-y-1 mt-2.5">
+            <div className="bg-red-50 border border-red-100 p-3.5 rounded-xl font-sans">
+              <p className="text-[10px] text-red-650 font-extrabold uppercase tracking-wider mb-1">Target Creator Profile:</p>
+              <p className="text-xs text-slate-805 font-extrabold">{userToDelete.fullName || userToDelete.redditUsername || 'Creator'}</p>
+              <p className="text-[10px] text-slate-500 font-mono mt-0.5">{userToDelete.email}</p>
+              <ul className="text-[9px] text-slate-500 list-disc pl-4 space-y-1 mt-2.5">
                 <li>Remove credentials from Auth directory</li>
                 <li>Clear creator profile, wallets & payout history</li>
                 <li>Erase task histories, referrals & notifications</li>
@@ -5022,7 +5022,7 @@ export const AdminDashboard: React.FC = () => {
                 type="button"
                 disabled={isDeletingInProgress}
                 onClick={() => setUserToDelete(null)}
-                className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-xl text-xs font-black cursor-pointer transition-all disabled:opacity-40"
+                className="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 hover:text-slate-900 rounded-xl text-xs font-black cursor-pointer transition shadow-xs disabled:opacity-40"
               >
                 Cancel
               </button>
@@ -5040,7 +5040,7 @@ export const AdminDashboard: React.FC = () => {
                     setIsDeletingInProgress(false);
                   }
                 }}
-                className="px-4 py-2 bg-red-650 hover:bg-red-500 rounded-xl text-xs font-black text-white cursor-pointer transition-all shadow-md shadow-red-900/20 disabled:opacity-40"
+                className="px-4 py-2 bg-red-605 hover:bg-red-550 rounded-xl text-xs font-black text-white cursor-pointer transition shadow-xs disabled:opacity-40"
               >
                 {isDeletingInProgress ? 'Processing Cleanup...' : 'Delete Permanently'}
               </button>
@@ -5051,22 +5051,22 @@ export const AdminDashboard: React.FC = () => {
 
       {/* Client Brand Account Permanent Deletion Modal */}
       {clientToDelete && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-50 select-none animate-fade-in font-sans">
-          <div className="bg-zinc-950 border border-red-500/30 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl relative">
-            <div className="flex items-center gap-3 text-red-500">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 select-none animate-fade-in font-sans">
+          <div className="bg-white border border-red-200 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-xl relative">
+            <div className="flex items-center gap-3 text-red-650">
               <Trash2 className="w-6 h-6 animate-pulse" />
-              <h3 className="text-lg font-black tracking-tight text-white">Confirm Permanent Deletion</h3>
+              <h3 className="text-lg font-black tracking-tight text-slate-805">Confirm Permanent Deletion</h3>
             </div>
             
-            <p className="text-xs text-zinc-300 leading-relaxed font-semibold">
+            <p className="text-xs text-slate-650 leading-relaxed font-semibold">
               This action will permanently delete this account and associated data. This cannot be undone.
             </p>
 
-            <div className="bg-red-500/5 border border-red-500/10 p-3.5 rounded-xl">
-              <p className="text-[10px] text-red-400 font-extrabold uppercase tracking-wider mb-1">Target Brand Company:</p>
-              <p className="text-xs text-zinc-100 font-extrabold">{clientToDelete.name} ({clientToDelete.company})</p>
-              <p className="text-[10px] text-zinc-500 font-mono mt-0.5">{clientToDelete.gmail}</p>
-              <ul className="text-[9px] text-zinc-400 list-disc pl-4 space-y-1 mt-2.5">
+            <div className="bg-red-50 border border-red-105 p-3.5 rounded-xl">
+              <p className="text-[10px] text-red-650 font-extrabold uppercase tracking-wider mb-1">Target Brand Company:</p>
+              <p className="text-xs text-slate-800 font-extrabold">{clientToDelete.name} ({clientToDelete.company})</p>
+              <p className="text-[10px] text-slate-550 font-mono mt-0.5">{clientToDelete.gmail}</p>
+              <ul className="text-[9px] text-slate-500 list-disc pl-4 space-y-1 mt-2.5">
                 <li>Remove credentials from Auth directory</li>
                 <li>Clear brand metadata, billing lists & payment proofs</li>
                 <li>Erase upload configurations & active campaigns</li>
@@ -5079,7 +5079,7 @@ export const AdminDashboard: React.FC = () => {
                 type="button"
                 disabled={isDeletingInProgress}
                 onClick={() => setClientToDelete(null)}
-                className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-xl text-xs font-black cursor-pointer transition-all disabled:opacity-40"
+                className="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 hover:text-slate-900 rounded-xl text-xs font-black cursor-pointer transition shadow-xs disabled:opacity-40"
               >
                 Cancel
               </button>
@@ -5097,7 +5097,7 @@ export const AdminDashboard: React.FC = () => {
                     setIsDeletingInProgress(false);
                   }
                 }}
-                className="px-4 py-2 bg-red-650 hover:bg-red-500 rounded-xl text-xs font-black text-white cursor-pointer transition-all shadow-md shadow-red-900/20 disabled:opacity-40"
+                className="px-4 py-2 bg-red-650 hover:bg-red-550 rounded-xl text-xs font-black text-white cursor-pointer transition shadow-xs disabled:opacity-40"
               >
                 {isDeletingInProgress ? 'Processing Cleanup...' : 'Delete Permanently'}
               </button>
@@ -5108,34 +5108,34 @@ export const AdminDashboard: React.FC = () => {
 
       {/* Permanent Deletion Confirmation Modal Overlay */}
       {taskToDelete && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-zinc-950 border border-white/10 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-fade-in text-white font-sans">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl animate-fade-in text-slate-800 font-sans">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="w-6 h-6 text-red-500 shrink-0 mt-0.5" />
+              <AlertTriangle className="w-6 h-6 text-red-650 shrink-0 mt-0.5" />
               <div className="space-y-1">
-                <h3 className="text-base font-black text-white">Permanently delete this campaign?</h3>
-                <p className="text-xs text-zinc-400">
-                  This will completely remove <span className="font-bold text-white">"{taskToDelete.title}"</span> from the Firestore database. This action cannot be undone.
+                <h3 className="text-base font-black text-slate-805">Permanently delete this campaign?</h3>
+                <p className="text-xs text-slate-500">
+                  This will completely remove <span className="font-bold text-slate-800">"{taskToDelete.title}"</span> from the Firestore database. This action cannot be undone.
                 </p>
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block font-sans">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block font-sans">
                 Reason for deletion (optional)
               </label>
               <textarea
                 value={deletionReason}
                 onChange={(e) => setDeletionReason(e.target.value)}
                 placeholder="Enter a removal audit note or explanation..."
-                className="w-full text-xs text-white bg-zinc-900 border border-white/10 p-2.5 px-3 rounded-xl focus:border-red-500 outline-none h-20 placeholder:text-zinc-605 font-sans"
+                className="w-full text-xs text-slate-800 bg-white border border-slate-200 p-2.5 px-3 rounded-xl focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none h-20 placeholder:text-slate-400 font-sans"
               />
             </div>
 
             <div className="flex gap-2 justify-end pt-2">
               <button
                 onClick={() => setTaskToDelete(null)}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-zinc-900 hover:bg-zinc-850 hover:text-white transition text-zinc-400 cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 border border-slate-200 transition text-slate-600 cursor-pointer"
               >
                 Cancel
               </button>
@@ -5169,7 +5169,7 @@ export const AdminDashboard: React.FC = () => {
                     alert("Failed to delete: " + e);
                   }
                 }}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-500 transition text-white flex items-center gap-1.5 cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-red-650 hover:bg-red-600 transition text-white flex items-center gap-1.5 cursor-pointer"
               >
                 Confirm Delete
               </button>
@@ -5180,27 +5180,27 @@ export const AdminDashboard: React.FC = () => {
 
       {/* ================= BATCH PERMANENT DELETION CONFIRMATION MODAL ================= */}
       {bulkDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-zinc-950 border border-white/10 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl text-white font-sans">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl text-slate-800 font-sans">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="w-6 h-6 text-red-500 shrink-0 mt-0.5" />
+              <AlertTriangle className="w-6 h-6 text-red-655 shrink-0 mt-0.5" />
               <div className="space-y-1">
-                <h3 className="text-base font-black text-white">Permanently delete {selectedTaskIds.length} tasks?</h3>
-                <p className="text-xs text-zinc-400">
-                  This will completely remove all <span className="font-bold text-white">{selectedTaskIds.length} select campaigns</span> from the Firestore database. This action cannot be undone.
+                <h3 className="text-base font-black text-slate-805">Permanently delete {selectedTaskIds.length} tasks?</h3>
+                <p className="text-xs text-slate-500">
+                  This will completely remove all <span className="font-bold text-slate-805">{selectedTaskIds.length} select campaigns</span> from the Firestore database. This action cannot be undone.
                 </p>
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block font-sans">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block font-sans">
                 Reason for deletion (optional)
               </label>
               <textarea
                 value={batchDeletionReason}
                 onChange={(e) => setBatchDeletionReason(e.target.value)}
                 placeholder="Reason for deletion (applies to all selected tasks)"
-                className="w-full text-xs text-white bg-zinc-900 border border-white/10 p-2.5 px-3 rounded-xl focus:border-red-500 outline-none h-20 placeholder:text-zinc-650 font-sans shadow-inner"
+                className="w-full text-xs text-slate-800 bg-white border border-slate-200 p-2.5 px-3 rounded-xl focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none h-20 placeholder:text-slate-400 font-sans shadow-inner"
               />
             </div>
 
@@ -5208,7 +5208,7 @@ export const AdminDashboard: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setBulkDeleteModalOpen(false)}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-zinc-900 override-bg hover:bg-zinc-850 hover:text-white transition text-zinc-400 cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 border border-slate-200 transition text-slate-600 cursor-pointer"
               >
                 Cancel
               </button>
@@ -5244,7 +5244,7 @@ export const AdminDashboard: React.FC = () => {
                     alert("Batch deletion failed: " + e);
                   }
                 }}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-red-650 hover:bg-red-600 transition text-white flex items-center gap-1.5 cursor-pointer shadow-lg shadow-red-950/40"
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-550 transition text-white flex items-center gap-1.5 cursor-pointer shadow-md"
               >
                 Confirm Delete
               </button>
@@ -5255,10 +5255,10 @@ export const AdminDashboard: React.FC = () => {
 
       {/* ================= FLOATING BULK ACTION BAR ================= */}
       {adminTaskFilter === 'Removed' && selectedTaskIds.length > 0 && !bulkDeleteModalOpen && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-zinc-950/95 backdrop-blur-md border border-red-500/30 text-white rounded-2xl p-4 px-6 shadow-2xl flex items-center gap-6 font-sans min-w-[320px] md:min-w-[450px] justify-between">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-white border border-red-200 text-slate-800 rounded-2xl p-4 px-6 shadow-xl flex items-center gap-6 font-sans min-w-[320px] md:min-w-[450px] justify-between">
           <div className="flex items-center gap-2.5 select-none">
             <span className="w-2.5 h-2.5 bg-red-600 rounded-full animate-pulse shrink-0" />
-            <span className="text-xs sm:text-sm font-black text-white uppercase tracking-wider">
+            <span className="text-xs sm:text-sm font-black text-slate-800 uppercase tracking-wider">
               {selectedTaskIds.length} {selectedTaskIds.length === 1 ? 'task' : 'tasks'} selected
             </span>
           </div>
@@ -5266,7 +5266,7 @@ export const AdminDashboard: React.FC = () => {
             <button
               type="button"
               onClick={() => setSelectedTaskIds([])}
-              className="px-3.5 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white font-bold text-xs rounded-xl transition cursor-pointer select-none uppercase tracking-wider border border-white/5"
+              className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 border border-slate-205 font-bold text-xs rounded-xl transition cursor-pointer select-none uppercase tracking-wider"
             >
               Clear Selection
             </button>
@@ -5276,7 +5276,7 @@ export const AdminDashboard: React.FC = () => {
                 setBatchDeletionReason('');
                 setBulkDeleteModalOpen(true);
               }}
-              className="px-4 py-2 bg-red-650 hover:bg-red-650 text-white font-bold text-xs rounded-xl shadow-lg shadow-red-950/30 transition cursor-pointer flex items-center gap-1.5 uppercase tracking-wider"
+              className="px-4 py-2 bg-red-600 hover:bg-red-550 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5 uppercase tracking-wider"
             >
               <Trash2 className="w-3.5 h-3.5" /> Delete Selected
             </button>
@@ -5286,28 +5286,28 @@ export const AdminDashboard: React.FC = () => {
 
       {/* ⚠️ Restricted Permission Modal Overlay */}
       {showPermissionRestrictedModal && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-50 select-none animate-fade-in font-sans">
-          <div className="bg-zinc-950 border border-red-500/30 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl relative text-left">
-            <div className="flex items-center gap-3 text-red-500">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 select-none animate-fade-in font-sans">
+          <div className="bg-white border border-red-200 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-xl relative text-left text-slate-800">
+            <div className="flex items-center gap-3 text-red-605">
               <ShieldAlert className="w-6 h-6 animate-pulse" />
-              <h3 className="text-lg font-black tracking-tight text-white m-0">Restricted Permission</h3>
+              <h3 className="text-lg font-black tracking-tight text-slate-805 m-0">Restricted Permission</h3>
             </div>
             
-            <p className="text-xs text-zinc-300 leading-relaxed font-semibold m-0">
+            <p className="text-xs text-slate-650 leading-relaxed font-semibold m-0">
               {showPermissionRestrictedModal}
             </p>
 
-            <div className="bg-red-500/5 border border-red-500/10 p-3.5 rounded-xl font-sans text-[11px] text-zinc-400 space-y-1">
-              <p className="text-[10px] text-red-400 font-extrabold uppercase tracking-wider mb-1 m-0">🛡️ MODERATOR DELEGATION LEVEL:</p>
+            <div className="bg-red-50 border border-red-100 p-3.5 rounded-xl font-sans text-[11px] text-slate-550 space-y-1">
+              <p className="text-[10px] text-red-656 font-extrabold uppercase tracking-wider mb-1 m-0 font-mono">🛡️ MODERATOR DELEGATION LEVEL:</p>
               <p className="m-0 leading-normal">As a platform Moderator, you are authorized to manage content submissions, review proof files, view support tickets, and resolve task disputes.</p>
-              <p className="font-extrabold text-zinc-300 mt-1.5 m-0 leading-normal">Master settings, permanent deletion, server routing, and financial disbursements are restricted to owner/admin roles.</p>
+              <p className="font-extrabold text-slate-700 mt-1.5 m-0 leading-normal">Master settings, permanent deletion, server routing, and financial disbursements are restricted to owner/admin roles.</p>
             </div>
 
             <div className="flex justify-end pt-2">
               <button
                 type="button"
                 onClick={() => setShowPermissionRestrictedModal(null)}
-                className="px-5 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs font-black cursor-pointer transition-all border border-white/5 active:scale-95"
+                className="px-5 py-2.5 bg-white hover:bg-slate-50 border border-slate-205 text-slate-700 rounded-xl text-xs font-black cursor-pointer transition active:scale-95 shadow-xs"
               >
                 Acknowledge Restricted State
               </button>
@@ -5318,13 +5318,13 @@ export const AdminDashboard: React.FC = () => {
 
       {/* Floating Animated Toast Feedback Container */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-zinc-950 border border-purple-500/30 text-white rounded-2xl p-4 shadow-2xl flex items-center gap-3.5 animate-slide-up-fade-in font-bold text-xs select-none">
-          <span className="p-2 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-xl font-bold">⏰ +30m</span>
+        <div className="fixed bottom-6 right-6 z-50 bg-white border border-slate-200 text-slate-800 rounded-2xl p-4 shadow-xl flex items-center gap-3.5 animate-slide-up-fade-in font-bold text-xs select-none">
+          <span className="p-2 bg-indigo-50 text-indigo-650 border border-indigo-150 rounded-xl font-bold font-mono">APP UPDATE</span>
           <span>{toastMessage}</span>
           <button 
             type="button" 
             onClick={() => setToastMessage(null)}
-            className="text-zinc-500 hover:text-white ml-2 cursor-pointer transition-colors p-1"
+            className="text-slate-450 hover:text-slate-850 ml-2 cursor-pointer transition p-1"
           >
             ✕
           </button>
