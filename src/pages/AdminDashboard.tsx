@@ -3522,50 +3522,50 @@ export const AdminDashboard: React.FC = () => {
 
         {/* ================= 📊 TRACK DATA TAB ================= */}
         {activeTab === 'track-data' && (
-          <div className="space-y-8 py-4">
+          <div className="space-y-8 py-4 text-slate-800">
             <div>
-              <span className="text-[10px] font-extrabold uppercase tracking-widest text-purple-400 block mb-1">Telemetry Overview</span>
-              <h2 className="text-xl font-black text-white">Platform Health & Telemetry Metrics</h2>
-              <p className="text-xs text-zinc-400 mt-1">Monitor real-time system ledger balances, verification queues, and withdrawal statuses.</p>
+              <span className="text-[10px] font-extrabold uppercase tracking-widest text-purple-650 block mb-1">Telemetry Overview</span>
+              <h2 className="text-xl font-black text-slate-900">Platform Health & Telemetry Metrics</h2>
+              <p className="text-xs text-slate-500 mt-1">Monitor real-time system ledger balances, verification queues, and withdrawal statuses.</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               
-              <div className="bg-zinc-900/30 border border-white/10 p-5 rounded-2xl">
-                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block mb-1">Total Users</span>
+              <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs">
+                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest block mb-1">Total Users</span>
                 <div className="flex justify-between items-center">
-                  <span className="text-3xl font-black text-yellow-500 font-mono">{users.length}</span>
-                  <Users className="w-6 h-6 text-yellow-500" />
+                  <span className="text-3xl font-black text-yellow-600 font-mono">{users.length}</span>
+                  <Users className="w-6 h-6 text-yellow-600" />
                 </div>
               </div>
 
-              <div className="bg-zinc-900/30 border border-white/10 p-5 rounded-2xl">
-                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block mb-1">Active Tasks</span>
+              <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs">
+                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest block mb-1">Active Tasks</span>
                 <div className="flex justify-between items-center">
-                  <span className="text-3xl font-black text-purple-400 font-mono">{tasks.length}</span>
-                  <CheckSquare className="w-6 h-6 text-purple-400" />
+                  <span className="text-3xl font-black text-purple-600 font-mono">{tasks.length}</span>
+                  <CheckSquare className="w-6 h-6 text-purple-600" />
                 </div>
               </div>
 
-              <div className="bg-zinc-900/30 border border-white/10 p-5 rounded-2xl">
-                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block mb-1">Completed Tasks</span>
+              <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs">
+                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest block mb-1">Completed Tasks</span>
                 <div className="flex justify-between items-center">
-                  <span className="text-3xl font-black text-rose-500 font-mono">{submissions.filter(s => s.status === 'Approved').length}</span>
-                  <CheckCircle className="w-6 h-6 text-rose-500" />
+                  <span className="text-3xl font-black text-rose-600 font-mono">{submissions.filter(s => s.status === 'Approved').length}</span>
+                  <CheckCircle className="w-6 h-6 text-rose-600" />
                 </div>
               </div>
 
-              <div className="bg-zinc-900/30 border border-white/10 p-5 rounded-2xl">
-                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block mb-1">Total Paid Out</span>
+              <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs">
+                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest block mb-1">Total Paid Out</span>
                 <div className="flex justify-between items-center">
-                  <span className="text-3xl font-black text-emerald-400 font-mono">${totalPayoutAmt.toFixed(2)}</span>
-                  <Wallet className="w-6 h-6 text-emerald-400" />
+                  <span className="text-3xl font-black text-emerald-600 font-mono">${totalPayoutAmt.toFixed(2)}</span>
+                  <Wallet className="w-6 h-6 text-emerald-600" />
                 </div>
               </div>
 
             </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-start gap-4 pt-4 border-t border-white/5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-start gap-4 pt-4 border-t border-slate-200">
               <button
                 onClick={() => {
                   setLastRefreshedTrigger(prev => prev + 1);
@@ -3575,10 +3575,10 @@ export const AdminDashboard: React.FC = () => {
                 Refresh Now
               </button>
               
-              <div className="flex items-center gap-2 text-xs text-zinc-400">
+              <div className="flex items-center gap-2 text-xs text-slate-500">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                 <span>
-                  Last updated: <span className="font-bold text-white">{secondsSinceRefresh === 0 || secondsSinceRefresh < 10 ? 'just now' : `${secondsSinceRefresh} seconds ago`}</span>
+                  Last updated: <span className="font-bold text-slate-800">{secondsSinceRefresh === 0 || secondsSinceRefresh < 10 ? 'just now' : `${secondsSinceRefresh} seconds ago`}</span>
                 </span>
               </div>
             </div>
@@ -3598,32 +3598,32 @@ export const AdminDashboard: React.FC = () => {
           );
 
           return (
-            <div className="space-y-8 font-semibold">
+            <div className="space-y-8 font-semibold text-slate-800">
               {/* Header and Simulator margin panel config */}
-              <div className="bg-zinc-950/20 p-6 rounded-2xl border border-white/5 space-y-4">
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 space-y-4 shadow-xs">
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-red-500/10 rounded-2xl border border-red-500/20 text-red-400">
-                    <ShieldAlert className="w-6 h-6" />
+                  <div className="p-2.5 bg-red-500/10 rounded-2xl border border-red-500/20 text-red-600">
+                    <ShieldAlert className="w-6 h-6 text-red-600" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-black text-white">Platform Anti-Cheat & Security Desk</h2>
-                    <p className="text-xs text-zinc-400 font-semibold mt-0.5">Enforce real-time multi-account controls, device fingerprints, and automated Reddit post audit checks.</p>
+                    <h2 className="text-lg font-black text-slate-900">Platform Anti-Cheat & Security Desk</h2>
+                    <p className="text-xs text-slate-500 font-semibold mt-0.5 font-normal">Enforce real-time multi-account controls, device fingerprints, and automated Reddit post audit checks.</p>
                   </div>
                 </div>
 
                 {/* Fraud score policy explanation legend */}
                 <div className="grid grid-cols-1 sm:grid-cols-5 gap-3.5 pt-2">
                   {[
-                    { title: 'Verified (Clean)', range: '0 - 20', color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', action: 'Standard accounts' },
-                    { title: 'Watchlist', range: '21 - 40', color: 'bg-amber-500/10 text-amber-400 border-amber-500/25', action: 'Flagged, telemetry log' },
-                    { title: 'High Risk', range: '41 - 60', color: 'bg-orange-500/10 text-orange-400 border-orange-500/25', action: 'Manual submission checks' },
-                    { title: 'Auto-Suspended', range: '61 - 80', color: 'bg-red-500/10 text-red-400 border-red-500/25', action: 'Deactivated immediately' },
-                    { title: 'Banned (Permanent)', range: '81 - 100', color: 'bg-zinc-900 border-zinc-700 text-zinc-400', action: 'Locked from login/earnings' },
+                    { title: 'Verified (Clean)', range: '0 - 20', color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20', action: 'Standard accounts' },
+                    { title: 'Watchlist', range: '21 - 40', color: 'bg-amber-500/10 text-amber-700 border-amber-500/25', action: 'Flagged, telemetry log' },
+                    { title: 'High Risk', range: '41 - 60', color: 'bg-orange-500/10 text-orange-700 border-orange-500/25', action: 'Manual submission checks' },
+                    { title: 'Auto-Suspended', range: '61 - 80', color: 'bg-red-500/10 text-red-600 border-red-500/25', action: 'Deactivated immediately' },
+                    { title: 'Banned (Permanent)', range: '81 - 100', color: 'bg-slate-100 border-slate-300 text-slate-705', action: 'Locked from login/earnings' },
                   ].map(sec => (
                     <div key={sec.title} className={`p-3 rounded-2xl border ${sec.color} space-y-1 text-center`}>
                       <span className="text-[10px] font-black block tracking-wider uppercase">{sec.title}</span>
                       <span className="text-sm font-extrabold font-mono block">{sec.range}</span>
-                      <span className="text-[8px] font-normal leading-tight block text-zinc-400">{sec.action}</span>
+                      <span className="text-[8px] font-normal leading-tight block text-slate-500">{sec.action}</span>
                     </div>
                   ))}
                 </div>
@@ -3634,11 +3634,11 @@ export const AdminDashboard: React.FC = () => {
               
               {/* Alert Feed Col (Takes 2 segments) */}
               <div className="lg:col-span-2 space-y-6">
-                <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                <div className="flex justify-between items-center border-b border-slate-200 pb-2">
                   <div className="flex items-center gap-2.5">
-                    <h3 className="text-sm font-black text-white flex items-center gap-2">🚨 Fraud Alerts Detection Stream</h3>
+                    <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">🚨 Fraud Alerts Detection Stream</h3>
                     {!isRealIpTrackingActive && (
-                      <span className="px-2.5 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded text-[8px] font-black tracking-wider text-amber-400 uppercase">
+                      <span className="px-2.5 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded text-[8px] font-black tracking-wider text-amber-600 uppercase">
                         ⚠️ IP tracking not configured
                       </span>
                     )}
@@ -3652,7 +3652,7 @@ export const AdminDashboard: React.FC = () => {
                       scanForDuplicates();
                       alert('Security re-scan completed. All user IP nodes, fingerprints and GMail dot addresses audited!');
                     }}
-                    className="px-2.5 py-1 bg-white/5 hover:bg-white/10 text-[10px] rounded-lg transition-colors border border-white/5 cursor-pointer text-zinc-300"
+                    className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-[10px] rounded-lg transition-colors border border-slate-300 cursor-pointer text-slate-700"
                   >
                     Force Re-Scan Duplicate Maps
                   </button>
@@ -3660,40 +3660,40 @@ export const AdminDashboard: React.FC = () => {
 
                 <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
                   {(fraudAlerts || []).length === 0 ? (
-                    <div className="p-8 text-center text-zinc-500 italic font-normal bg-zinc-950/20 rounded-2xl border border-white/5">
+                    <div className="p-8 text-center text-slate-500 italic font-normal bg-slate-50 border border-dashed border-slate-300 rounded-2xl">
                       No fraud alerts or suspicious activities intercepted yet. Platform is fully verified.
                     </div>
                   ) : (
                     (fraudAlerts || []).map(alertItem => (
                       <div key={alertItem.id} className={`p-4 rounded-2xl border space-y-3.5 transition-all ${
-                        alertItem.status === 'resolved' ? 'bg-zinc-950/20 border-white/5 opacity-60' :
-                        alertItem.status === 'dismissed' ? 'bg-zinc-950/10 border-white/5 line-through opacity-45' :
+                        alertItem.status === 'resolved' ? 'bg-slate-100/50 border-slate-200 opacity-60' :
+                        alertItem.status === 'dismissed' ? 'bg-slate-100/30 border-slate-200 line-through opacity-45' :
                         'bg-red-500/[0.03] border-red-500/15'
                       }`}>
                         
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                          <div className="space-y-0.5">
-                            <div className="flex items-center gap-2">
-                              <span className="px-2 py-0.5 bg-red-650/15 rounded text-[9px] font-black tracking-wide text-red-500 uppercase">{alertItem.type}</span>
-                              <span className="text-[10px] text-zinc-500 font-semibold">{new Date(alertItem.timestamp).toLocaleTimeString()} · {new Date(alertItem.timestamp).toLocaleDateString()}</span>
-                            </div>
-                            <h4 className="text-sm font-extrabold text-white">{alertItem.userName} ({alertItem.userEmail})</h4>
-                          </div>
+                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                           <div className="space-y-0.5">
+                             <div className="flex items-center gap-2">
+                               <span className="px-2 py-0.5 bg-red-650/15 rounded text-[9px] font-black tracking-wide text-red-500 uppercase">{alertItem.type}</span>
+                               <span className="text-[10px] text-slate-500 font-semibold">{new Date(alertItem.timestamp).toLocaleTimeString()} · {new Date(alertItem.timestamp).toLocaleDateString()}</span>
+                             </div>
+                             <h4 className="text-sm font-extrabold text-slate-900">{alertItem.userName} ({alertItem.userEmail})</h4>
+                           </div>
 
-                          <div className="flex items-center gap-1.5 font-mono text-[11px] bg-zinc-950 px-2.5 py-1 rounded bg-zinc-900 border border-white/5">
-                            <span className="text-zinc-500 font-bold uppercase text-[9px]">SUSPICION INDEX:</span>
-                            <span className={`font-black ${
-                              alertItem.fraudScore >= 80 ? 'text-red-500 font-black' :
-                              alertItem.fraudScore >= 60 ? 'text-orange-500 font-bold' :
-                              'text-yellow-400 font-bold'
-                            }`}>{alertItem.fraudScore}/100</span>
-                          </div>
-                        </div>
+                           <div className="flex items-center gap-1.5 font-mono text-[11px] bg-slate-100 px-2.5 py-1 rounded border border-slate-200">
+                             <span className="text-slate-500 font-bold uppercase text-[9px]">SUSPICION INDEX:</span>
+                             <span className={`font-black ${
+                               alertItem.fraudScore >= 80 ? 'text-red-600 font-black' :
+                               alertItem.fraudScore >= 60 ? 'text-orange-600 font-bold' :
+                               'text-amber-600 font-bold'
+                             }`}>{alertItem.fraudScore}/100</span>
+                           </div>
+                         </div>
 
-                        <p className="text-xs font-normal text-zinc-300 leading-relaxed bg-zinc-950 p-3 rounded-xl border border-white/5 select-text">{alertItem.details}</p>
+                        <p className="text-xs font-normal text-slate-700 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-200 select-text font-medium">{alertItem.details}</p>
 
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                          <span className="text-[10px] font-bold text-zinc-400 block">Recommended Action: <strong className="text-purple-400">{alertItem.recommendedAction}</strong></span>
+                          <span className="text-[10px] font-bold text-slate-500 block font-normal">Recommended Action: <strong className="text-purple-650 font-bold">{alertItem.recommendedAction}</strong></span>
 
                           {alertItem.status === 'pending' && (
                             <div className="flex flex-wrap gap-1.5 shrink-0 select-none">
@@ -3702,7 +3702,7 @@ export const AdminDashboard: React.FC = () => {
                                   adminReviewFraudAction(alertItem.id, 'dismiss');
                                   alert('Alert dismissed. Suspicion score reduced slightly.');
                                 }}
-                                className="px-2 py-1 bg-white/5 hover:bg-white/10 text-[10px] text-zinc-300 rounded border border-white/5 cursor-pointer"
+                                className="px-2 py-1 bg-slate-50 hover:bg-slate-100 text-[10px] text-slate-650 rounded border border-slate-300 cursor-pointer"
                               >
                                 Dismiss
                               </button>
@@ -3711,7 +3711,7 @@ export const AdminDashboard: React.FC = () => {
                                   adminReviewFraudAction(alertItem.id, 'warn');
                                   alert('Warning sent to user inbox.');
                                 }}
-                                className="px-2 py-1 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/20 text-yellow-400 text-[10px] rounded cursor-pointer"
+                                className="px-2 py-1 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-700 text-[10px] rounded cursor-pointer"
                               >
                                 Send Warning
                               </button>
@@ -3724,7 +3724,7 @@ export const AdminDashboard: React.FC = () => {
                                   adminReviewFraudAction(alertItem.id, 'suspend');
                                   alert('User has been Auto-Suspended.');
                                 }}
-                                className="px-2 py-1 bg-red-650 hover:bg-red-600 text-[10px] text-white rounded cursor-pointer animate-pulse"
+                                className="px-2 py-1 bg-red-600 hover:bg-red-550 text-[10px] text-white rounded cursor-pointer font-bold shadow-xs"
                               >
                                 Suspend Account
                               </button>
@@ -3737,7 +3737,7 @@ export const AdminDashboard: React.FC = () => {
                                   adminReviewFraudAction(alertItem.id, 'ban');
                                   alert('User has been banned.');
                                 }}
-                                className="px-2 py-1 bg-zinc-900 border border-zinc-750 hover:bg-zinc-800 text-[10px] text-red-400 rounded cursor-pointer font-black"
+                                className="px-2 py-1 bg-red-50 border border-red-200 hover:bg-red-100 text-[10px] text-red-650 rounded cursor-pointer font-black"
                               >
                                 Permanent Ban ⛔
                               </button>
@@ -3750,7 +3750,7 @@ export const AdminDashboard: React.FC = () => {
                                   adminReviewFraudAction(alertItem.id, 'freeze');
                                   alert('Earnings frozen and user suspended.');
                                 }}
-                                className="px-2 py-1 bg-slate-900 hover:bg-slate-800 text-[10px] text-zinc-350 border border-zinc-700 rounded cursor-pointer font-bold"
+                                className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-[10px] text-slate-700 border border-slate-350 rounded cursor-pointer font-bold"
                               >
                                 Freeze Profits ❄️
                               </button>
@@ -3758,10 +3758,10 @@ export const AdminDashboard: React.FC = () => {
                           )}
 
                           {alertItem.status === 'resolved' && (
-                            <span className="text-[10px] text-zinc-500 italic font-semibold">Processed Action Applied</span>
+                            <span className="text-[10px] text-slate-500 italic font-semibold">Processed Action Applied</span>
                           )}
                           {alertItem.status === 'dismissed' && (
-                            <span className="text-[10px] text-zinc-500 italic font-semibold">Dismissed</span>
+                            <span className="text-[10px] text-slate-500 italic font-semibold">Dismissed</span>
                           )}
                         </div>
 
@@ -3771,48 +3771,48 @@ export const AdminDashboard: React.FC = () => {
                 </div>
 
                 {/* Duplicates Groups Master List Rendering */}
-                <div className="space-y-4 pt-4 border-t border-white/5">
+                <div className="space-y-4 pt-4 border-t border-slate-200">
                   <div className="flex items-center gap-2.5">
-                    <h3 className="text-sm font-black text-white flex items-center gap-2">🔗 Duplicate Identity Registry Groupings</h3>
+                    <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">🔗 Duplicate Identity Registry Groupings</h3>
                     {!isRealIpTrackingActive && (
-                      <span className="px-2.5 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded text-[8px] font-black tracking-wider text-amber-400 uppercase">
+                      <span className="px-2.5 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded text-[8px] font-black tracking-wider text-amber-600 uppercase">
                         ⚠️ IP tracking not configured
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-zinc-500 font-semibold mt-0.5 font-normal">Below are accounts linked by physical IP nodes, shared browser fingerprints, or email aliasing tricks.</p>
+                  <p className="text-xs text-slate-500 font-semibold mt-0.5 font-normal">Below are accounts linked by physical IP nodes, shared browser fingerprints, or email aliasing tricks.</p>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {(duplicateGroups || []).length === 0 ? (
-                      <div className="col-span-2 p-6 text-center text-zinc-500 italic font-normal bg-zinc-950/20 rounded-2xl border border-white/5">
+                      <div className="col-span-2 p-6 text-center text-slate-500 italic font-normal bg-slate-50 border border-dashed border-slate-300 rounded-2xl">
                         No duplicate account match groupings registered yet.
                       </div>
                     ) : (
                       (duplicateGroups || []).map(group => {
                         const linkedUsers = users.filter(u => group.accounts.includes(u.id));
                         return (
-                          <div key={group.id} className="p-4 bg-zinc-900 rounded-2xl border border-white/5 space-y-3.5 text-xs text-zinc-400 font-normal">
-                            <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                          <div key={group.id} className="p-4 bg-white rounded-2xl border border-slate-200 space-y-3.5 text-xs text-slate-600 font-normal shadow-xs">
+                            <div className="flex justify-between items-center border-b border-slate-200 pb-2">
                               <div>
-                                <span className="text-[9px] font-black uppercase text-purple-400 block tracking-wider">Matched Identifier ({group.type})</span>
-                                <span className="text-xs font-bold text-white font-mono select-all break-all">{group.sharedIdentifier}</span>
+                                <span className="text-[9px] font-black uppercase text-purple-650 block tracking-wider">Matched Identifier ({group.type})</span>
+                                <span className="text-xs font-bold text-slate-900 font-mono select-all break-all">{group.sharedIdentifier}</span>
                               </div>
-                              <span className="px-2 py-0.5 bg-red-500/10 border border-red-500/20 rounded font-bold text-[9px] text-red-400">
+                              <span className="px-2 py-0.5 bg-red-500/10 border border-red-500/20 rounded font-bold text-[9px] text-red-600">
                                 {group.accounts.length} Accounts
                               </span>
                             </div>
 
                             <div className="space-y-1.5">
                               {linkedUsers.map(lu => (
-                                <div key={lu.id} className="flex justify-between items-center text-xs p-1.5 rounded bg-zinc-950">
+                                <div key={lu.id} className="flex justify-between items-center text-xs p-1.5 rounded bg-slate-50 border border-slate-100">
                                   <div>
-                                    <span className="font-extrabold text-white block">{lu.fullName}</span>
-                                    <span className="text-[9px] text-zinc-400 block">Reddit: {lu.redditUsername} · Score: {lu.fraudScore || 0}</span>
+                                    <span className="font-extrabold text-slate-900 block">{lu.fullName}</span>
+                                    <span className="text-[9px] text-slate-500 block">Reddit: {lu.redditUsername} · Score: {lu.fraudScore || 0}</span>
                                   </div>
                                   <span className={`px-1.5 py-0.5 text-[8px] rounded font-black ${
-                                    lu.isBanned || lu.status === 'Banned' ? 'bg-zinc-800 text-zinc-500' :
-                                    lu.isSuspended ? 'bg-red-500/15 text-red-400 animate-pulse' :
-                                    'bg-emerald-500/10 text-emerald-400'
+                                    lu.isBanned || lu.status === 'Banned' ? 'bg-slate-200 text-slate-500' :
+                                    lu.isSuspended ? 'bg-red-500/15 text-red-600' :
+                                    'bg-emerald-500/10 text-emerald-600'
                                   }`}>
                                     {lu.isBanned || lu.status === 'Banned' ? 'Banned' : lu.isSuspended ? 'Suspended' : 'Clean'}
                                   </span>
@@ -3820,12 +3820,12 @@ export const AdminDashboard: React.FC = () => {
                               ))}
                             </div>
 
-                            <div className="pt-2 border-t border-white/5 overflow-hidden flex flex-col gap-2 select-none">
-                              <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block mb-0.5">Primary Target Profile:</label>
+                            <div className="pt-2 border-t border-slate-200 overflow-hidden flex flex-col gap-2 select-none">
+                              <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-0.5 font-normal">Primary Target Profile:</label>
                               <div className="flex items-center gap-2">
                                 <select 
                                   id={`merge-select-${group.id}`} 
-                                  className="text-[10px] bg-zinc-950 border border-white/10 rounded px-2 py-1.5 hover:border-purple-500 focus:outline-none flex-grow"
+                                  className="text-[10px] bg-white text-slate-900 border border-slate-350 rounded px-2 py-1.5 hover:border-purple-500 focus:outline-none flex-grow"
                                 >
                                   {linkedUsers.map(lu => (
                                     <option key={lu.id} value={lu.id}>{lu.redditUsername}</option>
@@ -3865,17 +3865,17 @@ export const AdminDashboard: React.FC = () => {
 
               {/* Blacklist Control Pane (Takes 1 segment) */}
               <div className="space-y-6">
-                <h3 className="text-sm font-black text-white border-b border-white/5 pb-2">🛡️ IP Blacklist Directory</h3>
+                <h3 className="text-sm font-black text-slate-900 border-b border-slate-200 pb-2">🛡️ IP Blacklist Directory</h3>
                 
-                <div className="bg-zinc-950 p-4.5 rounded-2xl border border-white/5 space-y-4 text-xs font-normal">
+                <div className="bg-white p-4.5 rounded-2xl border border-slate-200 space-y-4 text-xs font-normal shadow-xs">
                   <div className="space-y-2 select-none">
-                    <label className="text-[10px] font-black tracking-widest uppercase text-zinc-400 block">Ban IP Address Node</label>
+                    <label className="text-[10px] font-black tracking-widest uppercase text-slate-550 block">Ban IP Address Node</label>
                     <div className="relative flex gap-1.5">
                       <input 
                         type="text" 
                         id="new-blacklist-ip"
                         placeholder="e.g. 203.0.113.195"
-                        className="text-xs text-white bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 font-mono flex-grow"
+                        className="text-xs text-slate-900 bg-white border border-slate-350 rounded-xl px-3 py-2 font-mono flex-grow focus:outline-none focus:border-red-500"
                       />
                       <button 
                         onClick={() => {
@@ -3885,9 +3885,9 @@ export const AdminDashboard: React.FC = () => {
                           }
                           const val = (document.getElementById('new-blacklist-ip') as HTMLInputElement)?.value.trim();
                           if (val) {
-                            blacklistIP(val);
-                            (document.getElementById('new-blacklist-ip') as HTMLInputElement).value = '';
-                            alert(`IP ${val} blocked. Active sessions registered on this IP node are terminated.`);
+                             blacklistIP(val);
+                             (document.getElementById('new-blacklist-ip') as HTMLInputElement).value = '';
+                             alert(`IP ${val} blocked. Active sessions registered on this IP node are terminated.`);
                           }
                         }}
                         className="px-3 bg-red-650 hover:bg-red-600 text-xs font-black rounded-xl text-white cursor-pointer"
@@ -3897,14 +3897,14 @@ export const AdminDashboard: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="space-y-2 pr-1.5 max-h-[300px] overflow-y-auto pt-2 border-t border-white/5">
-                    <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest block mb-1">Blacklisted IP Address Nodes:</span>
+                  <div className="space-y-2 pr-1.5 max-h-[300px] overflow-y-auto pt-2 border-t border-slate-200">
+                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Blacklisted IP Address Nodes:</span>
                     {(blacklistedIPs || []).length === 0 ? (
-                      <span className="text-[10px] italic text-zinc-600 font-semibold block">No IP addresses blacklisted.</span>
+                      <span className="text-[10px] italic text-slate-500 font-semibold block font-normal">No IP addresses blacklisted.</span>
                     ) : (
                       (blacklistedIPs || []).map(ip => (
-                        <div key={ip} className="flex justify-between items-center p-2 bg-white/[0.01] rounded text-[11px] font-mono hover:bg-white/[0.03]">
-                          <span className="text-zinc-300 font-bold">{ip}</span>
+                        <div key={ip} className="flex justify-between items-center p-2 bg-slate-50 hover:bg-slate-105 border border-slate-200 rounded text-[11px] font-mono">
+                          <span className="text-slate-800 font-bold">{ip}</span>
                           <button 
                             onClick={() => {
                               if (currentUser?.role === 'moderator') {
@@ -3914,7 +3914,7 @@ export const AdminDashboard: React.FC = () => {
                               unblacklistIP(ip);
                               alert(`IP ${ip} is unblocked.`);
                             }}
-                            className="text-[10px] text-red-400 hover:text-red-300 cursor-pointer"
+                            className="text-[10px] text-red-600 hover:text-red-550 cursor-pointer font-bold"
                           >
                             Unban
                           </button>
@@ -3930,20 +3930,20 @@ export const AdminDashboard: React.FC = () => {
 
             {/* PLATFORM ADMIN TESTING MODE (SIMULATOR TOOLS) */}
             {currentUser?.role === 'admin' && (
-              <div className="mt-8 pt-8 border-t border-white/5 space-y-4">
-                <div className="bg-zinc-950 p-6 rounded-2xl border border-purple-500/20 space-y-4">
+              <div className="mt-8 pt-8 border-t border-slate-250 space-y-4">
+                <div className="bg-purple-50/45 p-6 rounded-2xl border border-purple-200/60 space-y-4 shadow-xs">
                   <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-0.5 bg-purple-500/10 border border-purple-500/20 rounded-md text-[9px] font-black text-purple-400">
+                        <span className="px-2.5 py-0.5 bg-purple-500/10 border border-purple-500/20 rounded-md text-[9px] font-black text-purple-650">
                           ⚙️ Testing Mode (Simulator Tools)
                         </span>
-                        <span className="px-2.5 py-0.5 bg-yellow-500/10 border border-yellow-500/20 rounded-md text-[9px] font-black text-yellow-400 uppercase tracking-wider">
+                        <span className="px-2.5 py-0.5 bg-yellow-500/10 border border-yellow-500/20 rounded-md text-[9px] font-black text-yellow-700 uppercase tracking-wider">
                           Simulation Mode - Not Real User Data
                         </span>
                       </div>
-                      <h3 className="text-base font-black text-white">Administrative Network Simulation Engine</h3>
-                      <p className="text-xs text-zinc-400 font-normal mt-0.5">
+                      <h3 className="text-base font-black text-slate-900">Administrative Network Simulation Engine</h3>
+                      <p className="text-xs text-slate-500 font-normal mt-0.5">
                         Simulate alternative incoming network endpoints to perform compliance test paths. Simulated values do not affect real production metrics or user risk scores, ban status, suspension, fraud alerts, or duplicate groups.
                       </p>
                     </div>
@@ -3951,7 +3951,7 @@ export const AdminDashboard: React.FC = () => {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                     <div>
-                      <label className="text-[10px] font-extrabold uppercase tracking-wide text-zinc-400 block mb-1">Simulated IP Address</label>
+                      <label className="text-[10px] font-extrabold uppercase tracking-wide text-slate-550 block mb-1">Simulated IP Address</label>
                       <input 
                         type="text" 
                         value={currentSimulatedIP}
@@ -3959,17 +3959,17 @@ export const AdminDashboard: React.FC = () => {
                           const val = e.target.value.trim();
                           setCurrentSimulatedIP(val);
                         }}
-                        className="w-full text-xs font-mono text-white bg-zinc-900 border border-white/10 rounded-xl px-3 py-2.5"
+                        className="w-full text-xs font-mono text-slate-900 bg-white border border-slate-350 rounded-xl px-3 py-2.5 focus:outline-none"
                         placeholder="e.g. 192.168.1.50"
                       />
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-extrabold uppercase tracking-wide text-zinc-400 block mb-1">Simulated Country Origin</label>
+                      <label className="text-[10px] font-extrabold uppercase tracking-wide text-slate-550 block mb-1">Simulated Country Origin</label>
                       <select
                         value={currentSimulatedCountry}
                         onChange={(e) => setCurrentSimulatedCountry(e.target.value)}
-                        className="w-full text-xs text-white bg-zinc-900 border border-white/10 rounded-xl px-3 py-2.5 font-bold"
+                        className="w-full text-xs text-slate-900 bg-white border border-slate-350 rounded-xl px-3 py-2.5 font-bold"
                       >
                         <option value="United States">🇺🇸 United States</option>
                         <option value="India">🇮🇳 India</option>
@@ -3992,36 +3992,36 @@ export const AdminDashboard: React.FC = () => {
 
         {/* ================= ANNOUNCEMENTS TAB ================= */}
         {activeTab === 'announcements' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 font-semibold">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 font-semibold text-slate-800">
             
             <div className="space-y-6">
-              <h2 className="text-base font-black border-b border-white/5 pb-3">Trigger Global Platform-wide Alert</h2>
+              <h2 className="text-base font-black border-b border-slate-200 pb-3 text-slate-900">Trigger Global Platform-wide Alert</h2>
               
               {annSuccessMsg && (
-                <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs rounded-xl flex items-center gap-2">
+                <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 text-xs rounded-xl flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 shrink-0" /> Announcement published to all creator feeds!
                 </div>
               )}
 
               <form onSubmit={handleCreateAnnouncement} className="space-y-4">
                 <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Alert Title</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Alert Title</label>
                   <input 
                     type="text" 
                     value={annTitle}
                     onChange={(e) => setAnnTitle(e.target.value)}
                     placeholder="📢 1.25x Payout weekend is active!" 
-                    className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-3 py-2.5 rounded-xl focus:border-purple-500"
+                    className="w-full text-xs text-slate-800 bg-white border border-slate-350 px-3 py-2.5 rounded-xl focus:outline-none focus:ring-1 focus:ring-purple-500"
                   />
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Message Description</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Message Description</label>
                   <textarea 
                     value={annMessage}
                     onChange={(e) => setAnnMessage(e.target.value)}
                     placeholder="Admins have increased comment base rewards by 25%. Submit high quality posts!" 
-                    className="w-full text-xs text-white bg-zinc-950 border border-white/5 px-3 py-2.5 rounded-xl h-24 focus:border-purple-500"
+                    className="w-full text-xs text-slate-800 bg-white border border-slate-350 px-3 py-2.5 rounded-xl h-24 focus:outline-none focus:ring-1 focus:ring-purple-500"
                   />
                 </div>
 
@@ -4034,9 +4034,9 @@ export const AdminDashboard: React.FC = () => {
               </form>
             </div>
 
-            <div className="space-y-6 md:border-l md:border-white/5 md:pl-10">
-              <h2 className="text-base font-black border-b border-white/5 pb-3">Active Announcement Rules</h2>
-              <div className="p-4 bg-zinc-950 rounded-2xl space-y-4 text-xs text-zinc-400 leading-relaxed font-normal">
+            <div className="space-y-6 md:border-l md:border-slate-200 md:pl-10">
+              <h2 className="text-base font-black border-b border-slate-200 pb-3 text-slate-900">Active Announcement Rules</h2>
+              <div className="p-4 bg-slate-50 border border-dashed border-slate-300 rounded-2xl space-y-4 text-xs text-slate-600 leading-relaxed font-normal">
                 <p>🚩 Platform alerts appear directly in the notifications panel of every signed-in influencer instantly.</p>
                 <p>🚩 Direct referral commissions, streak bonus boosts, or system-wide maintenance notices should be posted here.</p>
                 <p>🚩 Limit title lengths to under 50 characters to prevent overflow on mobile. Keep descriptions informative & action-oriented.</p>
@@ -4048,65 +4048,65 @@ export const AdminDashboard: React.FC = () => {
 
         {/* ================= ROLE AUDIT LOG PANEL ================= */}
         {activeTab === 'audit-log' && (
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-white/5">
+          <div className="space-y-6 text-slate-800 font-semibold">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-200">
               <div className="space-y-1">
-                <h2 className="text-base font-black">Role Promotion & Demotion Audit Logs</h2>
-                <p className="text-xs text-zinc-500 font-semibold uppercase">
+                <h2 className="text-base font-black text-slate-900">Role Promotion & Demotion Audit Logs</h2>
+                <p className="text-xs text-slate-500 font-semibold uppercase">
                   Historical tracking of all moderator actions and role changes
                 </p>
               </div>
             </div>
 
-            <div className="p-6 bg-zinc-950 rounded-2xl border border-white/5 space-y-4">
+            <div className="p-6 bg-white rounded-2xl border border-slate-200 space-y-4 shadow-xs">
               {(!auditLogs || auditLogs.length === 0) ? (
-                <div className="text-center py-12 text-zinc-500 space-y-2">
-                  <p className="font-bold text-sm">📜 No role audits logged yet</p>
-                  <p className="text-xs">Promotions and demotions will be securely recorded here in real-time.</p>
+                <div className="text-center py-12 text-slate-500 space-y-2 bg-slate-50 border border-dashed border-slate-300 rounded-2xl">
+                  <p className="font-bold text-sm text-slate-700">📜 No role audits logged yet</p>
+                  <p className="text-xs text-slate-500">Promotions and demotions will be securely recorded here in real-time.</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="border-b border-white/5 text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
-                        <th className="py-3 px-2">Operator</th>
-                        <th className="py-3 px-2">Action / Event</th>
-                        <th className="py-3 px-2">Target User</th>
-                        <th className="py-3 px-2">Timestamp</th>
+                      <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider bg-slate-50/50">
+                        <th className="py-3 px-3">Operator</th>
+                        <th className="py-3 px-3">Action / Event</th>
+                        <th className="py-3 px-3">Target User</th>
+                        <th className="py-3 px-3">Timestamp</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/5 text-xs font-mono">
+                    <tbody className="divide-y divide-slate-100 text-xs font-mono text-slate-705">
                       {[...auditLogs]
                         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
                         .map(log => {
                           const targetUser = users.find(u => u.id === log.targetUserId);
                           return (
-                            <tr key={log.id} className="hover:bg-white/[0.01]">
-                              <td className="py-3 px-2">
-                                <span className="font-bold text-white">{log.operatorName}</span>
-                                <span className="ml-2 px-1 rounded text-[9px] bg-red-400/10 text-red-400 font-sans uppercase">
+                            <tr key={log.id} className="hover:bg-slate-50/50">
+                              <td className="py-3 px-3">
+                                <span className="font-bold text-slate-900">{log.operatorName}</span>
+                                <span className="ml-2 px-1.5 py-0.5 rounded text-[9px] bg-red-50 text-red-600 font-sans uppercase font-bold border border-red-100">
                                   {log.operatorRole}
                                 </span>
                               </td>
-                              <td className="py-3 px-2">
+                              <td className="py-3 px-3">
                                 <span className={`px-2 py-0.5 rounded font-bold text-[10px] tracking-wide uppercase ${
                                   log.action?.includes('Promote') 
-                                    ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' 
-                                    : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                    ? 'bg-purple-500/10 text-purple-700 border border-purple-500/20' 
+                                    : 'bg-amber-500/10 text-amber-700 border border-amber-500/20'
                                 }`}>
                                   {log.action}
                                 </span>
                               </td>
-                              <td className="py-3 px-2">
+                              <td className="py-3 px-3">
                                 {targetUser ? (
-                                  <span className="text-purple-300 font-sans font-bold">
+                                  <span className="text-purple-700 font-sans font-bold">
                                     {targetUser.fullName} (@{targetUser.redditUsername})
                                   </span>
                                 ) : (
-                                  <span className="text-zinc-500">ID: {log.targetUserId}</span>
+                                  <span className="text-slate-500">ID: {log.targetUserId}</span>
                                 )}
                               </td>
-                              <td className="py-3 px-2 text-zinc-400 font-semibold">
+                              <td className="py-3 px-3 text-slate-500 font-semibold font-sans">
                                 {new Date(log.timestamp).toLocaleString()}
                               </td>
                             </tr>
@@ -4122,26 +4122,26 @@ export const AdminDashboard: React.FC = () => {
 
         {/* ================= 🗄️ DELETED HISTORY SYSTEM ================= */}
         {activeTab === 'deleted-history' && (
-          <div className="space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-white/5">
+          <div className="space-y-6 text-slate-800 font-semibold">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-slate-200">
               <div>
-                <h2 className="text-base font-black flex items-center gap-2 text-purple-400">
-                  <Archive className="w-5 h-5" /> Deleted History Registry
+                <h2 className="text-base font-black flex items-center gap-2 text-purple-650">
+                  <Archive className="w-5 h-5 animate-pulse" /> Deleted History Registry
                 </h2>
-                <p className="text-zinc-500 text-[11px] mt-1">
+                <p className="text-slate-500 text-[11px] mt-1 font-normal">
                   View and manage archived financial records. Archiving completed transactions hides them from active queues while strictly preserving audit trails, user ledger sheets, and platform accounting integrity.
                 </p>
               </div>
 
               {/* Subtabs selection */}
-              <div className="flex gap-1.5 bg-zinc-950 p-1 rounded-xl border border-white/5">
+              <div className="flex gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200 select-none">
                 <button
                   type="button"
                   onClick={() => setActiveDeletedHistoryTab('approved_tasks')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     activeDeletedHistoryTab === 'approved_tasks'
-                      ? 'bg-purple-600 text-white'
-                      : 'text-zinc-400 hover:text-white'
+                      ? 'bg-purple-600 text-white shadow-xs'
+                      : 'text-slate-500 hover:text-slate-800'
                   }`}
                 >
                   Archived Approved Tasks ({archivedTasks.length})
@@ -4151,8 +4151,8 @@ export const AdminDashboard: React.FC = () => {
                   onClick={() => setActiveDeletedHistoryTab('withdrawals')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     activeDeletedHistoryTab === 'withdrawals'
-                      ? 'bg-purple-600 text-white'
-                      : 'text-zinc-400 hover:text-white'
+                      ? 'bg-purple-600 text-white shadow-xs'
+                      : 'text-slate-500 hover:text-slate-800'
                   }`}
                 >
                   Archived Withdrawals ({archivedWithdrawals.length})
@@ -4164,7 +4164,7 @@ export const AdminDashboard: React.FC = () => {
             {activeDeletedHistoryTab === 'approved_tasks' && (
               <div className="space-y-4">
                 {archivedTasks.length === 0 ? (
-                  <div className="text-center py-16 bg-zinc-950/40 border border-white/5 rounded-2xl text-zinc-500 text-xs">
+                  <div className="text-center py-16 bg-slate-50 border border-dashed border-slate-300 rounded-2xl text-slate-500 text-xs">
                     No archived approved task submissions found.
                   </div>
                 ) : (
@@ -4173,47 +4173,47 @@ export const AdminDashboard: React.FC = () => {
                       const data = item.originalData;
                       if (!data) return null;
                       return (
-                        <div key={item.id} className="p-4 bg-zinc-950/50 border border-white/5 rounded-2xl space-y-4 relative hover:border-zinc-800 transition">
+                        <div key={item.id} className="p-4 bg-white border border-slate-205 rounded-2xl space-y-4 relative hover:shadow-xs transition">
                           <div className="flex justify-between items-start">
                             <div className="space-y-1">
-                              <span className="text-[9px] px-2 py-0.5 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded font-bold uppercase tracking-wider">
+                              <span className="text-[9px] px-2 py-0.5 bg-purple-500/10 text-purple-700 border border-purple-500/20 rounded font-bold uppercase tracking-wider">
                                 {data.taskType || 'Task'} submission
                               </span>
-                              <h3 className="text-sm font-extrabold text-white tracking-tight mt-1">{data.taskTitle}</h3>
-                              <p className="text-[10px] text-zinc-500 font-mono">ID: {item.id}</p>
+                              <h3 className="text-sm font-extrabold text-slate-900 tracking-tight mt-1">{data.taskTitle}</h3>
+                              <p className="text-[10px] text-slate-500 font-mono">ID: {item.id}</p>
                             </div>
-                            <span className="text-right text-xs font-extrabold text-emerald-400">
+                            <span className="text-right text-xs font-extrabold text-emerald-600 font-mono">
                               +${data.reward ? data.reward.toFixed(2) : '0.00'} USDT
                             </span>
                           </div>
 
                           {/* Record info */}
-                          <div className="grid grid-cols-2 gap-y-2 gap-x-4 bg-zinc-900/30 p-2.5 rounded-xl border border-white/5 text-[10px]">
+                          <div className="grid grid-cols-2 gap-y-2 gap-x-4 bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-[10px]">
                             <div>
-                              <span className="text-zinc-500 block">Creator Member</span>
-                              <span className="font-bold text-white">{data.userFullName || 'Unknown'}</span>
-                              <span className="text-purple-400 block font-mono">@{data.redditUsername}</span>
+                              <span className="text-slate-500 block font-normal">Creator Member</span>
+                              <span className="font-extrabold text-slate-800">{data.userFullName || 'Unknown'}</span>
+                              <span className="text-purple-650 block font-mono">@{data.redditUsername}</span>
                             </div>
                             <div>
-                              <span className="text-zinc-500 block">Submitted At</span>
-                              <span className="font-bold text-white leading-none">
+                              <span className="text-slate-500 block font-normal">Submitted At</span>
+                              <span className="font-extrabold text-slate-800 leading-none">
                                 {data.submittedAt ? new Date(data.submittedAt).toLocaleDateString() : 'N/A'}
                               </span>
                             </div>
                             {data.targetSubreddit && (
                               <div>
-                                <span className="text-zinc-500 block">Subreddit</span>
-                                <span className="font-bold text-indigo-400">r/{data.targetSubreddit}</span>
+                                <span className="text-slate-500 block font-normal">Subreddit</span>
+                                <span className="font-extrabold text-indigo-650">r/{data.targetSubreddit}</span>
                               </div>
                             )}
                             <div>
-                              <span className="text-zinc-500 block">Proof URL/Permalink</span>
+                              <span className="text-slate-500 block font-normal">Proof URL/Permalink</span>
                               {data.proofUrl && (
                                 <a
                                   href={data.proofUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-purple-400 hover:underline flex items-center gap-0.5 break-all line-clamp-1"
+                                  className="text-purple-600 font-bold hover:underline flex items-center gap-0.5 break-all line-clamp-1"
                                 >
                                   Open Proof <ExternalLink className="w-2.5 h-2.5 inline" />
                                 </a>
@@ -4223,7 +4223,7 @@ export const AdminDashboard: React.FC = () => {
                                   href={data.submissionLink}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-indigo-400 hover:underline flex items-center gap-0.5 break-all line-clamp-1 mt-0.5"
+                                  className="text-indigo-600 font-bold hover:underline flex items-center gap-0.5 break-all line-clamp-1 mt-0.5"
                                 >
                                   Permalink <ExternalLink className="w-2.5 h-2.5 inline" />
                                 </a>
@@ -4232,17 +4232,17 @@ export const AdminDashboard: React.FC = () => {
                           </div>
 
                           {/* Archive/Audit trails metadata */}
-                          <div className="border-t border-white/5 pt-3 flex flex-col md:flex-row justify-between items-start md:items-center gap-2 text-[10px]">
-                            <div className="space-y-0.5 text-zinc-500">
-                              <p>Archived By: <strong className="text-zinc-300">{item.archivedBy}</strong></p>
-                              <p>Archived At: <span className="font-mono text-zinc-400">{item.archivedAt ? new Date(item.archivedAt).toLocaleString() : 'N/A'}</span></p>
+                          <div className="border-t border-slate-150 pt-3 flex flex-col md:flex-row justify-between items-start md:items-center gap-2 text-[10px] select-none">
+                            <div className="space-y-0.5 text-slate-500 font-normal">
+                              <p>Archived By: <strong className="text-slate-700 font-bold">{item.archivedBy}</strong></p>
+                              <p>Archived At: <span className="font-mono text-slate-500 font-semibold">{item.archivedAt ? new Date(item.archivedAt).toLocaleString() : 'N/A'}</span></p>
                             </div>
                             
                             <div className="flex gap-2 w-full md:w-auto justify-end">
                               <button
                                 type="button"
                                 onClick={() => handleRestoreSubmission(item)}
-                                className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-purple-400 hover:text-white rounded-lg text-[10px] font-black cursor-pointer transition"
+                                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-350 text-purple-700 hover:text-purple-900 rounded-lg text-[10px] font-black cursor-pointer transition"
                               >
                                 Restore Record
                               </button>
@@ -4250,7 +4250,7 @@ export const AdminDashboard: React.FC = () => {
                                 <button
                                   type="button"
                                   onClick={() => handlePermanentDeleteSubmission(item)}
-                                  className="px-3 py-1.5 bg-red-950/40 hover:bg-red-900/60 text-red-400 hover:text-white border border-red-500/20 rounded-lg text-[10px] font-black cursor-pointer transition"
+                                  className="px-3 py-1.5 bg-red-50 border border-red-200 hover:bg-red-100 text-red-605 rounded-lg text-[10px] font-black cursor-pointer transition"
                                 >
                                   Permanent Delete
                                 </button>
@@ -4269,7 +4269,7 @@ export const AdminDashboard: React.FC = () => {
             {activeDeletedHistoryTab === 'withdrawals' && (
               <div className="space-y-4">
                 {archivedWithdrawals.length === 0 ? (
-                  <div className="text-center py-16 bg-zinc-950/40 border border-white/5 rounded-2xl text-zinc-500 text-xs">
+                  <div className="text-center py-16 bg-slate-50 border border-dashed border-slate-300 rounded-2xl text-slate-500 text-xs">
                     No archived withdrawal cashouts found.
                   </div>
                 ) : (
@@ -4278,56 +4278,56 @@ export const AdminDashboard: React.FC = () => {
                       const data = item.originalData;
                       if (!data) return null;
                       return (
-                        <div key={item.id} className="p-4 bg-zinc-950/50 border border-white/5 rounded-2xl space-y-4 relative hover:border-zinc-800 transition">
+                        <div key={item.id} className="p-4 bg-white border border-slate-205 rounded-2xl space-y-4 relative hover:shadow-xs transition">
                           <div className="flex justify-between items-start">
                             <div className="space-y-1">
-                              <span className="text-[9px] px-2 py-0.5 bg-zinc-800 border border-zinc-700 text-purple-400 rounded font-bold uppercase tracking-wider font-mono">
+                              <span className="text-[9px] px-2 py-0.5 bg-slate-100 border border-slate-200 text-purple-700 rounded font-bold uppercase tracking-wider font-mono">
                                 {data.withdrawalMethod === 'USDT_BEP20' ? 'USDT BEP20 (BSC)' : 'Binance Pay ID'}
                               </span>
-                              <h3 className="text-sm font-extrabold text-white tracking-tight mt-1">{data.userFullName || 'Unknown'}</h3>
-                              <p className="text-[10px] text-zinc-500 font-mono">ID: {item.id}</p>
+                              <h3 className="text-sm font-extrabold text-slate-900 tracking-tight mt-1">{data.userFullName || 'Unknown'}</h3>
+                              <p className="text-[10px] text-slate-500 font-mono">ID: {item.id}</p>
                             </div>
-                            <span className="text-right text-xs font-extrabold text-purple-400 font-mono">
+                            <span className="text-right text-xs font-extrabold text-purple-650 font-mono">
                               ${data.amount ? data.amount.toFixed(2) : '0.00'} USDT
                             </span>
                           </div>
 
                           {/* Record info */}
-                          <div className="grid grid-cols-2 gap-y-2 gap-x-4 bg-zinc-900/30 p-2.5 rounded-xl border border-white/5 text-[10px]">
+                          <div className="grid grid-cols-2 gap-y-2 gap-x-4 bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-[10px]">
                             <div>
-                              <span className="text-zinc-500 block">Recipient Address</span>
-                              <span className="font-bold text-white select-all break-all tracking-wide font-mono font-bold">{data.paymentAddress}</span>
+                              <span className="text-slate-500 block font-normal">Recipient Address</span>
+                              <span className="font-extrabold text-slate-900 select-all break-all tracking-wide font-mono">{data.paymentAddress}</span>
                             </div>
                             <div>
-                              <span className="text-zinc-500 block">Requested At</span>
-                              <span className="font-bold text-white leading-none font-mono font-bold">
+                              <span className="text-slate-500 block font-normal">Requested At</span>
+                              <span className="font-extrabold text-slate-900 leading-none font-mono">
                                 {data.requestedAt ? new Date(data.requestedAt).toLocaleDateString() : 'N/A'}
                               </span>
                             </div>
                             <div>
-                              <span className="text-zinc-500 block">User Email</span>
-                              <span className="text-zinc-300 font-mono leading-none">{data.email}</span>
+                              <span className="text-slate-500 block font-normal">User Email</span>
+                              <span className="text-slate-650 font-mono leading-none font-semibold">{data.email}</span>
                             </div>
                             <div>
-                              <span className="text-zinc-500 block">Completed Status</span>
-                              <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-bold uppercase text-[9px]">
+                              <span className="text-slate-500 block font-normal">Completed Status</span>
+                              <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-600 font-extrabold uppercase text-[9px] font-sans">
                                 Approved & Paid
                               </span>
                             </div>
                           </div>
 
                           {/* Archive/Audit trails metadata */}
-                          <div className="border-t border-white/5 pt-3 flex flex-col md:flex-row justify-between items-start md:items-center gap-2 text-[10px]">
-                            <div className="space-y-0.5 text-zinc-500">
-                              <p>Archived By: <strong className="text-zinc-300">{item.archivedBy}</strong></p>
-                              <p>Archived At: <span className="font-mono text-zinc-400">{item.archivedAt ? new Date(item.archivedAt).toLocaleString() : 'N/A'}</span></p>
+                          <div className="border-t border-slate-150 pt-3 flex flex-col md:flex-row justify-between items-start md:items-center gap-2 text-[10px] select-none">
+                            <div className="space-y-0.5 text-slate-500 font-normal">
+                              <p>Archived By: <strong className="text-slate-700 font-bold">{item.archivedBy}</strong></p>
+                              <p>Archived At: <span className="font-mono text-slate-500 font-semibold">{item.archivedAt ? new Date(item.archivedAt).toLocaleString() : 'N/A'}</span></p>
                             </div>
                             
                             <div className="flex gap-2 w-full md:w-auto justify-end">
                               <button
                                 type="button"
                                 onClick={() => handleRestoreWithdrawal(item)}
-                                className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-purple-400 hover:text-white rounded-lg text-[10px] font-black cursor-pointer transition"
+                                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-250 border border-slate-350 text-purple-700 hover:text-purple-900 rounded-lg text-[10px] font-black cursor-pointer transition"
                               >
                                 Restore Record
                               </button>
@@ -4335,7 +4335,7 @@ export const AdminDashboard: React.FC = () => {
                                 <button
                                   type="button"
                                   onClick={() => handlePermanentDeleteWithdrawal(item)}
-                                  className="px-3 py-1.5 bg-red-950/40 hover:bg-red-900/60 text-red-400 hover:text-white border border-red-500/20 rounded-lg text-[10px] font-black cursor-pointer transition"
+                                  className="px-3 py-1.5 bg-red-50 border border-red-200 hover:bg-red-100 text-red-650 rounded-lg text-[10px] font-black cursor-pointer transition"
                                 >
                                   Permanent Delete
                                 </button>
@@ -4354,13 +4354,13 @@ export const AdminDashboard: React.FC = () => {
 
         {/* ================= DELETED TASKS REGISTER ================= */}
         {activeTab === 'deleted-tasks' && (
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-white/5">
+          <div className="space-y-6 text-slate-800 font-semibold">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-200">
               <div className="space-y-1">
-                <h2 className="text-base font-black flex items-center gap-2 text-red-400">
-                  <Trash2 className="w-5 h-5 text-red-500" /> Permanently Deleted Campaigns Registry
+                <h2 className="text-base font-black flex items-center gap-2 text-red-650">
+                  <Trash2 className="w-5 h-5 text-red-650 animate-pulse" /> Permanently Deleted Campaigns Registry
                 </h2>
-                <p className="text-xs text-zinc-500 font-semibold uppercase">
+                <p className="text-xs text-slate-500 font-semibold uppercase">
                   Historical permanent deletion logs and administrative audit trail
                 </p>
               </div>
@@ -4375,7 +4375,7 @@ export const AdminDashboard: React.FC = () => {
                     }
                     handleClearDeletedHistory();
                   }}
-                  className="px-3.5 py-1.5 bg-red-650/10 hover:bg-red-650/35 text-red-400 hover:text-white border border-red-500/20 text-xs font-black rounded-lg cursor-pointer transition uppercase"
+                  className="px-3.5 py-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 text-xs font-black rounded-lg cursor-pointer transition uppercase"
                 >
                   Clear History
                 </button>
@@ -4383,9 +4383,9 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             {/* Filters Bar */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-zinc-950/60 rounded-xl border border-white/5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-200 select-none">
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
                   Filter by Client Name
                 </label>
                 <input
@@ -4393,45 +4393,45 @@ export const AdminDashboard: React.FC = () => {
                   value={deletedFilterClient}
                   onChange={(e) => setDeletedFilterClient(e.target.value)}
                   placeholder="e.g., Brand Client Co..."
-                  className="w-full text-xs text-white bg-zinc-900 border border-white/5 px-3 py-2.5 rounded-xl focus:border-red-500 outline-none"
+                  className="w-full text-xs text-slate-900 bg-white border border-slate-350 px-3 py-2.5 rounded-xl focus:ring-1 focus:ring-red-500 focus:outline-none"
                 />
               </div>
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
                   Filter by Deletion Date
                 </label>
                 <input
                   type="date"
                   value={deletedFilterDate}
                   onChange={(e) => setDeletedFilterDate(e.target.value)}
-                  className="w-full text-xs text-white bg-zinc-900 border border-white/5 px-3 py-2.5 rounded-xl focus:border-red-500 outline-none cursor-pointer"
+                  className="w-full text-xs text-slate-900 bg-white border border-slate-350 px-3 py-2.5 rounded-xl focus:ring-1 focus:ring-red-500 focus:outline-none cursor-pointer"
                 />
               </div>
             </div>
 
             {/* Results Table */}
-            <div className="p-6 bg-zinc-950/60 rounded-2xl border border-white/5">
+            <div className="p-6 bg-white rounded-2xl border border-slate-200 shadow-xs">
               {deletedTasks.length === 0 ? (
-                <div className="text-center py-12 text-zinc-500 space-y-2">
-                  <p className="font-bold text-sm">🗑️ No permanently deleted tasks recorded</p>
-                  <p className="text-xs">Any campaign that is permanently deleted from the Removed tab will show up in this register.</p>
+                <div className="text-center py-12 text-slate-500 space-y-2 bg-slate-50 border border-dashed border-slate-300 rounded-2xl">
+                  <p className="font-bold text-sm text-slate-700">🗑️ No permanently deleted tasks recorded</p>
+                  <p className="text-xs text-slate-500">Any campaign that is permanently deleted from the Removed tab will show up in this register.</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs min-w-[1000px]">
                     <thead>
-                      <tr className="border-b border-white/5 text-[10px] font-bold text-zinc-500 uppercase tracking-widest bg-zinc-950/40">
+                      <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-slate-50/50">
                         <th className="py-4 px-3">Task / ID</th>
                         <th className="py-4 px-3">Client Name</th>
                         <th className="py-4 px-3">Type</th>
-                        <th className="py-4 px-3 text-right">Agency Pay</th>
-                        <th className="py-4 px-3 text-right">Member Pay</th>
+                        <th className="py-4 px-3 text-right font-normal">Agency Pay</th>
+                        <th className="py-4 px-3 text-right font-normal">Member Pay</th>
                         <th className="py-4 px-3">Deleted Date</th>
                         <th className="py-4 px-3">Deleted By</th>
                         <th className="py-4 px-3">Reason / Log Note</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/5">
+                    <tbody className="divide-y divide-slate-100 text-slate-705">
                       {deletedTasks
                         .filter(item => {
                           if (deletedFilterClient) {
@@ -4445,37 +4445,37 @@ export const AdminDashboard: React.FC = () => {
                           return true;
                         })
                         .map(item => (
-                          <tr key={item.id} className="hover:bg-white/[0.01]">
+                          <tr key={item.id} className="hover:bg-slate-50/50">
                             <td className="py-4 px-3 select-text max-w-xs">
-                              <div className="font-extrabold text-white text-sm truncate" title={item.title}>{item.title}</div>
-                              <div className="text-[10px] text-zinc-500 font-mono mt-1">ID: {item.id}</div>
+                              <div className="font-extrabold text-slate-900 text-sm truncate" title={item.title}>{item.title}</div>
+                              <div className="text-[10px] text-slate-500 font-mono mt-1">ID: {item.id}</div>
                             </td>
                             <td className="py-4 px-3">
-                              <span className="text-zinc-300 font-bold bg-zinc-900 border border-zinc-850 px-1.5 py-0.5 rounded">
+                              <span className="text-slate-750 font-bold bg-slate-50 border border-slate-250 px-1.5 py-0.5 rounded">
                                 {item.clientName || 'N/A'}
                               </span>
                             </td>
                             <td className="py-4 px-3">
-                              <span className="px-1.5 py-0.5 bg-zinc-900 border border-zinc-550 text-[10px] rounded text-zinc-400 font-extrabold uppercase tracking-wider font-mono">
+                              <span className="px-1.5 py-0.5 bg-slate-100 border border-slate-205 text-[10px] rounded text-slate-600 font-extrabold uppercase tracking-wider font-mono">
                                 {item.type}
                               </span>
                             </td>
-                            <td className="py-4 px-3 text-right font-mono font-bold text-white">
+                            <td className="py-4 px-3 text-right font-mono font-bold text-slate-805">
                               ${Number(item.agencyPay || 0).toFixed(2)}
                             </td>
-                            <td className="py-4 px-3 text-right font-mono font-bold text-emerald-400">
+                            <td className="py-4 px-3 text-right font-mono font-bold text-emerald-600">
                               ${Number(item.memberPay || 0).toFixed(2)}
                             </td>
-                            <td className="py-4 px-3 text-zinc-400 font-semibold font-mono">
+                            <td className="py-4 px-3 text-slate-500 font-semibold font-mono">
                               {item.deletedAt ? new Date(item.deletedAt).toLocaleDateString() : 'N/A'}
-                              <span className="text-zinc-600 block text-[9px] mt-0.5 select-none">
+                              <span className="text-slate-400 block text-[9px] mt-0.5 select-none font-sans">
                                 {item.deletedAt ? new Date(item.deletedAt).toLocaleTimeString() : ''}
                               </span>
                             </td>
-                            <td className="py-4 px-3 text-zinc-300 font-bold">
+                            <td className="py-4 px-3 text-slate-700 font-bold font-sans">
                               {item.deletedBy || 'Admin'}
                             </td>
-                            <td className="py-4 px-3 text-left max-w-xs break-words text-zinc-400 font-semibold italic">
+                            <td className="py-4 px-3 text-left max-w-xs break-words text-slate-500 font-semibold italic">
                               "{item.reason || 'No reason specified'}"
                             </td>
                           </tr>
@@ -4492,17 +4492,17 @@ export const AdminDashboard: React.FC = () => {
 
       {/* Ban Confirmation Modal Overlay */}
       {banTargetUser && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 select-none animate-fade-in">
-          <div className="bg-zinc-950 border border-red-550/30 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 select-none animate-fade-in">
+          <div className="bg-white border border-slate-205 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-xl">
             <div>
-              <h3 className="text-lg font-black text-white">🚫 Ban User?</h3>
-              <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                Are you absolutely sure you want to ban <span className="text-red-400 font-extrabold">{banTargetUser.redditUsername || banTargetUser.fullName}</span>? They will be signed out instantly and permanently blocked from logging in or claiming tasks.
+              <h3 className="text-lg font-black text-slate-800">🚫 Ban User?</h3>
+              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                Are you absolutely sure you want to ban <span className="text-red-655 font-extrabold">{banTargetUser.redditUsername || banTargetUser.fullName}</span>? They will be signed out instantly and permanently blocked from logging in or claiming tasks.
               </p>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block font-mono">
                 Reason for Ban (Required)
               </label>
               <input
@@ -4510,7 +4510,7 @@ export const AdminDashboard: React.FC = () => {
                 placeholder="e.g., Submitting duplicate spam links, multi-accounting..."
                 value={banReasonInput}
                 onChange={(e) => setBanReasonInput(e.target.value)}
-                className="w-full bg-zinc-900 border border-white/10 text-white text-xs px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-500 font-semibold"
+                className="w-full bg-white border border-slate-200 text-slate-805 text-xs px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 font-semibold"
               />
             </div>
 
@@ -4521,7 +4521,7 @@ export const AdminDashboard: React.FC = () => {
                   setBanTargetUser(null);
                   setBanReasonInput('');
                 }}
-                className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-xl text-xs font-black cursor-pointer transition-all"
+                className="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-205 text-slate-700 hover:text-slate-900 rounded-xl text-xs font-black cursor-pointer transition shadow-xs"
               >
                 Cancel
               </button>
@@ -4534,10 +4534,10 @@ export const AdminDashboard: React.FC = () => {
                   setBanTargetUser(null);
                   setBanReasonInput('');
                 }}
-                className={`px-4 py-2 rounded-xl text-xs font-black text-white cursor-pointer transition-all ${
+                className={`px-4 py-2 rounded-xl text-xs font-black text-white cursor-pointer transition-all shadow-xs ${
                   banReasonInput.trim() 
                     ? 'bg-red-650 hover:bg-red-600' 
-                    : 'bg-slate-105 border border-slate-200 text-slate-400 cursor-not-allowed'
+                    : 'bg-slate-100 border border-slate-200 text-slate-400 cursor-not-allowed'
                 }`}
               >
                 Confirm Ban
