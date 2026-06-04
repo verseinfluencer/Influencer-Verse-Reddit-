@@ -35,8 +35,13 @@ export interface User {
 
   // Task Claiming & Cooldown fields (Firebase / Server state mirror)
   last_claimed_at?: string | null; // ISO timestamp
-  cooldown_expires_at?: string | null; // ISO timestamp
+  lastClaimedAt?: any; // Firebase Server Timestamp or ISO timestamp
+  cooldown_expires_at?: any; // Firebase Server Timestamp, Date or ISO timestamp
   active_task_id?: string | null;
+  lastPostClaimedAt?: any; // Firebase Server Timestamp or ISO timestamp
+  postCooldownExpiresAt?: any; // Firebase Server Timestamp, Date or ISO timestamp
+  lastCommentClaimedAt?: any; // Firebase Server Timestamp or ISO timestamp
+  commentCooldownExpiresAt?: any; // Firebase Server Timestamp, Date or ISO timestamp
 
   // New Member Payout & Deduction fields
   deductionHistory?: DeductionRecord[] | null;

@@ -241,19 +241,92 @@ export const Marketplace: React.FC = () => {
 
   const isPending = currentUser?.status === 'Pending';
 
-  // Compute Claim Cooldown countdown for active users
-  let isCooldownActive = false;
-  let cooldownString = '';
-  if (currentUser?.cooldown_expires_at) {
-    const expires = new Date(currentUser.cooldown_expires_at).getTime();
-    const now = Date.now();
-    const msLeft = expires - now;
-    if (msLeft > 0) {
-      isCooldownActive = true;
-      const totalSecs = Math.floor(msLeft / 1000);
-      const m = Math.floor(totalSecs / 60);
-      const s = totalSecs % 60;
-      cooldownString = `${m}:${s < 10 ? '0' : ''}${s}`;
+  // Compute Claim Cooldown countdown for active users (3 Hours)
+  let isPostCooldownActive = false;
+  let postCooldownString = '00:00:00';
+  let postCooldownStringDisplay = '0m';
+
+  let isCommentCooldownActive = false;
+  let commentCooldownString = '00:00:00';
+  let commentCooldownStringDisplay = '0m';
+
+  const parseDate = (val: any): Date | null => {
+    if (!val) return null;
+    if (typeof val.toDate === 'function') {
+      return val.toDate();
+    }
+    if (val.seconds) {
+      return new Date(val.seconds * 1000);
+    }
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
+  const isUserAdmin = currentUser?.role === 'admin' || currentUser?.role === 'moderator' || currentUser?.email?.toLowerCase() === 'kalloldeyprivate20@gmail.com';
+
+  if (currentUser && !isUserAdmin) {
+    // 1. Post Cooldown
+    const lastPostClaimed = parseDate(currentUser.lastPostClaimedAt);
+    const postExpiresAt = parseDate(currentUser.postCooldownExpiresAt);
+
+    let postExpiresTime = 0;
+    if (postExpiresAt) {
+      postExpiresTime = postExpiresAt.getTime();
+    } else if (lastPostClaimed) {
+      postExpiresTime = lastPostClaimed.getTime() + 3 * 60 * 60 * 1000;
+    }
+
+    if (postExpiresTime > 0) {
+      const msLeft = postExpiresTime - Date.now();
+      if (msLeft > 0) {
+        isPostCooldownActive = true;
+        const totalSecs = Math.floor(msLeft / 1000);
+        const h = Math.floor(totalSecs / 3600);
+        const m = Math.floor((totalSecs % 3600) / 60);
+        const s = totalSecs % 60;
+        
+        const pad0 = (num: number) => num < 10 ? '0' + num : num;
+        postCooldownString = `${pad0(h)}:${pad0(m)}:${pad0(s)}`;
+
+        const displayMins = m === 60 ? 59 : m;
+        if (h > 0) {
+          postCooldownStringDisplay = `${h}h ${displayMins}m`;
+        } else {
+          postCooldownStringDisplay = `${displayMins}m`;
+        }
+      }
+    }
+
+    // 2. Comment Cooldown
+    const lastCommentClaimed = parseDate(currentUser.lastCommentClaimedAt);
+    const commentExpiresAt = parseDate(currentUser.commentCooldownExpiresAt);
+
+    let commentExpiresTime = 0;
+    if (commentExpiresAt) {
+      commentExpiresTime = commentExpiresAt.getTime();
+    } else if (lastCommentClaimed) {
+      commentExpiresTime = lastCommentClaimed.getTime() + 3 * 60 * 60 * 1000;
+    }
+
+    if (commentExpiresTime > 0) {
+      const msLeft = commentExpiresTime - Date.now();
+      if (msLeft > 0) {
+        isCommentCooldownActive = true;
+        const totalSecs = Math.floor(msLeft / 1000);
+        const h = Math.floor(totalSecs / 3600);
+        const m = Math.floor((totalSecs % 3600) / 60);
+        const s = totalSecs % 60;
+        
+        const pad0 = (num: number) => num < 10 ? '0' + num : num;
+        commentCooldownString = `${pad0(h)}:${pad0(m)}:${pad0(s)}`;
+
+        const displayMins = m === 60 ? 59 : m;
+        if (h > 0) {
+          commentCooldownStringDisplay = `${h}h ${displayMins}m`;
+        } else {
+          commentCooldownStringDisplay = `${displayMins}m`;
+        }
+      }
     }
   }
 
@@ -443,15 +516,27 @@ export const Marketplace: React.FC = () => {
         </div>
       )}
 
-      {/* Cooldown notification banner */}
-      {isCooldownActive && (
+      {/* Cooldown notification banners */}
+      {isPostCooldownActive && (
         <div className="p-4 bg-purple-50 border border-purple-200 rounded-2xl flex items-center justify-between text-purple-700 text-xs font-semibold shadow-sm">
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 animate-spin text-purple-600" />
-            <span>You are currently on claiming cooldown between campaigns.</span>
+            <span>You are currently on high precision Reddit Post claiming cooldown.</span>
           </div>
-          <span className="font-mono bg-purple-100 px-3 py-1 rounded-xl text-purple-755 font-black animate-pulse">
-            ⏳ Claim available in {cooldownString || '00:00'}
+          <span className="font-mono bg-purple-100 px-3 py-1 rounded-xl text-purple-700 font-black animate-pulse">
+            ⏳ Next Post Claim Available In: <strong className="font-mono font-black ml-1 text-purple-900">{postCooldownString || '00:00:00'}</strong>
+          </span>
+        </div>
+      )}
+
+      {isCommentCooldownActive && (
+        <div className="p-4 bg-purple-50 border border-purple-200 rounded-2xl flex items-center justify-between text-purple-700 text-xs font-semibold shadow-sm">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 animate-spin text-purple-600" />
+            <span>You are currently on high precision Reddit Comment claiming cooldown.</span>
+          </div>
+          <span className="font-mono bg-purple-100 px-3 py-1 rounded-xl text-purple-700 font-black animate-pulse">
+            ⏳ Next Comment Claim Available In: <strong className="font-mono font-black ml-1 text-purple-900">{commentCooldownString || '00:00:00'}</strong>
           </span>
         </div>
       )}
@@ -582,27 +667,21 @@ export const Marketplace: React.FC = () => {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleCopyText(task.description || '', 'Task body copied');
+                                handleCopyText(task.title || '', 'Title copied successfully.');
                               }}
                               className="text-[9px] text-purple-650 hover:text-purple-700 font-extrabold flex items-center gap-1 bg-white hover:bg-purple-50 px-2 py-0.5 rounded transition-all border border-slate-250 cursor-pointer"
                             >
-                              <Copy className="w-2.5 h-2.5" /> Copy Body
+                              <Copy className="w-2.5 h-2.5" /> Copy Title
                             </button>
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                const subName = task.targetSubreddit || '';
-                                const subFormatted = subName ? (subName.startsWith('r/') ? subName : 'r/' + subName) : '';
-                                const content = 
-                                  `Subreddit: ${subFormatted}\n\n` +
-                                  `Title:\n${task.title || ''}\n\n` +
-                                  `Body:\n${task.description || ''}`;
-                                handleCopyText(content, 'Task copied successfully');
+                                handleCopyText(task.description || '', 'Content copied successfully.');
                               }}
-                              className="text-[9px] text-pink-600 hover:text-pink-700 font-extrabold flex items-center gap-1 bg-white hover:bg-pink-50 px-2 py-0.5 rounded transition-all border border-slate-250 cursor-pointer"
+                              className="text-[9px] text-purple-650 hover:text-purple-700 font-extrabold flex items-center gap-1 bg-white hover:bg-purple-50 px-2 py-0.5 rounded transition-all border border-slate-250 cursor-pointer"
                             >
-                              <Copy className="w-2.5 h-2.5" /> Copy All
+                              <Copy className="w-2.5 h-2.5" /> Copy Body
                             </button>
                           </div>
                         </div>
@@ -678,25 +757,21 @@ export const Marketplace: React.FC = () => {
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleCopyText(task.commentGuidelines || '', 'Comment copied successfully');
+                                  handleCopyText(task.title || '', 'Title copied successfully.');
                                 }}
                                 className="text-[9px] text-purple-655 hover:text-purple-700 font-extrabold flex items-center gap-1 bg-white hover:bg-purple-50 px-2 py-0.5 rounded transition-all border border-slate-200 cursor-pointer"
                               >
-                                <Copy className="w-2.5 h-2.5" /> Copy Comment
+                                <Copy className="w-2.5 h-2.5" /> Copy Title
                               </button>
                               <button
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  const content = 
-                                    `Post URL: ${task.postUrlToCommentOn || ''}\n\n` +
-                                    `Comment Description: ${task.commentGuidelines || ''}\n\n` +
-                                    `Task Instructions: ${task.description || ''}`;
-                                  handleCopyText(content, 'Task copied successfully');
+                                  handleCopyText(task.commentGuidelines || '', 'Content copied successfully.');
                                 }}
-                                className="text-[9px] text-pink-600 hover:text-pink-700 font-extrabold flex items-center gap-1 bg-white hover:bg-pink-50 px-2 py-0.5 rounded transition-all border border-slate-200 cursor-pointer"
+                                className="text-[9px] text-purple-655 hover:text-purple-700 font-extrabold flex items-center gap-1 bg-white hover:bg-purple-50 px-2 py-0.5 rounded transition-all border border-slate-200 cursor-pointer"
                               >
-                                <Copy className="w-2.5 h-2.5" /> Copy All
+                                <Copy className="w-2.5 h-2.5" /> Copy Body
                               </button>
                             </div>
                           </div>
@@ -790,12 +865,14 @@ export const Marketplace: React.FC = () => {
                     >
                       Submit Proof
                     </button>
-                  ) : isCooldownActive && !isUserAdmin ? (
+                  ) : (((task.type === 'post' ? isPostCooldownActive : isCommentCooldownActive) && !isUserAdmin)) ? (
                     <button 
                       disabled
-                      className="px-4 py-2 bg-slate-100 border border-slate-250 text-zinc-400 text-xs font-bold rounded-xl cursor-not-allowed leading-tight"
+                      className="px-4 py-2 bg-slate-100 border border-slate-200 text-zinc-400 text-[10px] font-bold rounded-xl cursor-not-allowed leading-tight max-w-[200px]"
                     >
-                      Cooldown ⏳ {cooldownString || '00:00'}
+                      {task.type === 'post' 
+                        ? `Next post task available in ${postCooldownStringDisplay}` 
+                        : `Next comment task available in ${commentCooldownStringDisplay}`}
                     </button>
                   ) : (
                     <button 
@@ -907,25 +984,17 @@ export const Marketplace: React.FC = () => {
                           <div className="flex gap-1.5">
                             <button
                               type="button"
-                              onClick={() => handleCopyText(selectedTask.description || '', 'Task body copied')}
+                              onClick={() => handleCopyText(selectedTask.title || '', 'Title copied successfully.')}
                               className="text-[9px] text-purple-650 hover:text-purple-700 font-extrabold flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded cursor-pointer transition-all border border-slate-200"
                             >
-                              <Copy className="w-2.5 h-2.5" /> Copy Body
+                              <Copy className="w-2.5 h-2.5" /> Copy Title
                             </button>
                             <button
                               type="button"
-                              onClick={() => {
-                                const subName = selectedTask.targetSubreddit || '';
-                                const subFormatted = subName ? (subName.startsWith('r/') ? subName : 'r/' + subName) : '';
-                                const content = 
-                                  `Subreddit: ${subFormatted}\n\n` +
-                                  `Title:\n${selectedTask.title || ''}\n\n` +
-                                  `Body:\n${selectedTask.description || ''}`;
-                                handleCopyText(content, 'Task copied successfully');
-                              }}
-                              className="text-[9px] text-pink-600 hover:text-pink-700 font-extrabold flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded cursor-pointer transition-all border border-slate-200"
+                              onClick={() => handleCopyText(selectedTask.description || '', 'Content copied successfully.')}
+                              className="text-[9px] text-purple-650 hover:text-purple-700 font-extrabold flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded cursor-pointer transition-all border border-slate-200"
                             >
-                              <Copy className="w-2.5 h-2.5" /> Copy All
+                              <Copy className="w-2.5 h-2.5" /> Copy Body
                             </button>
                           </div>
                         </div>
@@ -993,23 +1062,17 @@ export const Marketplace: React.FC = () => {
                             <div className="flex gap-1.55">
                               <button
                                 type="button"
-                                onClick={() => handleCopyText(selectedTask.commentGuidelines || '', 'Comment copied successfully')}
-                                className="text-[9px] text-purple-650 hover:text-purple-700 font-extrabold flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded cursor-pointer transition-all border border-slate-200"
+                                onClick={() => handleCopyText(selectedTask.title || '', 'Title copied successfully.')}
+                                className="text-[9px] text-purple-650 hover:text-purple-700 font-extrabold flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded cursor-pointer transition-all border border-slate-200 font-sans"
                               >
-                                <Copy className="w-2.5 h-2.5" /> Copy Comment
+                                <Copy className="w-2.5 h-2.5" /> Copy Title
                               </button>
                               <button
                                 type="button"
-                                onClick={() => {
-                                  const content = 
-                                    `Post URL: ${selectedTask.postUrlToCommentOn || ''}\n\n` +
-                                    `Comment Description: ${selectedTask.commentGuidelines || ''}\n\n` +
-                                    `Task Instructions: ${selectedTask.description || ''}`;
-                                  handleCopyText(content, 'Task copied successfully');
-                                }}
-                                className="text-[9px] text-pink-600 hover:text-pink-700 font-extrabold flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded cursor-pointer transition-all border border-slate-200 font-sans"
+                                onClick={() => handleCopyText(selectedTask.commentGuidelines || '', 'Content copied successfully.')}
+                                className="text-[9px] text-purple-650 hover:text-purple-700 font-extrabold flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded cursor-pointer transition-all border border-slate-200"
                               >
-                                <Copy className="w-2.5 h-2.5" /> Copy All
+                                <Copy className="w-2.5 h-2.5" /> Copy Body
                               </button>
                             </div>
                           </div>

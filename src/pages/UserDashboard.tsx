@@ -17,6 +17,15 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
   const [toastMessage, setToastMessage] = React.useState<string | null>(null);
   const [isProxyAvailable, setIsProxyAvailable] = React.useState<boolean | null>(null);
 
+  // Live countdown timer ticker (Update every second)
+  const [, setTick] = React.useState(0);
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+      setTick(t => t + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   React.useEffect(() => {
     let active = true;
     const probeProxy = async () => {
@@ -139,6 +148,79 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
     realEarningsLabels.push('No rewards');
   }
 
+  // Compute Claim Cooldown for dashboard
+  let isPostCooldownActive = false;
+  let postCooldownString = '00:00:00';
+
+  let isCommentCooldownActive = false;
+  let commentCooldownString = '00:00:00';
+
+  const parseDate = (val: any): Date | null => {
+    if (!val) return null;
+    if (typeof val.toDate === 'function') {
+      return val.toDate();
+    }
+    if (val.seconds) {
+      return new Date(val.seconds * 1000);
+    }
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
+  const isUserAdmin = currentUser.role === 'admin' || currentUser.role === 'moderator' || currentUser.email?.toLowerCase() === 'kalloldeyprivate20@gmail.com';
+
+  if (!isUserAdmin) {
+    // 1. Post Cooldown
+    const lastPostClaimed = parseDate(currentUser.lastPostClaimedAt);
+    const postExpiresAt = parseDate(currentUser.postCooldownExpiresAt);
+
+    let postExpiresTime = 0;
+    if (postExpiresAt) {
+      postExpiresTime = postExpiresAt.getTime();
+    } else if (lastPostClaimed) {
+      postExpiresTime = lastPostClaimed.getTime() + 3 * 60 * 60 * 1000;
+    }
+
+    if (postExpiresTime > 0) {
+      const msLeft = postExpiresTime - Date.now();
+      if (msLeft > 0) {
+        isPostCooldownActive = true;
+        const totalSecs = Math.floor(msLeft / 1000);
+        const h = Math.floor(totalSecs / 3600);
+        const m = Math.floor((totalSecs % 3600) / 60);
+        const s = totalSecs % 60;
+        
+        const pad0 = (num: number) => num < 10 ? '0' + num : num;
+        postCooldownString = `${pad0(h)}:${pad0(m)}:${pad0(s)}`;
+      }
+    }
+
+    // 2. Comment Cooldown
+    const lastCommentClaimed = parseDate(currentUser.lastCommentClaimedAt);
+    const commentExpiresAt = parseDate(currentUser.commentCooldownExpiresAt);
+
+    let commentExpiresTime = 0;
+    if (commentExpiresAt) {
+      commentExpiresTime = commentExpiresAt.getTime();
+    } else if (lastCommentClaimed) {
+      commentExpiresTime = lastCommentClaimed.getTime() + 3 * 60 * 60 * 1000;
+    }
+
+    if (commentExpiresTime > 0) {
+      const msLeft = commentExpiresTime - Date.now();
+      if (msLeft > 0) {
+        isCommentCooldownActive = true;
+        const totalSecs = Math.floor(msLeft / 1000);
+        const h = Math.floor(totalSecs / 3600);
+        const m = Math.floor((totalSecs % 3600) / 60);
+        const s = totalSecs % 60;
+        
+        const pad0 = (num: number) => num < 10 ? '0' + num : num;
+        commentCooldownString = `${pad0(h)}:${pad0(m)}:${pad0(s)}`;
+      }
+    }
+  }
+
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 text-zinc-700 select-none" id="user-dashboard-container">
       
@@ -163,6 +245,31 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
           </div>
         </div>
       </div>
+
+      {/* Cooldown notification banners */}
+      {isPostCooldownActive && (
+        <div className="p-4 bg-purple-50 border border-purple-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between text-purple-700 text-xs font-semibold gap-3 shadow-sm">
+          <div className="flex items-center gap-2">
+            <span className="p-1 px-1.5 bg-purple-100 rounded-lg text-purple-600 font-bold font-mono text-[10px]">POST COOLDOWN</span>
+            <span>You are currently on high precision Reddit Post claiming cooldown.</span>
+          </div>
+          <span className="font-mono bg-purple-100 px-3 py-1 rounded-xl text-purple-700 font-black animate-pulse">
+            ⏳ Next Post Claim Available In: <strong className="font-mono font-black ml-1 text-purple-900">{postCooldownString}</strong>
+          </span>
+        </div>
+      )}
+
+      {isCommentCooldownActive && (
+        <div className="p-4 bg-purple-50 border border-purple-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between text-purple-700 text-xs font-semibold gap-3 shadow-sm">
+          <div className="flex items-center gap-2">
+            <span className="p-1 px-1.5 bg-purple-100 rounded-lg text-purple-600 font-bold font-mono text-[10px]">COMMENT COOLDOWN</span>
+            <span>You are currently on high precision Reddit Comment claiming cooldown.</span>
+          </div>
+          <span className="font-mono bg-purple-100 px-3 py-1 rounded-xl text-purple-700 font-black animate-pulse">
+            ⏳ Next Comment Claim Available In: <strong className="font-mono font-black ml-1 text-purple-900">{commentCooldownString}</strong>
+          </span>
+        </div>
+      )}
 
       {/* Stats Cards Bento Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">

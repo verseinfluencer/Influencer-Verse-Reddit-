@@ -37,7 +37,8 @@ import {
   getDocs, 
   onSnapshot,
   query,
-  where
+  where,
+  serverTimestamp
 } from 'firebase/firestore';
 import { auth, db, OperationType, handleFirestoreError } from '../utils/firebase';
 
@@ -837,7 +838,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         avatarUrl: null,
         gender: null,
         last_claimed_at: null,
+        lastClaimedAt: null,
         cooldown_expires_at: null,
+        lastPostClaimedAt: null,
+        postCooldownExpiresAt: null,
+        lastCommentClaimedAt: null,
+        commentCooldownExpiresAt: null,
         active_task_id: null,
         deductionHistory: null,
         lastPayoutRequestDate: null,
@@ -1071,7 +1077,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         emailVerified: true,
         gmailVerified: true,
         last_claimed_at: null,
+        lastClaimedAt: null,
         cooldown_expires_at: null,
+        lastPostClaimedAt: null,
+        postCooldownExpiresAt: null,
+        lastCommentClaimedAt: null,
+        commentCooldownExpiresAt: null,
         active_task_id: null,
         deductionHistory: null,
         lastPayoutRequestDate: null,
@@ -2188,6 +2199,64 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     const t = snap.data() as Task;
 
+    // Cooldown Validation (3 Hours)
+    const isUserAdmin = currentUser.role === 'admin' || currentUser.role === 'moderator' || currentUser.email?.toLowerCase() === 'kalloldeyprivate20@gmail.com';
+    if (!isUserAdmin) {
+      const parseDate = (val: any): Date | null => {
+        if (!val) return null;
+        if (typeof val.toDate === 'function') {
+          return val.toDate();
+        }
+        if (val.seconds) {
+          return new Date(val.seconds * 1000);
+        }
+        const d = new Date(val);
+        return isNaN(d.getTime()) ? null : d;
+      };
+
+      if (t.type === 'post') {
+        const expiresAt = parseDate(currentUser.postCooldownExpiresAt);
+        const lastClaimed = parseDate(currentUser.lastPostClaimedAt);
+        let expiresTime = 0;
+        if (expiresAt) {
+          expiresTime = expiresAt.getTime();
+        } else if (lastClaimed) {
+          expiresTime = lastClaimed.getTime() + 3 * 60 * 60 * 1000;
+        }
+
+        const msLeft = expiresTime - Date.now();
+        if (msLeft > 0) {
+          const hours = Math.floor(msLeft / (3600 * 1000));
+          const mins = Math.ceil((msLeft % (3600 * 1000)) / (60 * 1000)); // Ceil to avoid 0m display
+          const displayMins = mins === 60 ? 59 : mins;
+          const msg = hours > 0 
+            ? `You can claim another post task in ${hours}h ${displayMins}m.` 
+            : `You can claim another post task in ${displayMins}m.`;
+          throw new Error(msg);
+        }
+      } else if (t.type === 'comment') {
+        const expiresAt = parseDate(currentUser.commentCooldownExpiresAt);
+        const lastClaimed = parseDate(currentUser.lastCommentClaimedAt);
+        let expiresTime = 0;
+        if (expiresAt) {
+          expiresTime = expiresAt.getTime();
+        } else if (lastClaimed) {
+          expiresTime = lastClaimed.getTime() + 3 * 60 * 60 * 1000;
+        }
+
+        const msLeft = expiresTime - Date.now();
+        if (msLeft > 0) {
+          const hours = Math.floor(msLeft / (3600 * 1000));
+          const mins = Math.ceil((msLeft % (3600 * 1000)) / (60 * 1000)); // Ceil to avoid 0m display
+          const displayMins = mins === 60 ? 59 : mins;
+          const msg = hours > 0 
+            ? `You can claim another comment task in ${hours}h ${displayMins}m.` 
+            : `You can claim another comment task in ${displayMins}m.`;
+          throw new Error(msg);
+        }
+      }
+    }
+
     // 2. Check if task is already claimed
     if (t.status !== 'available' || (t.claimed_by && t.claimed_by !== currentUser.id)) {
       throw new Error("Task already claimed.");
@@ -2228,8 +2297,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         claim_expires_at: expire
       });
 
-      await updateDoc(doc(db, 'users', currentUser.id), {
-        active_task_id: taskId
+      const userUpdateData: any = {
+        active_task_id: taskId,
+        lastClaimedAt: serverTimestamp(),
+        last_claimed_at: serverTimestamp(),
+        cooldown_expires_at: new Date(Date.now() + 3 * 60 * 60 * 1000)
+      };
+
+      if (t.type === 'post') {
+        userUpdateData.lastPostClaimedAt = serverTimestamp();
+        userUpdateData.postCooldownExpiresAt = new Date(Date.now() + 3 * 60 * 60 * 1000);
+      } else {
+        userUpdateData.lastCommentClaimedAt = serverTimestamp();
+        userUpdateData.commentCooldownExpiresAt = new Date(Date.now() + 3 * 60 * 60 * 1000);
+      }
+
+      await updateDoc(doc(db, 'users', currentUser.id), userUpdateData);
+
+      // 10. Audit Logging
+      const logId = `claim-log-${currentUser.id}-${taskId}-${Date.now()}`;
+      await setDoc(doc(db, 'audit_logs', logId), {
+        id: logId,
+        action: 'Task Claimed',
+        userId: currentUser.id,
+        claimedTaskId: taskId,
+        claimTimestamp: serverTimestamp(),
+        cooldownExpiryTimestamp: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
+        timestamp: new Date().toISOString()
       });
 
       // Synchronize to client tasks:
@@ -2882,7 +2976,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const resetCooldown = async (userId: string) => {
     await updateDoc(doc(db, 'users', userId), {
       cooldown_expires_at: null,
-      last_claimed_at: null
+      last_claimed_at: null,
+      lastClaimedAt: null,
+      postCooldownExpiresAt: null,
+      lastPostClaimedAt: null,
+      commentCooldownExpiresAt: null,
+      lastCommentClaimedAt: null
     });
   };
 
@@ -3240,7 +3339,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       emailVerified: true,
       gmailVerified: true,
       last_claimed_at: null,
+      lastClaimedAt: null,
       cooldown_expires_at: null,
+      lastPostClaimedAt: null,
+      postCooldownExpiresAt: null,
+      lastCommentClaimedAt: null,
+      commentCooldownExpiresAt: null,
       active_task_id: null,
       deductionHistory: null,
       lastPayoutRequestDate: null,

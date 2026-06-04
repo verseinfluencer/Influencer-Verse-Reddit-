@@ -39,8 +39,40 @@ service cloud.firestore {
     // Users collection
     match /users/{userId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() 
-        && (request.auth.uid == userId || isApprovedClient());
+      allow write: if isAuthenticated() && (
+        isAdmin() || 
+        isApprovedClient() || 
+        (
+          request.auth.uid == userId && (
+            // If user is currently on active cooldown, they cannot alter their cooldown fields to bypass
+            (
+              (
+                resource.data == null || 
+                resource.data.role == 'admin' ||
+                resource.data.role == 'moderator' ||
+                !resource.data.keys().hasAll(['postCooldownExpiresAt']) ||
+                resource.data.postCooldownExpiresAt == null || 
+                request.time >= timestamp(resource.data.postCooldownExpiresAt)
+              ) || (
+                request.resource.data.postCooldownExpiresAt == resource.data.postCooldownExpiresAt &&
+                (!resource.data.keys().hasAll(['lastPostClaimedAt']) || request.resource.data.lastPostClaimedAt == resource.data.lastPostClaimedAt)
+              )
+            ) && (
+              (
+                resource.data == null || 
+                resource.data.role == 'admin' ||
+                resource.data.role == 'moderator' ||
+                !resource.data.keys().hasAll(['commentCooldownExpiresAt']) ||
+                resource.data.commentCooldownExpiresAt == null || 
+                request.time >= timestamp(resource.data.commentCooldownExpiresAt)
+              ) || (
+                request.resource.data.commentCooldownExpiresAt == resource.data.commentCooldownExpiresAt &&
+                (!resource.data.keys().hasAll(['lastCommentClaimedAt']) || request.resource.data.lastCommentClaimedAt == resource.data.lastCommentClaimedAt)
+              )
+            )
+          )
+        )
+      );
     }
     
     // Chats collection
@@ -69,8 +101,30 @@ service cloud.firestore {
           
           // Users cannot claim restricted or suspended tasks (status transitions must be valid)
           (
-            // 1. Claiming an available task
-            (request.resource.data.status == 'claimed' && resource.data.status == 'available' && request.resource.data.claimed_by == request.auth.uid) ||
+            // 1. Claiming an available task (must not be on active cooldown unless admin/moderator)
+            (
+              request.resource.data.status == 'claimed' && 
+              resource.data.status == 'available' && 
+              request.resource.data.claimed_by == request.auth.uid &&
+              (
+                get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+                get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'moderator' ||
+                (
+                  resource.data.type == 'post' && (
+                    !get(/databases/$(database)/documents/users/$(request.auth.uid)).data.keys().hasAll(['postCooldownExpiresAt']) ||
+                    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.postCooldownExpiresAt == null ||
+                    request.time >= timestamp(get(/databases/$(database)/documents/users/$(request.auth.uid)).data.postCooldownExpiresAt)
+                  )
+                ) ||
+                (
+                  resource.data.type == 'comment' && (
+                    !get(/databases/$(database)/documents/users/$(request.auth.uid)).data.keys().hasAll(['commentCooldownExpiresAt']) ||
+                    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.commentCooldownExpiresAt == null ||
+                    request.time >= timestamp(get(/databases/$(database)/documents/users/$(request.auth.uid)).data.commentCooldownExpiresAt)
+                  )
+                )
+              )
+            ) ||
             
             // 2. Unclaiming active task
             (request.resource.data.status == 'available' && resource.data.claimed_by == request.auth.uid && request.resource.data.claimed_by == null) ||
