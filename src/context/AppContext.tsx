@@ -3,7 +3,8 @@ import {
   User, Task, Submission, Withdrawal, Transaction, 
   SupportTicket, AppNotification, SystemSettings, TaskType,
   Client, ClientTask, ClientPayment, ClientPaymentProof, ChatMessage, ClientChat,
-  DeductionRecord, PayoutRequest, DuplicateGroup, FraudAlert, TicketMessage, AuditLog
+  DeductionRecord, PayoutRequest, DuplicateGroup, FraudAlert, TicketMessage, AuditLog,
+  RedditAccount
 } from '../types';
 import { 
   INITIAL_USERS, INITIAL_TASKS, INITIAL_SUBMISSIONS, 
@@ -77,6 +78,11 @@ interface AppContextType {
   }) => Promise<User>;
   logout: () => void;
   updateProfile: (fullName: string, redditUsername: string, redditProfileLink: string, gender?: 'Male' | 'Female' | 'Non-binary' | 'Prefer not to say') => Promise<void>;
+  addRedditAccount: (username: string, profileUrl: string) => Promise<void>;
+  removeRedditAccount: (id: string) => Promise<void>;
+  setPrimaryRedditAccount: (id: string) => Promise<void>;
+  adminUpdateUserRedditAccountStatus: (userId: string, accountId: string, status: 'Pending' | 'Approved' | 'Rejected' | 'Banned' | 'pending' | 'approved' | 'rejected' | 'banned', karma?: number, tier?: string) => Promise<void>;
+  adminRemoveUserRedditAccount: (userId: string, accountId: string) => Promise<void>;
   changePassword: (oldPw: string, newPw: string) => Promise<void>;
   deleteAccount: () => void;
   completeCreatorRegistration: (userDraft: User) => Promise<void>;
@@ -136,7 +142,7 @@ interface AppContextType {
   adminToggleChatResolution: (clientId: string, status: 'resolved' | 'unresolved') => void;
 
   // Task Actions
-  submitTaskProof: (taskId: string, proofUrl: string, submissionLink?: string) => Promise<void>;
+  submitTaskProof: (taskId: string, proofUrl: string, submissionLink?: string, selectedRedditAccountId?: string) => Promise<void>;
   claimTask: (taskId: string) => Promise<void>;
   unclaimTask: (taskId: string, notifyExpired?: boolean) => void;
   
@@ -338,10 +344,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
 
         // Current user setup
-        const unsubUser = onSnapshot(doc(db, 'users', firebaseUser.uid), (snap) => {
+        const unsubUser = onSnapshot(doc(db, 'users', firebaseUser.uid), async (snap) => {
           if (snap.exists()) {
             const uData = snap.data() as any;
-            setCurrentUser(uData as User);
+            if (uData.redditUsername && (!uData.redditAccounts || uData.redditAccounts.length === 0)) {
+              const originalAccount: RedditAccount = {
+                id: 'primary',
+                redditUsername: uData.redditUsername,
+                redditProfileUrl: uData.redditProfileLink || `https://www.reddit.com/user/${uData.redditUsername.replace(/^u\//i, '')}`,
+                karma: uData.karma || 0,
+                tier: uData.karmaTier || 'Bronze',
+                status: 'Approved',
+                addedAt: uData.joinDate || new Date().toISOString(),
+                verifiedAt: uData.joinDate || new Date().toISOString(),
+                isPrimary: true
+              };
+              try {
+                // Update Firestore to migrate
+                await updateDoc(doc(db, 'users', firebaseUser.uid), {
+                  redditAccounts: [originalAccount]
+                });
+                console.log(`[MIGRATION] Loaded and migrated old redditUsername to redditAccounts array for ${firebaseUser.uid}`);
+              } catch (migrateErr) {
+                console.error("[MIGRATION] Failed to write migrated redditAccounts:", migrateErr);
+                // Set locally to avoid blocking
+                setCurrentUser({
+                  ...uData,
+                  redditAccounts: [originalAccount]
+                } as User);
+              }
+            } else {
+              setCurrentUser(uData as User);
+            }
           }
         });
         const unsubClientProfile = onSnapshot(doc(db, 'clients', firebaseUser.uid), (snap) => {
@@ -352,7 +386,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         // Setup real-time list configurations matching exact user intent for prompt-to-db mirroring
         const unsubUsers = onSnapshot(collection(db, 'users'), (snap) => {
-          let loadedUsers = snap.docs.map(d => d.data() as User);
+          let loadedUsers = snap.docs.map(d => {
+            const u = d.data() as any;
+            if (u.redditUsername && (!u.redditAccounts || u.redditAccounts.length === 0)) {
+              const originalAccount: RedditAccount = {
+                id: 'primary',
+                redditUsername: u.redditUsername,
+                redditProfileUrl: u.redditProfileLink || `https://www.reddit.com/user/${u.redditUsername.replace(/^u\//i, '')}`,
+                karma: u.karma || 0,
+                tier: u.karmaTier || 'Bronze',
+                status: 'Approved',
+                addedAt: u.joinDate || new Date().toISOString(),
+                verifiedAt: u.joinDate || new Date().toISOString(),
+                isPrimary: true
+              };
+              return {
+                ...u,
+                redditAccounts: [originalAccount]
+              } as User;
+            }
+            return u as User;
+          });
           const adminEmail = 'kalloldeyprivate20@gmail.com';
           const isCurrentAdmin = firebaseUser.email?.toLowerCase() === adminEmail;
 
@@ -917,6 +971,289 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     await updateDoc(doc(db, 'users', currentUser.id), updateData);
+  };
+
+  const addRedditAccount = async (username: string, profileUrl: string): Promise<void> => {
+    if (!currentUser) throw new Error('Unauthenticated');
+    await checkBannedOrSuspended();
+
+    const cleanUsername = username.replace(/^u\//i, '').replace(/^\/?u\//i, '').replace(/^\/user\//i, '').replace(/^\//, '').trim().toLowerCase();
+    if (!cleanUsername) {
+      throw new Error("Invalid Reddit username.");
+    }
+
+    // Check if profile URL matches username
+    const profileUrlLower = profileUrl.toLowerCase();
+    if (!profileUrlLower.includes(cleanUsername)) {
+      throw new Error(`Reddit profile URL must match username (must contain "${cleanUsername}").`);
+    }
+
+    const currentAccounts = currentUser.redditAccounts || [];
+    if (currentAccounts.length >= 4) {
+      throw new Error("You can connect up to 4 Reddit accounts.");
+    }
+
+    // Check if the current user already has this username
+    const hasDuplicateSelf = currentAccounts.some(acc => acc.redditUsername.replace(/^u\//i, '').replace(/^\/?u\//i, '').replace(/^\/user\//i, '').replace(/^\//, '').trim().toLowerCase() === cleanUsername);
+    if (hasDuplicateSelf) {
+      throw new Error(`You have already connected the Reddit account u/${cleanUsername}.`);
+    }
+
+    // Check if any OTHER users have this username connected
+    const allUsersMatch = (users || []).find(u => {
+      if (u.id === currentUser.id) return false;
+      if (u.redditUsername && u.redditUsername.replace(/^u\//i, '').replace(/^\/?u\//i, '').replace(/^\/user\//i, '').replace(/^\//, '').trim().toLowerCase() === cleanUsername) {
+        return true;
+      }
+      if (u.redditAccounts && Array.isArray(u.redditAccounts)) {
+        return u.redditAccounts.some(acc => acc.redditUsername.replace(/^u\//i, '').replace(/^\/?u\//i, '').replace(/^\/user\//i, '').replace(/^\//, '').trim().toLowerCase() === cleanUsername);
+      }
+      return false;
+    });
+
+    if (allUsersMatch) {
+      throw new Error(`The Reddit username u/${cleanUsername} is already registered by another member.`);
+    }
+
+    const newAccount: RedditAccount = {
+      id: `reddit-acc-${Date.now()}`,
+      redditUsername: `u/${cleanUsername}`,
+      redditProfileUrl: profileUrl,
+      karma: 0,
+      tier: 'Bronze',
+      status: 'Pending',
+      addedAt: new Date().toISOString(),
+      verifiedAt: null,
+      isPrimary: currentAccounts.length === 0
+    };
+
+    const updatedAccounts = [...currentAccounts, newAccount];
+
+    // Log account add action to audit logs
+    const auditId = `audit-add-reddit-${currentUser.id}-${Date.now()}`;
+    await setDoc(doc(db, 'audit_logs', auditId), {
+      id: auditId,
+      action: 'Reddit Account Added',
+      userId: currentUser.id,
+      userName: currentUser.fullName,
+      redditUsername: `u/${cleanUsername}`,
+      timestamp: new Date().toISOString()
+    });
+
+    const updateData: any = {
+      redditAccounts: updatedAccounts
+    };
+
+    if (newAccount.isPrimary) {
+      updateData.redditUsername = newAccount.redditUsername;
+      updateData.redditProfileLink = newAccount.redditProfileUrl;
+      updateData.karma = newAccount.karma;
+      updateData.karmaTier = newAccount.tier;
+    }
+
+    await updateDoc(doc(db, 'users', currentUser.id), updateData);
+  };
+
+  const removeRedditAccount = async (id: string): Promise<void> => {
+    if (!currentUser) throw new Error('Unauthenticated');
+    await checkBannedOrSuspended();
+
+    const currentAccounts = currentUser.redditAccounts || [];
+    const accountToRemove = currentAccounts.find(acc => acc.id === id);
+    if (!accountToRemove) {
+      throw new Error("Reddit account not found.");
+    }
+
+    const updatedAccounts = currentAccounts.filter(acc => acc.id !== id);
+
+    // If we removed the primary account, set another one as primary
+    let wasPrimary = accountToRemove.isPrimary;
+    if (wasPrimary && updatedAccounts.length > 0) {
+      // Find one that was approved or just pick the first
+      updatedAccounts[0].isPrimary = true;
+    }
+
+    // Log account remove action to audit logs
+    const auditId = `audit-remove-reddit-${currentUser.id}-${Date.now()}`;
+    await setDoc(doc(db, 'audit_logs', auditId), {
+      id: auditId,
+      action: 'Reddit Account Removed',
+      userId: currentUser.id,
+      userName: currentUser.fullName,
+      redditUsername: accountToRemove.redditUsername,
+      timestamp: new Date().toISOString()
+    });
+
+    const updateData: any = {
+      redditAccounts: updatedAccounts
+    };
+
+    const primaryAcc = updatedAccounts.find(acc => acc.isPrimary);
+    if (primaryAcc) {
+      updateData.redditUsername = primaryAcc.redditUsername;
+      updateData.redditProfileLink = primaryAcc.redditProfileUrl;
+      updateData.karma = primaryAcc.karma;
+      updateData.karmaTier = primaryAcc.tier;
+    } else {
+      updateData.redditUsername = '';
+      updateData.redditProfileLink = '';
+      updateData.karma = 0;
+      updateData.karmaTier = 'Bronze';
+    }
+
+    await updateDoc(doc(db, 'users', currentUser.id), updateData);
+  };
+
+  const setPrimaryRedditAccount = async (id: string): Promise<void> => {
+    if (!currentUser) throw new Error('Unauthenticated');
+    await checkBannedOrSuspended();
+
+    const currentAccounts = currentUser.redditAccounts || [];
+    const updatedAccounts = currentAccounts.map(acc => {
+      if (acc.id === id) {
+        return { ...acc, isPrimary: true };
+      }
+      return { ...acc, isPrimary: false };
+    });
+
+    const primaryAcc = updatedAccounts.find(acc => acc.isPrimary);
+    if (!primaryAcc) {
+      throw new Error("Target Reddit account not found.");
+    }
+
+    // Log primary change action to audit logs
+    const auditId = `audit-primary-reddit-${currentUser.id}-${Date.now()}`;
+    await setDoc(doc(db, 'audit_logs', auditId), {
+      id: auditId,
+      action: 'Reddit Account Set Primary',
+      userId: currentUser.id,
+      userName: currentUser.fullName,
+      redditUsername: primaryAcc.redditUsername,
+      timestamp: new Date().toISOString()
+    });
+
+    const updateData: any = {
+      redditAccounts: updatedAccounts,
+      redditUsername: primaryAcc.redditUsername,
+      redditProfileLink: primaryAcc.redditProfileUrl,
+      karma: primaryAcc.karma,
+      karmaTier: primaryAcc.tier
+    };
+
+    await updateDoc(doc(db, 'users', currentUser.id), updateData);
+  };
+
+  const adminUpdateUserRedditAccountStatus = async (userId: string, accountId: string, status: any, karma?: number, tier?: string): Promise<void> => {
+    if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'moderator')) {
+      throw new Error('Unauthorized');
+    }
+
+    const userRef = doc(db, 'users', userId);
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists()) throw new Error('User not found');
+    const uData = userSnap.data() as User;
+
+    const currentAccounts = uData.redditAccounts || [];
+    const updatedAccounts = currentAccounts.map(acc => {
+      if (acc.id === accountId) {
+        return {
+          ...acc,
+          status: status,
+          verifiedAt: status === 'Approved' ? new Date().toISOString() : acc.verifiedAt,
+          karma: typeof karma === 'number' ? karma : acc.karma,
+          tier: tier || acc.tier
+        };
+      }
+      return acc;
+    });
+
+    const updateData: any = {
+      redditAccounts: updatedAccounts
+    };
+
+    // If we updated the primary account, let's copy its values to legacy top level
+    const primaryAcc = updatedAccounts.find(acc => acc.isPrimary);
+    if (primaryAcc && primaryAcc.id === accountId) {
+      if (status === 'Approved') {
+        updateData.status = 'Approved'; 
+      } else if (status === 'Rejected') {
+        updateData.status = 'Rejected';
+      }
+      if (typeof karma === 'number') {
+        updateData.karma = karma;
+      }
+      if (tier) {
+        updateData.karmaTier = tier;
+      }
+    }
+
+    await updateDoc(userRef, updateData);
+
+    // Audit logs entry
+    const auditId = `audit-admin-action-${userId}-${Date.now()}`;
+    await setDoc(doc(db, 'audit_logs', auditId), {
+      id: auditId,
+      action: 'Admin Reddit Account Status Updated',
+      targetUserId: userId,
+      operatorId: currentUser.id,
+      operatorName: currentUser.fullName,
+      operatorRole: currentUser.role,
+      details: `Account ${accountId} status set to ${status}`,
+      timestamp: new Date().toISOString()
+    });
+  };
+
+  const adminRemoveUserRedditAccount = async (userId: string, accountId: string): Promise<void> => {
+    if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'moderator')) {
+      throw new Error('Unauthorized');
+    }
+
+    const userRef = doc(db, 'users', userId);
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists()) throw new Error('User not found');
+    const uData = userSnap.data() as User;
+
+    const currentAccounts = uData.redditAccounts || [];
+    const accountToRemove = currentAccounts.find(acc => acc.id === accountId);
+    if (!accountToRemove) throw new Error("Reddit account not found in user profile.");
+
+    const updatedAccounts = currentAccounts.filter(acc => acc.id !== accountId);
+
+    // If primary was removed and there are other accounts, set first one as primary
+    if (accountToRemove.isPrimary && updatedAccounts.length > 0) {
+      updatedAccounts[0].isPrimary = true;
+    }
+
+    const updateData: any = {
+      redditAccounts: updatedAccounts
+    };
+
+    const primaryAcc = updatedAccounts.find(acc => acc.isPrimary);
+    if (primaryAcc) {
+      updateData.redditUsername = primaryAcc.redditUsername;
+      updateData.redditProfileLink = primaryAcc.redditProfileUrl;
+      updateData.karma = primaryAcc.karma;
+      updateData.karmaTier = primaryAcc.tier;
+    } else {
+      updateData.redditUsername = '';
+      updateData.redditProfileLink = '';
+      updateData.karma = 0;
+      updateData.karmaTier = 'Bronze';
+    }
+
+    await updateDoc(userRef, updateData);
+
+    const auditId = `audit-admin-remove-acc-${userId}-${Date.now()}`;
+    await setDoc(doc(db, 'audit_logs', auditId), {
+      id: auditId,
+      action: 'Admin Reddit Account Removed',
+      targetUserId: userId,
+      operatorId: currentUser.id,
+      operatorName: currentUser.fullName,
+      operatorRole: currentUser.role,
+      details: `Removed Reddit username: ${accountToRemove.redditUsername}`,
+      timestamp: new Date().toISOString()
+    });
   };
 
   const changePassword = async (oldPw: string, newPw: string): Promise<void> => {
@@ -2095,7 +2432,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  const submitTaskProof = async (taskId: string, proofUrl: string, submissionLink?: string): Promise<void> => {
+  const submitTaskProof = async (taskId: string, proofUrl: string, submissionLink?: string, selectedRedditAccountId?: string): Promise<void> => {
     if (!currentUser) throw new Error('Unauthenticated');
     await checkBannedOrSuspended();
     const taskRef = doc(db, 'tasks', taskId);
@@ -2114,6 +2451,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       feedback = 'Auto-rejected: Your submission contains invalid or deleted links.';
     }
 
+    // Determine which Reddit account was used
+    let selectedAcc = currentUser.redditAccounts?.find((a: any) => a.id === selectedRedditAccountId);
+    if (!selectedAcc && currentUser.redditAccounts && currentUser.redditAccounts.length > 0) {
+      selectedAcc = currentUser.redditAccounts.find((a: any) => a.isPrimary) || currentUser.redditAccounts[0];
+    }
+
+    const recRedditUsername = selectedAcc ? selectedAcc.redditUsername : currentUser.redditUsername;
+    const recRedditProfileUrl = selectedAcc ? selectedAcc.redditProfileUrl : currentUser.redditProfileLink;
+    const recRedditAccountId = selectedAcc ? selectedAcc.id : 'primary';
+
     const newSub: Submission = {
       id: `sub-${Date.now()}`,
       taskId: taskId || null,
@@ -2122,7 +2469,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       reward: task.reward || 0,
       userId: currentUser.id || null,
       userFullName: currentUser.fullName || null,
-      redditUsername: currentUser.redditUsername || null,
+      redditUsername: recRedditUsername || null,
+      selectedRedditUsername: recRedditUsername || null,
+      selectedRedditProfileUrl: recRedditProfileUrl || null,
+      selectedRedditAccountId: recRedditAccountId || null,
       proofUrl: proofUrl || null,
       submissionLink: submissionLink || null,
       status: status as any,
@@ -2168,7 +2518,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           status: isFake ? 'approved/live' : 'under_admin_review',
           proofLink: proofUrl || submissionLink || '',
           submittedAt: new Date().toISOString(),
-          claimedBy: isFake ? null : currentUser.redditUsername
+          claimedBy: isFake ? null : recRedditUsername
         });
       }
     }
@@ -3450,6 +3800,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       signup,
       logout,
       updateProfile,
+      addRedditAccount,
+      removeRedditAccount,
+      setPrimaryRedditAccount,
+      adminUpdateUserRedditAccountStatus,
+      adminRemoveUserRedditAccount,
       changePassword,
       deleteAccount,
       completeCreatorRegistration,

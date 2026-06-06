@@ -38,6 +38,8 @@ export const AdminDashboard: React.FC = () => {
     auditLogs,
     adminPromoteToModerator,
     adminRemoveModerator,
+    adminUpdateUserRedditAccountStatus,
+    adminRemoveUserRedditAccount,
     notifications,
     tickets
   } = useApp();
@@ -3036,8 +3038,112 @@ export const AdminDashboard: React.FC = () => {
                               <span className="text-slate-700 font-bold bg-slate-100 px-2 py-0.5 rounded border border-slate-200 inline-block">{u.gender || "Not specified"}</span>
                             </p>
                           </td>
-                        <td className="py-4 px-3">
-                          <span className="text-indigo-600 font-extrabold font-mono">{u.redditUsername}</span>
+                        <td className="py-4 px-3 max-w-[320px] overflow-visible">
+                          <div className="space-y-3">
+                            {/* Primary account summary */}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[10px] uppercase font-bold text-slate-400">Primary:</span>
+                              <strong className="text-indigo-600 font-extrabold font-mono text-sm">{u.redditUsername || 'None'}</strong>
+                            </div>
+
+                            {/* Connected multi-accounts lists */}
+                            {u.redditAccounts && u.redditAccounts.length > 0 ? (
+                              <div className="space-y-2.5">
+                                <div className="text-[9px] uppercase font-bold tracking-wider text-slate-400 border-b border-slate-100 pb-1">
+                                  Connected Accounts ({u.redditAccounts.length})
+                                </div>
+                                <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                                  {u.redditAccounts.map((acc: any) => (
+                                    <div key={acc.id} className="p-2.5 rounded-lg border border-slate-205 bg-white shadow-xs space-y-1.5">
+                                      <div className="flex justify-between items-center flex-wrap gap-1">
+                                        <a
+                                          href={acc.redditProfileUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-xs font-bold text-slate-900 hover:text-indigo-650 font-mono hover:underline truncate max-w-[120px]"
+                                          title="View Reddit Profile"
+                                        >
+                                          {acc.redditUsername}
+                                        </a>
+                                        {acc.isPrimary && (
+                                          <span className="text-[8px] font-bold bg-purple-100 text-purple-700 px-1 rounded">Primary</span>
+                                        )}
+                                      </div>
+
+                                      <div className="flex items-center gap-2 text-[9px] font-bold text-slate-450">
+                                        <span>Karma: {acc.karma || 0}</span>
+                                        <span>•</span>
+                                        <span>{acc.tier || 'Bronze'}</span>
+                                      </div>
+
+                                      <div className="flex justify-between items-center gap-2 pt-1 border-t border-slate-100/50">
+                                        <span className={`text-[8px] font-bold uppercase ${
+                                          acc.status === 'Approved' ? 'text-emerald-600 bg-emerald-50 px-1 rounded' :
+                                          acc.status === 'Rejected' ? 'text-rose-600 bg-rose-50 px-1 rounded' :
+                                          'text-amber-600 bg-amber-50 px-1 rounded'
+                                        }`}>
+                                          {acc.status}
+                                        </span>
+
+                                        <div className="flex gap-1">
+                                          {acc.status !== 'Approved' && (
+                                            <button
+                                              onClick={async () => {
+                                                try {
+                                                  await adminUpdateUserRedditAccountStatus(u.id, acc.id, 'Approved', acc.karma, acc.tier);
+                                                  alert(`Approved Reddit account ${acc.redditUsername}!`);
+                                                } catch (err: any) {
+                                                  alert(`Error: ${err.message}`);
+                                                }
+                                              }}
+                                              className="px-1.5 py-0.5 bg-emerald-600 hover:bg-emerald-500 text-[8px] font-bold rounded text-white cursor-pointer transition"
+                                              title="Approve Account"
+                                            >
+                                              Approve
+                                            </button>
+                                          )}
+                                          {acc.status !== 'Rejected' && (
+                                            <button
+                                              onClick={async () => {
+                                                try {
+                                                  await adminUpdateUserRedditAccountStatus(u.id, acc.id, 'Rejected');
+                                                  alert(`Rejected Reddit account ${acc.redditUsername}.`);
+                                                } catch (err: any) {
+                                                  alert(`Error: ${err.message}`);
+                                                }
+                                              }}
+                                              className="px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[8px] font-bold rounded cursor-pointer transition"
+                                              title="Reject Account"
+                                            >
+                                              Reject
+                                            </button>
+                                          )}
+                                          <button
+                                            onClick={async () => {
+                                              if (confirm(`Are you sure you want to completely remove Reddit account ${acc.redditUsername}?`)) {
+                                                try {
+                                                  await adminRemoveUserRedditAccount(u.id, acc.id);
+                                                  alert(`Removed account ${acc.redditUsername}.`);
+                                                } catch (err: any) {
+                                                  alert(`Error: ${err.message}`);
+                                                }
+                                              }
+                                            }}
+                                            className="p-1 text-slate-400 hover:text-rose-605 hover:bg-rose-50 rounded transition cursor-pointer"
+                                            title="Delete Account Link"
+                                          >
+                                            <Trash2 className="w-3 h-3" />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-[10px] text-slate-400 italic">No alternative handles connected yet.</p>
+                            )}
+                          </div>
                         </td>
                         <td className="py-4 px-3">
                           {editingUsers[u.id] ? (

@@ -234,9 +234,15 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
                   {currentTier.name} Tier
                 </span>
               </div>
-              <p className="text-sm text-gray-500 mt-1">
-                Linked Reddit Identity: <strong className="text-purple-600 tracking-wide font-mono">{currentUser.redditUsername}</strong>
-              </p>
+              <div className="flex items-center gap-2 flex-wrap text-xs text-gray-500 mt-1">
+                <span>Linked Reddit Identity:</span>
+                <strong className="text-purple-600 tracking-wide font-mono">{currentUser.redditUsername}</strong>
+                {currentUser.redditAccounts && currentUser.redditAccounts.length > 1 && (
+                  <span className="text-gray-400 font-medium">
+                    (and {currentUser.redditAccounts.length - 1} other {currentUser.redditAccounts.length === 2 ? 'account' : 'accounts'} connected)
+                  </span>
+                )}
+              </div>
             </div>
             <p className="text-sm text-gray-500 font-medium">
               Track your campaigns, earnings, and submission progress.

@@ -17,6 +17,7 @@ export const Marketplace: React.FC = () => {
 
   // Submission overlay modal states
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [selectedRedditAccountId, setSelectedRedditAccountId] = useState('');
   const [redditProofLink, setRedditProofLink] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [successSubmission, setSuccessSubmission] = useState(false);
@@ -264,6 +265,8 @@ export const Marketplace: React.FC = () => {
     setRedditProofLink('');
     setSuccessSubmission(false);
     setErrorMessage(null);
+    const primary = currentUser?.redditAccounts?.find((a: any) => a.isPrimary);
+    setSelectedRedditAccountId(primary ? primary.id : (currentUser?.redditAccounts?.[0]?.id || ''));
   };
 
   const handleProofSubmit = async (e: React.FormEvent) => {
@@ -278,7 +281,7 @@ export const Marketplace: React.FC = () => {
 
     setSubmitting(true);
     try {
-      await submitTaskProof(selectedTask.id, trimmedLink, trimmedLink);
+      await submitTaskProof(selectedTask.id, trimmedLink, trimmedLink, selectedRedditAccountId);
       setSubmitting(false);
       setSuccessSubmission(true);
       setTimeout(() => {
@@ -1179,16 +1182,44 @@ export const Marketplace: React.FC = () => {
                 </div>
 
                 {/* Proof fields */}
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1.5 font-sans">Reddit Proof Link</label>
-                  <input 
-                    type="text" 
-                    value={redditProofLink}
-                    onChange={(e) => setRedditProofLink(e.target.value)}
-                    placeholder="https://reddit.com/r/..." 
-                    className="w-full text-xs text-zinc-800 bg-slate-50 border border-slate-205 px-3 py-2.5 rounded-xl focus:border-purple-500 focus:outline-none placeholder-zinc-400 font-semibold"
-                  />
-                  <p className="text-[10px] text-zinc-400 font-semibold mt-1">Paste the direct link to your Reddit post or comment</p>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1.5 font-sans">
+                      Submit With Reddit Account
+                    </label>
+                    {currentUser.redditAccounts && currentUser.redditAccounts.length > 0 ? (
+                      <select
+                        value={selectedRedditAccountId}
+                        onChange={(e) => setSelectedRedditAccountId(e.target.value)}
+                        className="w-full text-xs text-zinc-800 bg-slate-50 border border-slate-205 px-3 py-2.5 rounded-xl focus:border-purple-500 focus:outline-none font-mono cursor-pointer font-semibold"
+                      >
+                        {currentUser.redditAccounts.map((acc: any) => (
+                          <option key={acc.id} value={acc.id}>
+                            {acc.redditUsername} ({acc.status}) - Karma: {acc.karma}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="p-3 bg-amber-50 border border-amber-200 text-amber-800 text-[10px] rounded-xl font-bold font-mono">
+                        Defaulting: {currentUser.redditUsername}
+                      </div>
+                    )}
+                    <p className="text-[10px] text-zinc-400 font-semibold mt-1">
+                      Choose which verified Reddit identity was used for this campaign submission.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1.5 font-sans">Reddit Proof Link</label>
+                    <input 
+                      type="text" 
+                      value={redditProofLink}
+                      onChange={(e) => setRedditProofLink(e.target.value)}
+                      placeholder="https://reddit.com/r/..." 
+                      className="w-full text-xs text-zinc-800 bg-slate-50 border border-slate-205 px-3 py-2.5 rounded-xl focus:border-purple-500 focus:outline-none placeholder-zinc-400 font-semibold"
+                    />
+                    <p className="text-[10px] text-zinc-400 font-semibold mt-1">Paste the direct link to your Reddit post or comment</p>
+                  </div>
                 </div>
 
                 <button 

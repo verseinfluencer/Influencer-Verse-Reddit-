@@ -4,6 +4,7 @@ export interface User {
   email: string;
   redditUsername: string; // e.g. "u/some_user" or just "some_user"
   redditProfileLink: string;
+  redditAccounts?: RedditAccount[];
   status: 'Pending' | 'Approved' | 'Rejected' | 'Banned' | 'Suspended' | 'banned' | 'suspended' | 'pending';
   rejectionReason?: string | null;
   referralCode: string;
@@ -116,6 +117,9 @@ export interface Submission {
   userId: string;
   userFullName: string;
   redditUsername: string;
+  selectedRedditUsername?: string;
+  selectedRedditProfileUrl?: string;
+  selectedRedditAccountId?: string;
   proofUrl: string; // base64 or placeholder url
   submissionLink?: string; // comment url if comment task
   status: 'Pending' | 'Approved' | 'Rejected' | 'pending_review' | 'Under Admin Review' | 'Admin Approved (Waiting for Client Approval)' | 'Client Approved (Payment Released)' | 'Client Rejected';
@@ -386,5 +390,17 @@ export interface AuditLog {
   operatorName: string;
   operatorRole: string;
   timestamp: string;
+}
+
+export interface RedditAccount {
+  id: string;
+  redditUsername: string;
+  redditProfileUrl: string;
+  karma: number;
+  tier: string;
+  status: 'Pending' | 'Approved' | 'Rejected' | 'Banned' | 'pending' | 'approved' | 'rejected' | 'banned';
+  addedAt: string;
+  verifiedAt?: string | null;
+  isPrimary: boolean;
 }
 
