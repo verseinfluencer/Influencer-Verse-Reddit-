@@ -118,6 +118,39 @@ export const AdminDashboard: React.FC = () => {
     }
   }, [activeTab]);
 
+  useEffect(() => {
+    if (isMenuOpen) {
+      document.body.style.overflow = 'hidden';
+      const footerElement = document.getElementById('global-dashboard-footer') || document.getElementById('global-light-footer') || document.querySelector('footer');
+      if (footerElement) {
+        footerElement.style.display = 'none';
+      }
+    } else {
+      document.body.style.overflow = '';
+      const footerElement = document.getElementById('global-dashboard-footer') || document.getElementById('global-light-footer') || document.querySelector('footer');
+      if (footerElement) {
+        footerElement.style.display = '';
+      }
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsMenuOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = '';
+      const footerElement = document.getElementById('global-dashboard-footer') || document.getElementById('global-light-footer') || document.querySelector('footer');
+      if (footerElement) {
+        footerElement.style.display = '';
+      }
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isMenuOpen]);
+
   const shouldPulse = (tabId: string, count: number) => {
     if (!count || count <= 0) return false;
     const targetTabs = ['users', 'clients', 'client-tasks', 'submissions', 'withdrawals', 'client-chats'];
@@ -4585,7 +4618,7 @@ export const AdminDashboard: React.FC = () => {
                     { title: 'Verified (Clean)', range: '0 - 20', color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20', action: 'Standard accounts' },
                     { title: 'Watchlist', range: '21 - 40', color: 'bg-amber-500/10 text-amber-700 border-amber-500/25', action: 'Flagged, telemetry log' },
                     { title: 'High Risk', range: '41 - 60', color: 'bg-orange-500/10 text-orange-700 border-orange-500/25', action: 'Manual submission checks' },
-                    { title: 'Auto-Suspended', range: '61 - 80', color: 'bg-red-500/10 text-red-600 border-red-500/25', action: 'Deactivated immediately' },
+                    { title: 'Flagged for Review', range: '61 - 80', color: 'bg-red-500/10 text-red-650 border-red-500/25', action: 'Manual Review Required' },
                     { title: 'Banned (Permanent)', range: '81 - 100', color: 'bg-slate-100 border-slate-300 text-slate-705', action: 'Locked from login/earnings' },
                   ].map(sec => (
                     <div key={sec.title} className={`p-3 rounded-2xl border ${sec.color} space-y-1 text-center`}>
@@ -4661,18 +4694,26 @@ export const AdminDashboard: React.FC = () => {
                         <p className="text-xs font-normal text-slate-700 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-200 select-text font-medium">{alertItem.details}</p>
 
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                          <span className="text-[10px] font-bold text-slate-500 block font-normal">Recommended Action: <strong className="text-purple-650 font-bold">{alertItem.recommendedAction}</strong></span>
+                          <span className="text-[10px] font-bold text-slate-500 block font-normal">
+                            Recommended Action: <strong className="text-purple-650 font-bold">
+                              {alertItem.recommendedAction
+                                ?.replace(/Auto[- ]?Ban/gi, 'Manual Review Required')
+                                ?.replace(/Auto[- ]?Suspend(ed)?/gi, 'Flagged for Review')
+                                ?.replace(/Ban Accounts/gi, 'Manual Review Required')
+                                ?.replace(/Freeze Accounts/gi, 'Manual Review Required')}
+                            </strong>
+                          </span>
 
                           {alertItem.status === 'pending' && (
                             <div className="flex flex-wrap gap-1.5 shrink-0 select-none">
                               <button 
                                 onClick={() => {
                                   adminReviewFraudAction(alertItem.id, 'dismiss');
-                                  alert('Alert dismissed. Suspicion score reduced slightly.');
+                                  alert(isMod ? 'Alert marked as reviewed.' : 'Alert dismissed. Suspicion score reduced slightly.');
                                 }}
                                 className="px-2 py-1 bg-slate-50 hover:bg-slate-100 text-[10px] text-slate-650 rounded border border-slate-300 cursor-pointer"
                               >
-                                Dismiss
+                                {isMod ? 'Mark as Reviewed' : 'Dismiss'}
                               </button>
                               <button 
                                 onClick={() => {
@@ -4683,45 +4724,37 @@ export const AdminDashboard: React.FC = () => {
                               >
                                 Send Warning
                               </button>
-                              <button 
-                                onClick={() => {
-                                  if (currentUser?.role === 'moderator') {
-                                    setShowPermissionRestrictedModal("Suspending member profiles via fraud intercepts is restricted to Platform Administrators.");
-                                    return;
-                                  }
-                                  adminReviewFraudAction(alertItem.id, 'suspend');
-                                  alert('User has been Auto-Suspended.');
-                                }}
-                                className="px-2 py-1 bg-red-600 hover:bg-red-550 text-[10px] text-white rounded cursor-pointer font-bold shadow-xs"
-                              >
-                                Suspend Account
-                              </button>
-                              <button 
-                                onClick={() => {
-                                  if (currentUser?.role === 'moderator') {
-                                    setShowPermissionRestrictedModal("Issuing permanent database bans is restricted to senior Platform Administrators.");
-                                    return;
-                                  }
-                                  adminReviewFraudAction(alertItem.id, 'ban');
-                                  alert('User has been banned.');
-                                }}
-                                className="px-2 py-1 bg-red-50 border border-red-200 hover:bg-red-100 text-[10px] text-red-650 rounded cursor-pointer font-black"
-                              >
-                                Permanent Ban ⛔
-                              </button>
-                              <button 
-                                onClick={() => {
-                                  if (currentUser?.role === 'moderator') {
-                                    setShowPermissionRestrictedModal("Freezing/confiscating creator account earnings is restricted to senior Platform Administrators.");
-                                    return;
-                                  }
-                                  adminReviewFraudAction(alertItem.id, 'freeze');
-                                  alert('Earnings frozen and user suspended.');
-                                }}
-                                className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-[10px] text-slate-700 border border-slate-350 rounded cursor-pointer font-bold"
-                              >
-                                Freeze Profits ❄️
-                              </button>
+                              {!isMod && (
+                                <>
+                                  <button 
+                                    onClick={() => {
+                                      adminReviewFraudAction(alertItem.id, 'suspend');
+                                      alert('User suspended manually.');
+                                    }}
+                                    className="px-2 py-1 bg-red-600 hover:bg-red-550 text-[10px] text-white rounded cursor-pointer font-bold shadow-xs"
+                                  >
+                                    Suspend Account
+                                  </button>
+                                  <button 
+                                    onClick={() => {
+                                      adminReviewFraudAction(alertItem.id, 'ban');
+                                      alert('User banned manually.');
+                                    }}
+                                    className="px-2 py-1 bg-red-50 border border-red-200 hover:bg-red-100 text-[10px] text-red-650 rounded cursor-pointer font-black"
+                                  >
+                                    Permanent Ban ⛔
+                                  </button>
+                                  <button 
+                                    onClick={() => {
+                                      adminReviewFraudAction(alertItem.id, 'freeze');
+                                      alert('Earnings frozen manually.');
+                                    }}
+                                    className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-[10px] text-slate-700 border border-slate-350 rounded cursor-pointer font-bold"
+                                  >
+                                    Freeze Profits ❄️
+                                  </button>
+                                </>
+                              )}
                             </div>
                           )}
 
@@ -4729,7 +4762,9 @@ export const AdminDashboard: React.FC = () => {
                             <span className="text-[10px] text-slate-500 italic font-semibold">Processed Action Applied</span>
                           )}
                           {alertItem.status === 'dismissed' && (
-                            <span className="text-[10px] text-slate-500 italic font-semibold">Dismissed</span>
+                            <span className="text-[10px] text-slate-500 italic font-semibold">
+                              {isMod ? 'Reviewed' : 'Dismissed'}
+                            </span>
                           )}
                         </div>
 
@@ -6595,7 +6630,7 @@ export const AdminDashboard: React.FC = () => {
       {/* Drawer Overlay backdrop and slide panel */}
       <AnimatePresence>
         {isMenuOpen && (
-          <div className="fixed inset-0 z-50 font-sans" id="admin-nav-drawer-overlay">
+          <div className="fixed inset-0 z-[9999] font-sans" id="admin-nav-drawer-overlay">
             {/* Backdrop panel */}
             <motion.div
               initial={{ opacity: 0 }}
