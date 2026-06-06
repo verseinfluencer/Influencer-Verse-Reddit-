@@ -63,8 +63,9 @@ export const AdminDashboard: React.FC = () => {
     return (roleIsClient || hasClientType || !isMemberOrAdmin);
   });
 
-  const [activeTab, setActiveTab] = useState<'users' | 'clients' | 'client-tasks' | 'client-payments' | 'client-chats' | 'tasks' | 'submissions' | 'withdrawals' | 'announcements' | 'settings' | 'security' | 'track-data' | 'audit-log' | 'deleted-tasks' | 'live-wallet' | 'deleted-history'>('users');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'clients' | 'client-tasks' | 'client-payments' | 'client-chats' | 'tasks' | 'submissions' | 'withdrawals' | 'announcements' | 'settings' | 'security' | 'track-data' | 'audit-log' | 'deleted-tasks' | 'live-wallet' | 'deleted-history'>('dashboard');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [globalSearchQuery, setGlobalSearchQuery] = useState('');
   const [showPermissionRestrictedModal, setShowPermissionRestrictedModal] = useState<string | null>(null);
 
   // Deleted tasks list & filter states
@@ -959,7 +960,16 @@ export const AdminDashboard: React.FC = () => {
     setTimeout(() => setSettingsSuccess(false), 3000);
   };
 
+  const isMod = currentUser?.role === 'moderator';
+
   const menuGroups = [
+    {
+      title: "Navigation",
+      color: "border-indigo-600",
+      items: [
+        { id: 'dashboard', label: 'Control Center', icon: BarChart2, count: null }
+      ]
+    },
     {
       title: "User Management",
       color: "border-emerald-500",
@@ -978,7 +988,7 @@ export const AdminDashboard: React.FC = () => {
         { id: 'deleted-tasks', label: 'Deleted Tasks', icon: Trash2, count: 0 }
       ]
     },
-    {
+    ...(!isMod ? [{
       title: "Finance",
       color: "border-amber-500",
       items: [
@@ -986,7 +996,13 @@ export const AdminDashboard: React.FC = () => {
         { id: 'withdrawals', label: 'Withdraw Desk', icon: Coins, count: withdrawalsBadgeCount },
         { id: 'client-payments', label: 'Agency Payments', icon: CreditCard, count: paymentsBadgeCount }
       ]
-    },
+    }] : [{
+      title: "Finance",
+      color: "border-amber-500",
+      items: [
+        { id: 'withdrawals', label: 'Withdraw Desk', icon: Coins, count: withdrawalsBadgeCount }
+      ]
+    }]),
     {
       title: "Security & Logs",
       color: "border-red-500",
@@ -1043,11 +1059,12 @@ export const AdminDashboard: React.FC = () => {
           <button
             type="button"
             onClick={() => setIsMenuOpen(true)}
-            className="flex items-center justify-center p-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-xs cursor-pointer transition hover:scale-105 active:scale-95 border border-indigo-500/10"
+            className="flex items-center justify-center p-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-xs cursor-pointer transition hover:scale-105 active:scale-95 border border-indigo-500/10 font-bold font-sans text-sm gap-1.5"
             aria-label="Open Navigation Drawer"
             id="admin-hamburger-btn"
           >
-            <Menu className="w-5 h-5" />
+            <span className="text-base leading-none">☰</span>
+            <span className="text-[10px] uppercase font-black tracking-wider hidden sm:inline">Menu</span>
           </button>
         </div>
       </div>
@@ -1055,6 +1072,529 @@ export const AdminDashboard: React.FC = () => {
       {/* Main Tab Render Grid */}
       <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
         
+        {/* ================= CONTROL CENTER HOMEPAGE ================= */}
+        {activeTab === 'dashboard' && (() => {
+          const creatorsCount = users.length;
+          const activeClientsCount = clients.length;
+          const activeTasksCount = tasks.filter(t => t.status === 'Active' || t.status === 'active' || !t.archived).length;
+          const pendingReviewsCount = submissions.filter(s => (s.status === 'Pending' || s.status?.toLowerCase().includes('review') || s.status === 'Under Admin Review') && !s.deleted).length;
+          const pendingWithdrawalsCount = withdrawals.filter(w => w.status === 'Pending').length;
+          const openTicketsCount = (tickets || []).filter(t => t.status === 'Open').length;
+
+          const totalPaidOutAmt = withdrawals.filter(w => w.status === 'Approved').reduce((sum, w) => sum + (w.amount || 0), 0);
+          const totalPendingPayouts = withdrawals.filter(w => w.status === 'Pending').reduce((sum, w) => sum + (w.amount || 0), 0);
+          const totalOutstandingDues = (clientPaymentProofs || []).filter(p => p.status === 'Pending').reduce((sum, p) => sum + (p.amount || 0), 0);
+
+          const recentActivitiesList = (() => {
+            const list: any[] = [];
+            (submissions || []).forEach(s => {
+              if (s.submittedAt) {
+                list.push({
+                  id: `sub-${s.id}`,
+                  text: `u/${s.redditUsername} submitted proof for campaign "${s.taskTitle}"`,
+                  date: new Date(s.submittedAt),
+                  badgeStr: 'Proof Submitted',
+                  badgeClass: 'bg-amber-50 text-amber-700 border border-amber-250'
+                });
+              }
+            });
+            (withdrawals || []).forEach(w => {
+              const ts = w.requestedAt || w.date;
+              if (ts) {
+                list.push({
+                  id: `wth-${w.id}`,
+                  text: `${w.userFullName || 'A creator'} requested a withdrawal of $${w.amount} USDT`,
+                  date: new Date(ts),
+                  badgeStr: 'Withdrawal Req',
+                  badgeClass: 'bg-rose-50 text-rose-700 border border-rose-200'
+                });
+              }
+            });
+            (tasks || []).forEach(t => {
+              const ts = t.createdAt || t.timestamp;
+              if (ts) {
+                list.push({
+                  id: `tsk-${t.id}`,
+                  text: `Campaign "${t.title}" was published (Reward: $${t.reward} USDT)`,
+                  date: new Date(ts),
+                  badgeStr: 'Campaign Created',
+                  badgeClass: 'bg-blue-50 text-blue-700 border border-blue-200'
+                });
+              }
+            });
+            (tickets || []).forEach(ticket => {
+              const ts = ticket.createdAt || ticket.timestamp;
+              if (ts) {
+                list.push({
+                  id: `tkt-${ticket.id}`,
+                  text: `New support ticket opened: "${ticket.subject || 'Inquiry'}" by ${ticket.clientName || 'Brand Owner'}`,
+                  date: new Date(ts),
+                  badgeStr: 'Ticket Opened',
+                  badgeClass: 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                });
+              }
+            });
+            (auditLogs || []).forEach(log => {
+              const ts = log.timestamp;
+              if (ts) {
+                list.push({
+                  id: `log-${log.id}`,
+                  text: `Operator ${log.operatorName || 'Admin'} performed action: ${log.action}`,
+                  date: new Date(ts),
+                  badgeStr: 'Audit Log',
+                  badgeClass: 'bg-slate-50 text-slate-700 border border-slate-200'
+                });
+              }
+            });
+            return list
+              .filter(item => !isNaN(item.date.getTime()))
+              .sort((a, b) => b.date.getTime() - a.date.getTime())
+              .slice(0, 8);
+          })();
+
+          // Filter matching list based on searchQuery input
+          const filteredUsers = (users || []).filter(u => 
+            u.fullName?.toLowerCase().includes(globalSearchQuery.toLowerCase()) ||
+            u.redditUsername?.toLowerCase().includes(globalSearchQuery.toLowerCase()) ||
+            u.email?.toLowerCase().includes(globalSearchQuery.toLowerCase())
+          );
+
+          const filteredClientsList = (clients || []).filter(c => 
+            c.fullName?.toLowerCase().includes(globalSearchQuery.toLowerCase()) ||
+            c.companyName?.toLowerCase().includes(globalSearchQuery.toLowerCase()) ||
+            c.email?.toLowerCase().includes(globalSearchQuery.toLowerCase())
+          );
+
+          const filteredTasksList = (tasks || []).filter(t => 
+            t.title?.toLowerCase().includes(globalSearchQuery.toLowerCase()) ||
+            t.id?.toLowerCase().includes(globalSearchQuery.toLowerCase())
+          );
+
+          const filteredWithdrawalsList = (withdrawals || []).filter(w => 
+            w.userFullName?.toLowerCase().includes(globalSearchQuery.toLowerCase()) ||
+            w.redditUsername?.toLowerCase().includes(globalSearchQuery.toLowerCase()) ||
+            w.status?.toLowerCase().includes(globalSearchQuery.toLowerCase())
+          );
+
+          const filteredTicketsList = (tickets || []).filter(t => 
+            t.subject?.toLowerCase().includes(globalSearchQuery.toLowerCase()) ||
+            t.message?.toLowerCase().includes(globalSearchQuery.toLowerCase()) ||
+            t.status?.toLowerCase().includes(globalSearchQuery.toLowerCase())
+          );
+
+          return (
+            <div className="space-y-8 text-left font-sans animate-fade-in" id="admin-control-center-home">
+              
+              {/* Global Search Interface */}
+              <div className="space-y-3">
+                <div className="relative font-sans">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <Search className="w-5 h-5 text-slate-400" />
+                  </div>
+                  <input
+                    type="text"
+                    value={globalSearchQuery}
+                    onChange={(e) => setGlobalSearchQuery(e.target.value)}
+                    placeholder="Search users, clients, tasks, tickets, withdrawals..."
+                    className="block w-full pl-11 pr-4 py-3 bg-slate-50 hover:bg-slate-100/50 focus:bg-white border border-slate-200 focus:border-indigo-500 rounded-2xl text-xs font-semibold focus:ring-2 focus:ring-indigo-100 transition shadow-xs"
+                  />
+                  {globalSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setGlobalSearchQuery('')}
+                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-xs text-slate-400 hover:text-slate-650"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+
+                {globalSearchQuery && (
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 space-y-4 animate-fade-in font-sans">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-450 font-mono">Matched Records across Platform</span>
+                      <button 
+                        onClick={() => setGlobalSearchQuery('')} 
+                        className="text-[10px] text-indigo-600 hover:text-indigo-800 font-extrabold"
+                      >
+                        Close Results
+                      </button>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {filteredUsers.slice(0, 3).map(u => (
+                        <div key={u.id} onClick={() => { setActiveTab('users'); setGlobalSearchQuery(''); }} className="p-3 bg-white border border-slate-200 hover:border-indigo-400 rounded-xl cursor-pointer transition flex items-center justify-between text-xs font-bold">
+                          <div className="flex items-center gap-2">
+                            <Users className="w-4 h-4 text-emerald-500" />
+                            <div className="text-left font-sans leading-none">
+                              <span className="block text-slate-800 truncate max-w-[120px]">{u.fullName}</span>
+                              <span className="block text-[9px] text-slate-450 font-mono mt-0.5">u/{u.redditUsername}</span>
+                            </div>
+                          </div>
+                          <span className="text-[9px] uppercase px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded">User Map</span>
+                        </div>
+                      ))}
+
+                      {filteredClientsList.slice(0, 3).map(c => (
+                        <div key={c.id} onClick={() => { setActiveTab('clients'); setGlobalSearchQuery(''); }} className="p-3 bg-white border border-slate-200 hover:border-indigo-400 rounded-xl cursor-pointer transition flex items-center justify-between text-xs font-bold">
+                          <div className="flex items-center gap-2">
+                            <Building className="w-4 h-4 text-indigo-500" />
+                            <div className="text-left font-sans leading-none">
+                              <span className="block text-slate-800 truncate max-w-[125px]">{c.fullName}</span>
+                              <span className="block text-[9px] text-slate-450 font-mono mt-0.5">{c.companyName || 'Brand Owner'}</span>
+                            </div>
+                          </div>
+                          <span className="text-[9px] uppercase px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded">Clients</span>
+                        </div>
+                      ))}
+
+                      {filteredTasksList.slice(0, 3).map(t => (
+                        <div key={t.id} onClick={() => { setActiveTab('tasks'); setGlobalSearchQuery(''); }} className="p-3 bg-white border border-slate-200 hover:border-indigo-400 rounded-xl cursor-pointer transition flex items-center justify-between text-xs font-bold font-sans">
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-blue-500" />
+                            <div className="text-left leading-none font-sans">
+                              <span className="block text-slate-800 truncate max-w-[130px]">{t.title}</span>
+                              <span className="block text-[9px] text-slate-450 font-semibold mt-0.5">${t.reward} USDT</span>
+                            </div>
+                          </div>
+                          <span className="text-[9px] uppercase px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded font-mono">Tasks</span>
+                        </div>
+                      ))}
+
+                      {filteredWithdrawalsList.slice(0, 3).map(w => (
+                        <div key={w.id} onClick={() => { setActiveTab('withdrawals'); setGlobalSearchQuery(''); }} className="p-3 bg-white border border-slate-200 hover:border-indigo-400 rounded-xl cursor-pointer transition flex items-center justify-between text-xs font-bold font-sans">
+                          <div className="flex items-center gap-2">
+                            <Coins className="w-4 h-4 text-amber-500" />
+                            <div className="text-left leading-none font-sans">
+                              <span className="block text-slate-800 truncate max-w-[130px]">{w.userFullName || 'Unknown'}</span>
+                              <span className="block text-[9px] text-slate-450 font-semibold mt-0.5">${w.amount} USDT ({w.status})</span>
+                            </div>
+                          </div>
+                          <span className="text-[9px] uppercase px-1.5 py-0.5 bg-amber-50 text-amber-600 rounded">Withdrawals</span>
+                        </div>
+                      ))}
+
+                      {filteredTicketsList.slice(0, 3).map(ticket => (
+                        <div key={ticket.id} onClick={() => { setActiveTab('client-chats'); setGlobalSearchQuery(''); }} className="p-3 bg-white border border-slate-200 hover:border-indigo-400 rounded-xl cursor-pointer transition flex items-center justify-between text-xs font-bold font-sans">
+                          <div className="flex items-center gap-2">
+                            <MessageSquare className="w-4 h-4 text-rose-500" />
+                            <div className="text-left leading-none font-sans">
+                              <span className="block text-slate-800 truncate max-w-[130px]">{ticket.subject || ticket.clientName}</span>
+                              <span className="block text-[9px] text-slate-450 font-bold mt-0.5">{ticket.status}</span>
+                            </div>
+                          </div>
+                          <span className="text-[9px] uppercase px-1.5 py-0.5 bg-rose-50 text-rose-600 rounded">Support</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {filteredUsers.length === 0 && filteredClientsList.length === 0 && filteredTasksList.length === 0 && filteredWithdrawalsList.length === 0 && filteredTicketsList.length === 0 && (
+                      <div className="p-6 text-center text-slate-450 text-[11px] font-semibold">
+                        No records found matching "{globalSearchQuery}"
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* TOP KPI CARDS */}
+              <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+                <div onClick={() => setActiveTab('users')} className="bg-white border border-slate-200 hover:border-indigo-500 rounded-2xl p-4 cursor-pointer hover:shadow-md transition text-left select-none space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] uppercase font-black text-slate-400 tracking-wider font-mono">Total Creators</span>
+                    <Users className="w-5 h-5 text-emerald-500" />
+                  </div>
+                  <div>
+                    <span className="text-xl md:text-2xl font-black text-slate-900 block font-mono">{creatorsCount}</span>
+                    <span className="text-[9px] text-slate-400 font-bold block">Onboarded Members</span>
+                  </div>
+                </div>
+
+                <div onClick={() => setActiveTab('clients')} className="bg-white border border-slate-200 hover:border-indigo-500 rounded-2xl p-4 cursor-pointer hover:shadow-md transition text-left select-none space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] uppercase font-black text-slate-400 tracking-wider font-mono">Active Clients</span>
+                    <Building className="w-5 h-5 text-indigo-505" />
+                  </div>
+                  <div>
+                    <span className="text-xl md:text-2xl font-black text-slate-900 block font-mono">{activeClientsCount}</span>
+                    <span className="text-[9px] text-slate-400 font-bold block">Vetted Brands</span>
+                  </div>
+                </div>
+
+                <div onClick={() => setActiveTab('tasks')} className="bg-white border border-slate-200 hover:border-indigo-500 rounded-2xl p-4 cursor-pointer hover:shadow-md transition text-left select-none space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] uppercase font-black text-slate-400 tracking-wider font-mono">Active Tasks</span>
+                    <FileText className="w-5 h-5 text-blue-500" />
+                  </div>
+                  <div>
+                    <span className="text-xl md:text-2xl font-black text-slate-900 block font-mono">{activeTasksCount}</span>
+                    <span className="text-[9px] text-slate-400 font-bold block">Live Campaigns</span>
+                  </div>
+                </div>
+
+                <div onClick={() => setActiveTab('submissions')} className="bg-white border border-slate-200 hover:border-indigo-500 rounded-2xl p-4 cursor-pointer hover:shadow-md transition text-left select-none space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] uppercase font-black text-slate-400 tracking-wider font-mono font-sans">Reviews</span>
+                    <CheckCircle2 className="w-5 h-5 text-amber-500 animate-pulse" />
+                  </div>
+                  <div>
+                    <span className="text-xl md:text-2xl font-black text-amber-600 block font-mono">{pendingReviewsCount}</span>
+                    <span className="text-[9px] text-amber-600/90 font-black block">Action Required</span>
+                  </div>
+                </div>
+
+                <div onClick={() => setActiveTab('withdrawals')} className="bg-white border border-slate-200 hover:border-indigo-500 rounded-2xl p-4 cursor-pointer hover:shadow-md transition text-left select-none space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] uppercase font-black text-slate-400 tracking-wider font-mono font-sans">Withdrawals</span>
+                    <Coins className="w-5 h-5 text-rose-500 animate-pulse" />
+                  </div>
+                  <div>
+                    <span className="text-xl md:text-2xl font-black text-rose-600 block font-mono">{pendingWithdrawalsCount}</span>
+                    <span className="text-[9px] text-rose-600/90 font-black block">Pending Claims</span>
+                  </div>
+                </div>
+
+                <div onClick={() => setActiveTab('client-chats')} className="bg-white border border-slate-200 hover:border-indigo-500 rounded-2xl p-4 cursor-pointer hover:shadow-md transition text-left select-none space-y-2 animate-pulse-slow">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] uppercase font-black text-slate-400 tracking-wider font-mono font-sans">Open Tickets</span>
+                    <MessageSquare className="w-5 h-5 text-indigo-500" />
+                  </div>
+                  <div>
+                    <span className="text-xl md:text-2xl font-black text-slate-900 block font-mono">{openTicketsCount}</span>
+                    <span className="text-[9px] text-slate-400 font-bold block">Support Requests</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* ACTION REQUIRED HIGHLIGHTED WIDGETS */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                  <span className="w-1.5 h-3.5 bg-amber-500 rounded-full" />
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-650 font-mono">Action Required Items</h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div 
+                    onClick={() => setActiveTab('submissions')}
+                    className="p-4 bg-amber-50 border border-amber-200 hover:border-amber-300 rounded-2xl cursor-pointer hover:shadow-sm transition space-y-2 text-left"
+                  >
+                    <div className="flex items-center gap-2 text-amber-800">
+                      <CheckCircle2 className="w-4 h-4 text-amber-600 animate-pulse" />
+                      <span className="text-[10px] font-black uppercase tracking-wide font-mono">Pending Submissions</span>
+                    </div>
+                    <p className="text-[11px] text-amber-700 font-semibold leading-relaxed m-0">
+                      There are <strong className="font-extrabold">{pendingReviewsCount}</strong> submission files awaiting review. Inspect uploaded proof assets to approve.
+                    </p>
+                    <span className="inline-block pt-1.5 text-[9px] font-black uppercase text-amber-800 tracking-wider">Inspect Proofs &rarr;</span>
+                  </div>
+
+                  <div 
+                    onClick={() => setActiveTab('withdrawals')}
+                    className="p-4 bg-rose-50 border border-rose-200 hover:border-rose-300 rounded-2xl cursor-pointer hover:shadow-sm transition space-y-2 text-left"
+                  >
+                    <div className="flex items-center gap-2 text-rose-800">
+                      <Coins className="w-4 h-4 text-rose-600 animate-pulse" />
+                      <span className="text-[10px] font-black uppercase tracking-wide font-mono">Pending Withdrawals</span>
+                    </div>
+                    <p className="text-[11px] text-rose-700 font-semibold leading-relaxed m-0">
+                      There are <strong className="font-extrabold">{pendingWithdrawalsCount}</strong> user withdrawals in loop. Verify balance and trigger payouts.
+                    </p>
+                    <span className="inline-block pt-1.5 text-[9px] font-black uppercase text-rose-800 tracking-wider">Authorize Claims &rarr;</span>
+                  </div>
+
+                  <div 
+                    onClick={() => setActiveTab('client-tasks')}
+                    className="p-4 bg-blue-50 border border-blue-200 hover:border-blue-300 rounded-2xl cursor-pointer hover:shadow-sm transition space-y-2 text-left"
+                  >
+                    <div className="flex items-center gap-2 text-blue-800">
+                      <CheckSquare className="w-4 h-4 text-blue-600" />
+                      <span className="text-[10px] font-black uppercase tracking-wide font-mono">Client Approvals</span>
+                    </div>
+                    <p className="text-[11px] text-blue-700 font-semibold leading-relaxed m-0">
+                      Onboard new corporate client accounts, verify campaign briefs, and authorize deposit credentials.
+                    </p>
+                    <span className="inline-block pt-1.5 text-[9px] font-black uppercase text-blue-800 tracking-wider">Onboarding Desk &rarr;</span>
+                  </div>
+
+                  <div 
+                    onClick={() => setActiveTab('client-chats')}
+                    className="p-4 bg-purple-50 border border-purple-200 hover:border-purple-300 rounded-2xl cursor-pointer hover:shadow-sm transition space-y-2 text-left"
+                  >
+                    <div className="flex items-center gap-2 text-purple-800">
+                      <MessageSquare className="w-4 h-4 text-purple-600" />
+                      <span className="text-[10px] font-black uppercase tracking-wide font-mono">Open Support Tickets</span>
+                    </div>
+                    <p className="text-[11px] text-purple-700 font-semibold leading-relaxed m-0">
+                      Currently resolving <strong className="font-extrabold">{openTicketsCount}</strong> client tickets. Provide live assistance and process responses.
+                    </p>
+                    <span className="inline-block pt-1.5 text-[9px] font-black uppercase text-purple-800 tracking-wider">Answer Helpdesk &rarr;</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* QUICK ACTIONS & FINANCIAL OVERVIEW & PLATFORM HEALTH */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                {/* Panel 1: Quick Actions */}
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
+                  <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+                    <Sparkles className="w-4.5 h-4.5 text-indigo-600" />
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 font-mono m-0">Quick Action Deck</h4>
+                  </div>
+                  
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('tasks')}
+                      className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black cursor-pointer transition text-center flex items-center justify-between shadow-xs uppercase tracking-wide"
+                    >
+                      <span>Create New Task</span>
+                      <PlusCircle className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('clients')}
+                      className="w-full py-2.5 px-4 bg-white border border-slate-250 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold cursor-pointer transition text-center flex items-center justify-between uppercase tracking-wide"
+                    >
+                      <span>Setup Client Profile</span>
+                      <Building className="w-4 h-4 text-slate-450" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('announcements')}
+                      className="w-full py-2.5 px-4 bg-white border border-slate-250 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold cursor-pointer transition text-center flex items-center justify-between uppercase tracking-wide"
+                    >
+                      <span>Publish Announcement</span>
+                      <SendHorizontal className="w-4 h-4 text-slate-450" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('users')}
+                      className="w-full py-2.5 px-4 bg-white border border-slate-250 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold cursor-pointer transition text-center flex items-center justify-between uppercase tracking-wide"
+                    >
+                      <span>Add/Promote Moderator</span>
+                      <Users className="w-4 h-4 text-slate-450" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Panel 2: Financial Overview */}
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
+                  <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+                    <CreditCard className="w-4.5 h-4.5 text-indigo-600" />
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 font-mono m-0">Financial Overview</h4>
+                  </div>
+                  
+                  <div className="space-y-3.5 pt-1">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-bold text-slate-500">Total Paid Out</span>
+                      <span className="font-extrabold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-lg font-mono">
+                        ${totalPaidOutAmt.toFixed(2)} USDT
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-bold text-slate-500">Pending Withdrawals</span>
+                      <span className="font-extrabold text-rose-600 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-lg font-mono">
+                        ${totalPendingPayouts.toFixed(2)} USDT
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-bold text-slate-500">Outstanding Client Dues</span>
+                      <span className="font-extrabold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-lg font-mono">
+                        ${totalOutstandingDues.toFixed(2)} USDT
+                      </span>
+                    </div>
+
+                    <div className="text-[10px] font-bold text-slate-400 bg-white border border-slate-150 p-2 rounded-xl text-center font-mono">
+                      USDT Vault Address: ERC-20 Verified
+                    </div>
+                  </div>
+                </div>
+
+                {/* Panel 3: Platform Health Monitor */}
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
+                  <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+                    <Shield className="w-4.5 h-4.5 text-indigo-600" />
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 font-mono m-0">Platform Infrastructure Status</h4>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-xs font-semibold">
+                      <span className="text-slate-500">Website Status</span>
+                      <div className="flex items-center gap-1.5 uppercase font-black text-[9px] font-mono text-emerald-650 bg-emerald-50 px-2 py-0.5 rounded-md">
+                        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
+                        Online
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs font-semibold">
+                      <span className="text-slate-500">Firebase Realtime Sync</span>
+                      <div className="flex items-center gap-1.5 uppercase font-black text-[9px] font-mono text-emerald-650 bg-emerald-50 px-2 py-0.5 rounded-md">
+                        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
+                        Online
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs font-semibold">
+                      <span className="text-slate-500">Discord Verification Hook</span>
+                      <div className="flex items-center gap-1.5 uppercase font-black text-[9px] font-mono text-emerald-650 bg-emerald-50 px-2 py-0.5 rounded-md">
+                        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
+                        Online
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs font-semibold">
+                      <span className="text-slate-500">Email Gateway (SMTP)</span>
+                      <div className="flex items-center gap-1.5 uppercase font-black text-[9px] font-mono text-emerald-650 bg-emerald-50 px-2 py-0.5 rounded-md">
+                        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
+                        Online
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* RECENT LIVE ACTIVITY FEED */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-3.5 bg-indigo-600 rounded-full" />
+                    <h3 className="text-xs font-black uppercase tracking-wider text-slate-650 font-mono">Recent Live Platform Feed</h3>
+                  </div>
+                  <span className="text-[10px] text-indigo-600 font-extrabold bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md font-mono uppercase tracking-wider">Real-time Stream</span>
+                </div>
+
+                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden divide-y divide-slate-100">
+                  {recentActivitiesList.length === 0 ? (
+                    <p className="p-8 text-center text-slate-450 font-bold text-xs">No recent platform activities logged yet.</p>
+                  ) : (
+                    recentActivitiesList.map(activity => (
+                      <div key={activity.id} className="p-3.5 hover:bg-slate-50/50 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 transition">
+                        <div className="flex items-start gap-3 text-left">
+                          <span className={`px-2 py-0.5 text-[9px] font-black uppercase tracking-wide rounded-md shrink-0 font-mono ${activity.badgeClass}`}>
+                            {activity.badgeStr}
+                          </span>
+                          <span className="text-xs font-bold text-slate-700 leading-snug">{activity.text}</span>
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-bold font-mono whitespace-nowrap shrink-0">
+                          {activity.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })} ({activity.date.toLocaleDateString()})
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+            </div>
+          );
+        })()}
+
         {/* ================= CLIENTS REGISTRY TAB ================= */}
         {activeTab === 'clients' && (
           <div className="space-y-6 text-slate-800">
