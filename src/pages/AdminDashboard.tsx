@@ -10,8 +10,9 @@ import {
   Trash2, Edit, CheckCircle2, XCircle, AlertCircle, Send, Plus, 
   Settings, Link, ExternalLink, MessageCircle, BarChart2, ShieldAlert,
   Building, CreditCard, MessageSquare, PlusCircle, CheckSquare, Shield, ToggleLeft, ToggleRight, AlertTriangle, Eye, SendHorizontal,
-  Archive, Search, ArrowUpDown, Coins
+  Archive, Search, ArrowUpDown, Coins, Menu, X
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 export const AdminDashboard: React.FC = () => {
   const { 
@@ -63,6 +64,7 @@ export const AdminDashboard: React.FC = () => {
   });
 
   const [activeTab, setActiveTab] = useState<'users' | 'clients' | 'client-tasks' | 'client-payments' | 'client-chats' | 'tasks' | 'submissions' | 'withdrawals' | 'announcements' | 'settings' | 'security' | 'track-data' | 'audit-log' | 'deleted-tasks' | 'live-wallet' | 'deleted-history'>('users');
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showPermissionRestrictedModal, setShowPermissionRestrictedModal] = useState<string | null>(null);
 
   // Deleted tasks list & filter states
@@ -957,11 +959,59 @@ export const AdminDashboard: React.FC = () => {
     setTimeout(() => setSettingsSuccess(false), 3000);
   };
 
+  const menuGroups = [
+    {
+      title: "User Management",
+      color: "border-emerald-500",
+      items: [
+        { id: 'users', label: 'Users Map', icon: Users, count: usersBadgeCount },
+        { id: 'clients', label: 'Clients Registry', icon: Building, count: clientsBadgeCount },
+        { id: 'client-tasks', label: 'Client Approvals', icon: CheckSquare, count: clientTasksBadgeCount }
+      ]
+    },
+    {
+      title: "Task Operations",
+      color: "border-blue-500",
+      items: [
+        { id: 'tasks', label: 'Tasks Desk', icon: FileText, count: tasksBadgeCount },
+        { id: 'submissions', label: 'Task Submits', icon: CheckCircle2, count: submissionsBadgeCount },
+        { id: 'deleted-tasks', label: 'Deleted Tasks', icon: Trash2, count: 0 }
+      ]
+    },
+    {
+      title: "Finance",
+      color: "border-amber-500",
+      items: [
+        { id: 'live-wallet', label: 'Wallet Balances', icon: Wallet, count: null },
+        { id: 'withdrawals', label: 'Withdraw Desk', icon: Coins, count: withdrawalsBadgeCount },
+        { id: 'client-payments', label: 'Agency Payments', icon: CreditCard, count: paymentsBadgeCount }
+      ]
+    },
+    {
+      title: "Security & Logs",
+      color: "border-red-500",
+      items: [
+        { id: 'security', label: 'Security Center', icon: Shield, count: securityBadgeCount },
+        { id: 'track-data', label: 'Track Data', icon: BarChart2, count: trackDataBadgeCount },
+        { id: 'audit-log', label: 'Audit Logs', icon: Archive, count: auditLogsBadgeCount },
+        { id: 'deleted-history', label: 'Deleted History', icon: Archive, count: archivedTasks.length + archivedWithdrawals.length + submissions.filter(s => s.deleted).length }
+      ]
+    },
+    {
+      title: "Communication",
+      color: "border-indigo-500",
+      items: [
+        { id: 'client-chats', label: 'Client Support', icon: MessageSquare, count: clientSupportBadgeCount },
+        { id: 'announcements', label: 'Publish Feed', icon: SendHorizontal, count: announcementsBadgeCount }
+      ]
+    }
+  ];
+
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 text-slate-800" id="admin-dashboard-container">
       
       {/* Upper Brand Control Header */}
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 pb-5 border-b border-slate-200">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 pb-5 border-b border-slate-200">
         <div>
           <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-650 block mb-1">
             {currentUser?.role === 'moderator' ? 'Moderator Control Center' : 'Administrative Center'}
@@ -971,49 +1021,34 @@ export const AdminDashboard: React.FC = () => {
           </h1>
         </div>
 
-        {/* Tab Selection */}
-        <div className="flex flex-wrap gap-1 bg-slate-100 p-1.5 rounded-2xl border border-slate-200 w-full xl:w-auto">
-          {[
-            { id: 'users', label: 'Users Map', icon: Users, count: usersBadgeCount },
-            { id: 'live-wallet', label: 'Wallet Balances', icon: Wallet, count: null },
-            { id: 'clients', label: 'Clients Registry', icon: Building, count: clientsBadgeCount },
-            { id: 'client-tasks', label: 'Client Approvals', icon: CheckSquare, count: clientTasksBadgeCount },
-            { id: 'client-payments', label: 'Agency Payments', icon: CreditCard, count: paymentsBadgeCount },
-            { id: 'client-chats', label: 'Client Support', icon: MessageSquare, count: clientSupportBadgeCount },
-            { id: 'tasks', label: 'Tasks Desk', icon: FileText, count: tasksBadgeCount },
-            { id: 'submissions', label: 'Task Submits', icon: CheckCircle2, count: submissionsBadgeCount },
-            { id: 'withdrawals', label: 'Withdraw Desk', icon: Coins, count: withdrawalsBadgeCount },
-            { id: 'track-data', label: 'Track Data', icon: BarChart2, count: trackDataBadgeCount },
-            { id: 'security', label: 'Security Center', icon: Shield, count: securityBadgeCount },
-            { id: 'announcements', label: 'Publish Feed', icon: SendHorizontal, count: announcementsBadgeCount },
-            { id: 'audit-log', label: 'Audit Logs', icon: Archive, count: auditLogsBadgeCount },
-            { id: 'deleted-tasks', label: 'Deleted Tasks', icon: Trash2, count: 0 },
-            { id: 'deleted-history', label: 'Deleted History', icon: Archive, count: archivedTasks.length + archivedWithdrawals.length + submissions.filter(s => s.deleted).length }
-          ].map(tab => {
-            const TabIcon = tab.icon;
-            return (
-              <button
-                 key={tab.id}
-                 onClick={() => setActiveTab(tab.id as any)}
-                 className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer relative"
-                 style={{
-                   color: activeTab === tab.id ? '#ffffff' : '#64748b',
-                   backgroundColor: activeTab === tab.id ? '#6366f1' : 'transparent',
-                   boxShadow: activeTab === tab.id ? '0 2px 4px rgba(99, 102, 241, 0.2)' : 'none'
-                 }}
-              >
-                 <TabIcon className="w-3.5 h-3.5" />
-                 <span>{tab.label}</span>
-               {tab.count !== null && tab.count > 0 && (
-                 <span 
-                   className="px-1.5 py-0.5 bg-rose-600 text-[9px] font-bold rounded-full text-white shadow-sm"
-                 >
-                   {tab.count}
-                 </span>
-               )}
-            </button>
-          );
-        })}
+        {/* Profile Avatar & Three-line Hamburger Button */}
+        <div className="flex items-center gap-3 self-stretch sm:self-auto justify-between sm:justify-end select-none" id="admin-header-nav">
+          <div className="flex items-center gap-2.5 bg-slate-50 border border-slate-200 p-1.5 pl-2.5 pr-4 rounded-xl">
+            <img 
+              src={currentUser?.avatarUrl || "https://api.dicebear.com/7.x/bottts/svg?seed=Admin"} 
+              alt="Avatar" 
+              className="w-8 h-8 rounded-full border border-indigo-500/20 object-cover"
+              referrerPolicy="no-referrer"
+            />
+            <div className="text-left leading-none">
+              <span className="text-xs text-indigo-700 font-extrabold block truncate max-w-[130px]">
+                {currentUser?.fullName}
+              </span>
+              <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block mt-0.5">
+                {currentUser?.role === 'moderator' ? 'Moderator' : 'Administrator'}
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsMenuOpen(true)}
+            className="flex items-center justify-center p-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-xs cursor-pointer transition hover:scale-105 active:scale-95 border border-indigo-500/10"
+            aria-label="Open Navigation Drawer"
+            id="admin-hamburger-btn"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
         </div>
       </div>
 
@@ -6016,6 +6051,132 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Drawer Overlay backdrop and slide panel */}
+      <AnimatePresence>
+        {isMenuOpen && (
+          <div className="fixed inset-0 z-50 font-sans" id="admin-nav-drawer-overlay">
+            {/* Backdrop panel */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              onClick={() => setIsMenuOpen(false)}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs cursor-pointer"
+            />
+
+            {/* Slide Drawer body */}
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 26, stiffness: 240 }}
+              className="absolute right-0 top-0 h-screen w-full sm:w-[390px] bg-white text-slate-800 shadow-2xl flex flex-col border-l border-slate-200/60"
+            >
+              {/* Header */}
+              <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-8 w-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center">
+                    <Shield className="w-4.5 h-4.5 text-indigo-600 animate-pulse" />
+                  </div>
+                  <div>
+                    <h2 className="text-[13px] font-black text-slate-905 uppercase tracking-wider m-0 font-sans">Navigation Deck</h2>
+                    <p className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest m-0 block mt-0.5">
+                      {currentUser?.role === 'moderator' ? 'Moderator Portal' : 'Admin Control Desk'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="p-1.5 hover:bg-slate-200 text-slate-400 hover:text-slate-700 rounded-lg transition"
+                >
+                  <X className="w-5 h-5 pointer-events-none" />
+                </button>
+              </div>
+
+              {/* Scrollable group section */}
+              <div className="flex-1 overflow-y-auto p-5 space-y-7 scrollbar-thin scrollbar-slate-200">
+                {/* Operator summary */}
+                <div className="bg-slate-50 border border-slate-200/60 p-3.5 rounded-2xl flex items-center gap-3">
+                  <img 
+                    src={currentUser?.avatarUrl || "https://api.dicebear.com/7.x/bottts/svg?seed=Admin"} 
+                    alt="Operator Avatar" 
+                    className="w-10 h-10 rounded-full border border-indigo-100 object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="text-left font-sans">
+                    <span className="text-xs text-slate-900 font-black block leading-snug">
+                      {currentUser?.fullName}
+                    </span>
+                    <span className="text-[10px] text-slate-450 font-bold block leading-none mt-0.5">
+                      {currentUser?.role === 'moderator' ? 'Moderator Role' : 'Administrator Role'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Iterate through groups */}
+                {menuGroups.map((group, gIdx) => (
+                  <div key={gIdx} className="space-y-2 font-sans">
+                    <div className="flex items-center gap-2 pl-1 select-none">
+                      <span className="w-1 h-2 bg-indigo-650 rounded-full" />
+                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-405 font-mono">
+                        {group.title}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      {group.items.map((tab) => {
+                        const TabIcon = tab.icon;
+                        const isActive = activeTab === tab.id;
+                        return (
+                          <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => {
+                              setActiveTab(tab.id as any);
+                              setIsMenuOpen(false);
+                            }}
+                            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-extrabold transition cursor-pointer border ${
+                              isActive
+                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/10'
+                                : 'text-slate-600 hover:bg-slate-50 active:bg-slate-100 border-transparent hover:border-slate-100 text-left'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <TabIcon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                              <span>{tab.label}</span>
+                            </div>
+
+                            {/* Badges representation */}
+                            {tab.count !== null && tab.count > 0 && (
+                              <span className={`px-1.5 py-0.5 text-[9px] font-black font-mono rounded ${
+                                isActive 
+                                  ? 'bg-white/20 text-white' 
+                                  : 'bg-rose-50 text-rose-600'
+                              }`}>
+                                {tab.count}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Status footer inside drawer */}
+              <div className="p-4 bg-slate-50 border-t border-slate-105 text-center select-none font-mono">
+                <span className="text-[8px] text-slate-400 font-black uppercase tracking-wider block">
+                  Platform Admin Panel v2.0
+                </span>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Floating Animated Toast Feedback Container */}
       {toastMessage && (
