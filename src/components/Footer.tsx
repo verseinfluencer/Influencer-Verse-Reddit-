@@ -19,13 +19,17 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, isLightPage = false 
             
             {/* Column 1 - Brand Info */}
             <div className="md:col-span-4 space-y-4">
-              <div id="footer-logo" className="inline-block">
+              <div 
+                id="footer-logo" 
+                className="inline-block cursor-pointer transition-all duration-200 hover:scale-[1.03] active:scale-95 hover:opacity-90"
+                onClick={() => onNavigate('home')}
+                title="Navigate to Homepage"
+              >
                 <Logo 
                   size="sm" 
                   withText={true} 
                   theme="light" 
                   textClassName="text-[#111111] font-black"
-                  onClick={() => onNavigate('home')}
                 />
               </div>
               <p className="text-xs text-[#6B7280] max-w-sm leading-relaxed font-sans font-medium">
@@ -147,13 +151,17 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, isLightPage = false 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-12">
           {/* Brand Info */}
           <div className="md:col-span-2 space-y-4">
-            <div id="footer-logo" className="inline-block">
+            <div 
+              id="footer-logo" 
+              className="inline-block cursor-pointer transition-all duration-200 hover:scale-[1.03] active:scale-95 hover:opacity-90"
+              onClick={() => onNavigate('home')}
+              title="Navigate to Homepage"
+            >
               <Logo 
                 size="sm" 
                 withText={true} 
                 theme="light" 
                 textClassName="text-[#111111] font-black"
-                onClick={() => onNavigate('home')}
               />
             </div>
             <p className="text-xs text-[#6B7280] max-w-sm leading-relaxed font-sans font-medium">

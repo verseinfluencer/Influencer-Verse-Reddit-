@@ -51,6 +51,11 @@ function MainAppContent() {
 
   // Render the core active page component dynamically
   const renderPage = () => {
+    // If the page is 'home', always render the Home component for all users/roles
+    if (currentPage === 'home') {
+      return <Home onNavigate={onNavigate} />;
+    }
+
     // 1. Unauthenticated views
     if (!currentUser) {
       switch (currentPage) {

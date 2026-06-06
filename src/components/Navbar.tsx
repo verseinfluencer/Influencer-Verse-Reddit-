@@ -85,13 +85,17 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <div id="nav-logo">
+          <div 
+            id="nav-logo"
+            onClick={() => onNavigate('home')}
+            className="cursor-pointer transition-all duration-200 hover:scale-[1.03] active:scale-95 hover:opacity-90 flex items-center"
+            title="Navigate to Homepage"
+          >
             <Logo 
               size="sm" 
               withText={true} 
               theme={isLightHeader ? 'light' : 'dark'} 
               textClassName={isLightHeader ? "text-black font-black" : "text-white font-black"} 
-              onClick={() => onNavigate('home')}
             />
           </div>
 
