@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { motion, useInView } from 'motion/react';
+import { CampaignWalkthrough } from '../components/CampaignWalkthrough';
 import { 
   Sparkles, ArrowRight, ShieldCheck, Zap, Award, CheckCircle2, 
   ChevronDown, ChevronUp, Star, Users, Briefcase, DollarSign, 
@@ -696,6 +697,9 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
 
         </div>
       </section>
+
+      {/* NEW SECTION: Campaign Visual Workflow Walkthrough Simulation */}
+      <CampaignWalkthrough onNavigate={onNavigate} currentUser={currentUser} />
 
       {/* 3. FOR CREATORS SECTION WITH 3D PERSPECTIVE TILT */}
       <section className="py-24 md:py-32 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-10 relative" id="for-creators">
