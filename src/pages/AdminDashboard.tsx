@@ -1066,7 +1066,7 @@ export const AdminDashboard: React.FC = () => {
             {currentUser?.role === 'moderator' ? 'Moderator Control Center' : 'Administrative Center'}
           </span>
           <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
-            {currentUser?.role === 'moderator' ? 'Moderator Panel' : 'Admin Panel Controls'}
+            Control Center
           </h1>
         </div>
 
@@ -6658,7 +6658,7 @@ export const AdminDashboard: React.FC = () => {
                   <div>
                     <h2 className="text-[13px] font-black text-slate-905 uppercase tracking-wider m-0 font-sans">Navigation Deck</h2>
                     <p className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest m-0 block mt-0.5">
-                      {currentUser?.role === 'moderator' ? 'Moderator Portal' : 'Admin Control Desk'}
+                      Control Center
                     </p>
                   </div>
                 </div>

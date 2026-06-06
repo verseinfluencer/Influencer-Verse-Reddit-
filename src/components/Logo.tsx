@@ -6,6 +6,7 @@ interface LogoProps {
   withText?: boolean;
   textClassName?: string;
   theme?: 'light' | 'dark' | 'auto';
+  onClick?: () => void;
 }
 
 export const Logo: React.FC<LogoProps> = ({
@@ -14,6 +15,7 @@ export const Logo: React.FC<LogoProps> = ({
   withText = false,
   textClassName = '',
   theme = 'auto',
+  onClick,
 }) => {
   // Determine pixel sizes
   const dimensions = {
@@ -58,9 +60,14 @@ export const Logo: React.FC<LogoProps> = ({
   }, [theme]);
 
   return (
-    <div className={`flex items-center gap-3 select-none ${className}`} id="influencer-verse-brand-logo">
+    <div 
+      className={`flex items-center gap-3 select-none transition-all duration-200 hover:scale-[1.03] cursor-pointer ${className}`} 
+      id="influencer-verse-brand-logo"
+      onClick={onClick}
+      title="Navigate to Homepage"
+    >
       {/* Dynamic Animated Vector Logo */}
-      <div className={`${dimensions.box} relative shrink-0 transition-transform duration-300 hover:scale-105`}>
+      <div className={`${dimensions.box} relative shrink-0`}>
         <svg
           viewBox="0 0 100 100"
           fill="none"

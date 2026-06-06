@@ -85,12 +85,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <div 
-            onClick={() => onNavigate('home')} 
-            className="cursor-pointer"
-            id="nav-logo"
-          >
-            <Logo size="sm" withText={true} theme={isLightHeader ? 'light' : 'dark'} textClassName={isLightHeader ? "text-black font-black" : "text-white font-black"} />
+          <div id="nav-logo">
+            <Logo 
+              size="sm" 
+              withText={true} 
+              theme={isLightHeader ? 'light' : 'dark'} 
+              textClassName={isLightHeader ? "text-black font-black" : "text-white font-black"} 
+              onClick={() => onNavigate('home')}
+            />
           </div>
 
           {/* Center Links - Desktop */}
@@ -99,7 +101,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
               {(currentUser.role === 'admin' || currentUser.role === 'moderator') ? (
                 <>
                   <button onClick={() => onNavigate('admin')} className={navItemClass('admin')}>
-                    <BarChart className="w-4 h-4" /> {currentUser.role === 'admin' ? 'Admin Control' : 'Moderator Panel'}
+                    <BarChart className="w-4 h-4" /> Control Center
                   </button>
                   <button onClick={() => onNavigate('faq')} className={navItemClass('faq')}>
                     FAQ
@@ -426,7 +428,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
             (currentUser.role === 'admin' || currentUser.role === 'moderator') ? (
               <>
                 <button onClick={() => { onNavigate('admin'); setMobileMenuOpen(false); }} className="block w-full text-left py-2 px-3 bg-zinc-900 rounded-lg text-sm font-semibold">
-                  {currentUser.role === 'admin' ? 'Admin Dashboard' : 'Moderator Panel'}
+                  Control Center
                 </button>
                 <button onClick={() => { onNavigate('tickets'); setMobileMenuOpen(false); }} className="block w-full text-left py-2 px-3 bg-zinc-900 rounded-lg text-sm font-semibold">
                   Support Tickets

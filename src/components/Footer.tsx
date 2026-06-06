@@ -19,12 +19,14 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, isLightPage = false 
             
             {/* Column 1 - Brand Info */}
             <div className="md:col-span-4 space-y-4">
-              <div 
-                onClick={() => onNavigate('home')} 
-                className="cursor-pointer inline-block" 
-                id="footer-logo"
-              >
-                <Logo size="sm" withText={true} theme="light" textClassName="text-[#111111] font-black" />
+              <div id="footer-logo" className="inline-block">
+                <Logo 
+                  size="sm" 
+                  withText={true} 
+                  theme="light" 
+                  textClassName="text-[#111111] font-black"
+                  onClick={() => onNavigate('home')}
+                />
               </div>
               <p className="text-xs text-[#6B7280] max-w-sm leading-relaxed font-sans font-medium">
                 The premier Web3 Reddit influencer network where Reddit micro-influencers connect directly with decentralized brands. Earn USDT rewards securely via instant BEP20 payouts.
@@ -145,12 +147,14 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, isLightPage = false 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-12">
           {/* Brand Info */}
           <div className="md:col-span-2 space-y-4">
-            <div 
-              onClick={() => onNavigate('home')} 
-              className="cursor-pointer inline-block" 
-              id="footer-logo"
-            >
-              <Logo size="sm" withText={true} theme="light" textClassName="text-[#111111] font-black" />
+            <div id="footer-logo" className="inline-block">
+              <Logo 
+                size="sm" 
+                withText={true} 
+                theme="light" 
+                textClassName="text-[#111111] font-black"
+                onClick={() => onNavigate('home')}
+              />
             </div>
             <p className="text-xs text-[#6B7280] max-w-sm leading-relaxed font-sans font-medium">
               The premier Web3 Reddit influencer network where Reddit micro-influencers connect directly with decentralized brands. Earn USDT rewards securely via instant BEP20 payouts.

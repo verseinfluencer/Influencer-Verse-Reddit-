@@ -266,7 +266,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigate }) => {
           
           {/* Brand visual header */}
           <div className="text-center space-y-4 mb-8 flex flex-col items-center">
-            <Logo size="md" />
+            <Logo size="md" onClick={() => onNavigate('home')} />
             <div>
               <h2 className="text-2xl font-black text-zinc-900 font-display tracking-tight">Reset Password</h2>
               <p className="text-zinc-500 text-xs font-semibold mt-1">We will send you a secure link to update your password</p>
@@ -338,7 +338,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigate }) => {
         
         {/* Brand visual header */}
         <div className="text-center space-y-4 mb-8 flex flex-col items-center">
-          <Logo size="md" />
+          <Logo size="md" onClick={() => onNavigate('home')} />
           <div>
             <h2 className="text-2xl font-black text-zinc-900 font-display tracking-tight">Welcome Back</h2>
             <p className="text-zinc-500 text-xs font-semibold mt-1">Access your Influencer Verse creator account</p>

@@ -406,7 +406,7 @@ export const Signup: React.FC<SignupProps> = ({ onNavigate }) => {
         <div className="absolute top-0 left-0 w-32 h-32 bg-purple-500/5 rounded-full blur-3xl"></div>
 
         <div className="text-center space-y-4 mb-8 flex flex-col items-center">
-          <Logo size="md" />
+          <Logo size="md" onClick={() => onNavigate('home')} />
           <div>
             <h2 className="text-2xl font-black text-zinc-900 font-display tracking-tight">Register Creator</h2>
             <p className="text-zinc-500 text-xs font-semibold mt-1">Join the Reddit influencer task network</p>
