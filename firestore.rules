@@ -82,7 +82,14 @@ service cloud.firestore {
     
     // Tasks collection
     match /tasks/{taskId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && (
+        !resource.data.keys().hasAll(['visibility']) ||
+        resource.data.visibility != 'assigned' ||
+        isAdmin() ||
+        isModerator() ||
+        (resource.data.keys().hasAll(['assignedMembers']) && 
+          request.auth.uid in resource.data.assignedMembers)
+      );
       allow create, delete: if isAdmin();
       allow update: if isAuthenticated() && (
         isAdmin() || isApprovedClient() || (
@@ -106,6 +113,14 @@ service cloud.firestore {
               request.resource.data.status == 'claimed' && 
               resource.data.status == 'available' && 
               request.resource.data.claimed_by == request.auth.uid &&
+              (
+                !resource.data.keys().hasAll(['visibility']) ||
+                resource.data.visibility != 'assigned' ||
+                isAdmin() ||
+                isModerator() ||
+                (resource.data.keys().hasAll(['assignedMembers']) &&
+                  request.auth.uid in resource.data.assignedMembers)
+              ) &&
               (
                 get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
                 get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'moderator' ||

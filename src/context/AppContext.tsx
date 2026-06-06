@@ -1232,7 +1232,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               id: `notif-${Date.now()}`,
               userId: pendingSub.userId,
               type: 'task_approved',
-              title: 'Client Approved Your Task! 💰',
+              title: 'Client Approved Your Task',
               message: `Your proof for "${pendingSub.taskTitle}" was approved by the client! +$${pendingSub.reward} USDT has been credited to your wallet.`,
               read: false,
               timestamp: new Date().toISOString()
@@ -1299,7 +1299,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             id: `notif-${Date.now()}`,
             userId: pendingSub.userId,
             type: 'task_rejected',
-            title: 'Client Rejected Your Proof ❌',
+            title: 'Client Rejected Your Proof',
             message: `Your proof for "${pendingSub.taskTitle}" was rejected by the client. Reason: ${feedback || 'None provided'}.`,
             read: false,
             timestamp: new Date().toISOString()
@@ -1433,7 +1433,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           id: `notif-client-approved-${Date.now()}`,
           userId: task.clientId,
           type: 'client_update',
-          title: 'Campaign Task Approved! 🚀',
+          title: 'Campaign Task Approved!',
           message: `Your campaign "${task.title}" has been approved by admins and is now live for members. Creator pay: $${pay.toFixed(2)} USDT.`,
           read: false,
           timestamp: new Date().toISOString()
@@ -1743,8 +1743,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: `notif-${Date.now()}`,
       userId,
       type: 'client_update',
-      title: 'Balance Deducted ❌',
-      message: `❌ $${amount.toFixed(2)} deducted from your wallet. Reason: ${reason}`,
+      title: 'Balance Deducted',
+      message: `$${amount.toFixed(2)} deducted from your wallet. Reason: ${reason}`,
       read: false,
       timestamp: new Date().toISOString(),
       createdAt: new Date().toISOString()
@@ -2257,6 +2257,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
 
+    // validate private assigned and exclusive tasks
+    if (t.visibility === 'assigned') {
+      if (!isUserAdmin && (!t.assignedMembers || !t.assignedMembers.includes(currentUser.id))) {
+        throw new Error("You do not currently have permission to claim this task.");
+      }
+      if (t.isExclusive && t.exclusivelyClaimedBy && t.exclusivelyClaimedBy !== currentUser.id) {
+        throw new Error("This exclusive private task has already been claimed.");
+      }
+    }
+
     // 2. Check if task is already claimed
     if (t.status !== 'available' || (t.claimed_by && t.claimed_by !== currentUser.id)) {
       throw new Error("Task already claimed.");
@@ -2290,12 +2300,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const expire = new Date(Date.now() + 60 * 60 * 1000).toISOString();
     
     try {
-      await updateDoc(taskRef, {
+      const taskUpdatePayload: any = {
         status: 'claimed',
         claimed_by: currentUser.id,
         claimed_at: new Date().toISOString(),
         claim_expires_at: expire
-      });
+      };
+      if (t.visibility === 'assigned' && t.isExclusive) {
+        taskUpdatePayload.exclusivelyClaimedBy = currentUser.id;
+      }
+      await updateDoc(taskRef, taskUpdatePayload);
 
       const userUpdateData: any = {
         active_task_id: taskId,
@@ -2626,22 +2640,73 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const adminCreateTask = async (taskData: Omit<Task, 'id' | 'completedSubmissionsCount' | 'status'> & { isSpecial?: boolean; minKarmaRequired?: number; specialLabel?: string }) => {
-    const newTask: Task = {
-      ...taskData,
-      type: taskData.type.toLowerCase().includes('comment') ? 'comment' : 'post',
-      id: `task-${Date.now()}`,
-      completedSubmissionsCount: 0,
-      status: 'available'
-    };
-    await setDoc(doc(db, 'tasks', newTask.id), newTask);
+    try {
+      const newTask: Task = {
+        ...taskData,
+        type: taskData.type.toLowerCase().includes('comment') ? 'comment' : 'post',
+        id: `task-${Date.now()}`,
+        completedSubmissionsCount: 0,
+        status: 'available'
+      };
+      await setDoc(doc(db, 'tasks', newTask.id), newTask);
+
+      // Send notifications to assigned members if private task
+      if (newTask.visibility === 'assigned' && newTask.assignedMembers && newTask.assignedMembers.length > 0) {
+        for (const memberId of newTask.assignedMembers) {
+          const notifId = `notif-assigned-${memberId}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+          const notif: AppNotification = {
+            id: notifId,
+            userId: memberId,
+            type: 'private_assignment',
+            title: 'New Private Task Assigned',
+            message: 'You have been assigned a private campaign task.',
+            read: false,
+            timestamp: new Date().toISOString()
+          };
+          await setDoc(doc(db, 'notifications', notifId), notif);
+        }
+      }
+    } catch (e) {
+      handleFirestoreError(e, OperationType.WRITE, 'tasks');
+    }
   };
 
   const adminEditTask = async (taskId: string, taskData: Partial<Task>) => {
-    const editData = { ...taskData };
-    if (editData.type) {
-      editData.type = editData.type.toLowerCase().includes('comment') ? 'comment' : 'post';
+    try {
+      const editData = { ...taskData };
+      if (editData.type) {
+        editData.type = editData.type.toLowerCase().includes('comment') ? 'comment' : 'post';
+      }
+
+      // Find prior task to identify newly assigned members
+      const priorTask = tasks.find(t => t.id === taskId);
+      const priorAssigned = priorTask?.assignedMembers || [];
+      const priorVisibility = priorTask?.visibility || 'public';
+
+      await updateDoc(doc(db, 'tasks', taskId), editData);
+
+      // Send notifications to newly assigned members
+      if (editData.visibility === 'assigned' && editData.assignedMembers) {
+        const newlyAssigned = editData.assignedMembers.filter(
+          mId => priorVisibility !== 'assigned' || !priorAssigned.includes(mId)
+        );
+        for (const mId of newlyAssigned) {
+          const notifId = `notif-assigned-${mId}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+          const notif: AppNotification = {
+            id: notifId,
+            userId: mId,
+            type: 'private_assignment',
+            title: 'New Private Task Assigned',
+            message: 'You have been assigned a private campaign task.',
+            read: false,
+            timestamp: new Date().toISOString()
+          };
+          await setDoc(doc(db, 'notifications', notifId), notif);
+        }
+      }
+    } catch (e) {
+      handleFirestoreError(e, OperationType.WRITE, `tasks/${taskId}`);
     }
-    await updateDoc(doc(db, 'tasks', taskId), editData);
   };
 
   const adminDeleteTask = async (taskId: string) => {
@@ -2708,7 +2773,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         id: `notif-${Date.now()}`,
         userId: sub.userId,
         type: 'task_rejected',
-        title: 'Submission Rejected ❌',
+        title: 'Submission Rejected',
         message: `Your submission for "${sub.taskTitle}" was rejected. Feedback: ${feedback || 'None provided'}`,
         read: false,
         timestamp: new Date().toISOString()
@@ -2794,7 +2859,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           id: `notif-${Date.now()}`,
           userId: sub.userId,
           type: 'task_approved',
-          title: 'Submission Approved! 💰',
+          title: 'Submission Approved!',
           message: `Your submission for "${sub.taskTitle}" has been approved. +${sub.reward} USDT.`,
           read: false,
           timestamp: new Date().toISOString()
@@ -2834,7 +2899,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           id: `notif-${Date.now()}`,
           userId: sub.userId,
           type: 'task_rejected',
-          title: 'Submission Rejected ❌',
+          title: 'Submission Rejected',
           message: `Your submission for "${sub.taskTitle}" was rejected. Feedback: ${feedback || 'None provided'}`,
           read: false,
           timestamp: new Date().toISOString()
@@ -2903,7 +2968,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: `notif-${Date.now()}`,
       userId: w.userId,
       type: 'withdrawal_update',
-      title: status === 'Approved' ? 'Withdrawal Released ⚡' : 'Withdrawal Rejected ⚠️',
+      title: status === 'Approved' ? 'Withdrawal Released' : 'Withdrawal Rejected',
       message: status === 'Approved'
         ? `Your payout of ${w.amount} USDT has been dispatched.`
         : `Your payout was rejected. Reason: Incorrect wallet address formats.`,

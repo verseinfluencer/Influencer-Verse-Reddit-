@@ -363,7 +363,7 @@ export const ReferralProgramInfo: React.FC = () => {
 
       {/* Footer warning info */}
       <div className="bg-slate-50 border border-slate-150 p-6 rounded-2xl max-w-2xl mx-auto text-xs text-zinc-500 leading-relaxed text-center font-semibold font-sans shadow-sm select-text">
-        🔒 <strong>Streaking Multiplier Rule:</strong> Maintaining consecutive daily logins multiplies your base matched invite rewards by up to 1.5x. Avoid creating duplicate accounts to game referral levels; manual audits check IP registers on withdrawal settlement.
+        <strong>Streaking Multiplier Rule:</strong> Maintaining consecutive daily logins multiplies your base matched invite rewards by up to 1.5x. Avoid creating duplicate accounts to game referral levels; manual audits check IP registers on withdrawal settlement.
       </div>
 
     </div>

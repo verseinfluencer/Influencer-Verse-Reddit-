@@ -117,14 +117,14 @@ export const PendingVerification: React.FC<PendingVerificationProps> = ({ onNavi
             </div>
 
             <div className="flex justify-between items-center text-xs border-t border-slate-200 pt-1.5">
-              <span className="text-slate-500 font-semibold">📧 Email Status:</span>
+              <span className="text-slate-500 font-semibold">Email Status:</span>
               {(currentUser.emailVerified || currentUser.gmailVerified || auth.currentUser?.emailVerified) ? (
                 <span className="px-2.5 py-0.5 bg-emerald-500/10 text-emerald-600 rounded-full font-bold text-[10px]">
-                  ✅ Verified
+                  Verified
                 </span>
               ) : (
                 <span className="px-2.5 py-0.5 bg-rose-500/10 text-rose-550 rounded-full font-bold text-[10px] animate-pulse">
-                  ❌ Unverified
+                  Unverified
                 </span>
               )}
             </div>

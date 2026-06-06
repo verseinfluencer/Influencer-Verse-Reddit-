@@ -1,7 +1,7 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
 import { EarningsChart } from '../components/EarningsChart';
-import { Award, Gift, TrendingUp, CheckCircle, Wallet, ArrowUpRight, Zap, RefreshCw, UserCheck, Star } from 'lucide-react';
+import { Award, Gift, TrendingUp, CheckCircle, Wallet, ArrowUpRight, Zap, RefreshCw, UserCheck, Star, ShieldAlert, CheckCircle2, ShieldCheck, Trophy, Sparkles, Flame, XCircle } from 'lucide-react';
 import { getKarmaTier, getKarmaProgressBar } from '../utils/tierHelper';
 
 interface UserDashboardProps {
@@ -113,11 +113,11 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
   
   // Achievements list
   const achievements = [
-    { title: "First Task Complete", desc: "Submitted task approved", active: completedTaskCount >= 1, badge: "⭐" },
-    { title: "Campaign Veteran", desc: "Approved in 5 tasks", active: completedTaskCount >= 5, badge: "🛡️" },
-    { title: "Earning Captain", desc: "Made over $50.00 USDT", active: currentUser.totalEarned >= 50.00, badge: "💎" },
-    { title: "Silver Veteran", desc: "Reached Silver Tier (1000+ Karma)", active: currentUser.karma >= 1000, badge: "🥈" },
-    { title: "Streak Master", desc: "Claimed daily streak 3+", active: (currentUser.streak || 0) >= 3, badge: "🔥" }
+    { title: "First Task Complete", desc: "Submitted task approved", active: completedTaskCount >= 1, icon: Star, color: "text-amber-500 bg-amber-50 border-amber-200" },
+    { title: "Campaign Veteran", desc: "Approved in 5 tasks", active: completedTaskCount >= 5, icon: ShieldCheck, color: "text-indigo-600 bg-indigo-50 border-indigo-200" },
+    { title: "Earning Captain", desc: "Made over $50.00 USDT", active: currentUser.totalEarned >= 50.00, icon: Sparkles, color: "text-purple-600 bg-purple-50 border-purple-200" },
+    { title: "Silver Veteran", desc: "Reached Silver Tier (1000+ Karma)", active: currentUser.karma >= 1000, icon: Trophy, color: "text-slate-500 bg-slate-100 border-slate-250" },
+    { title: "Streak Master", desc: "Claimed daily streak 3+", active: (currentUser.streak || 0) >= 3, icon: Flame, color: "text-orange-500 bg-orange-50 border-orange-200" }
   ];
 
   // User transactions
@@ -168,7 +168,6 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
   };
 
   const isUserAdmin = currentUser.role === 'admin' || currentUser.role === 'moderator' || currentUser.email?.toLowerCase() === 'kalloldeyprivate20@gmail.com';
-
   if (!isUserAdmin) {
     // 1. Post Cooldown
     const lastPostClaimed = parseDate(currentUser.lastPostClaimedAt);
@@ -232,7 +231,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-2xl md:text-3xl font-bold font-display text-gray-900 tracking-tight">Creator Dashboard</span>
                 <span className="px-3 py-1 bg-purple-50 border border-purple-100 text-purple-700 font-bold rounded-full text-[11px] uppercase tracking-wider shadow-sm">
-                  {currentTier.emoji} {currentTier.name} Tier
+                  {currentTier.name} Tier
                 </span>
               </div>
               <p className="text-sm text-gray-500 mt-1">
@@ -253,8 +252,8 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
             <span className="p-1 px-1.5 bg-purple-100 rounded-lg text-purple-600 font-bold font-mono text-[10px]">POST COOLDOWN</span>
             <span>You are currently on high precision Reddit Post claiming cooldown.</span>
           </div>
-          <span className="font-mono bg-purple-100 px-3 py-1 rounded-xl text-purple-700 font-black animate-pulse">
-            ⏳ Next Post Claim Available In: <strong className="font-mono font-black ml-1 text-purple-900">{postCooldownString}</strong>
+          <span className="font-mono bg-purple-100 px-3 py-1 rounded-xl text-purple-700 font-black animate-pulse flex items-center gap-1">
+            <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Next Post Claim Available In: <strong className="font-mono font-black ml-1 text-purple-900">{postCooldownString}</strong>
           </span>
         </div>
       )}
@@ -265,8 +264,8 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
             <span className="p-1 px-1.5 bg-purple-100 rounded-lg text-purple-600 font-bold font-mono text-[10px]">COMMENT COOLDOWN</span>
             <span>You are currently on high precision Reddit Comment claiming cooldown.</span>
           </div>
-          <span className="font-mono bg-purple-100 px-3 py-1 rounded-xl text-purple-700 font-black animate-pulse">
-            ⏳ Next Comment Claim Available In: <strong className="font-mono font-black ml-1 text-purple-900">{commentCooldownString}</strong>
+          <span className="font-mono bg-purple-100 px-3 py-1 rounded-xl text-purple-700 font-black animate-pulse flex items-center gap-1">
+            <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Next Comment Claim Available In: <strong className="font-mono font-black ml-1 text-purple-900">{commentCooldownString}</strong>
           </span>
         </div>
       )}
@@ -374,15 +373,16 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-base font-bold text-gray-900">{currentTier.emoji} {currentTier.name} Tier</span>
+            <span className="text-base font-bold text-gray-900">{currentTier.name} Tier</span>
             <span className="text-xs text-gray-500 font-bold uppercase">
               ({currentTier.minKarma.toLocaleString()}{currentTier.maxKarma === Infinity ? '+' : ` - ${currentTier.maxKarma.toLocaleString()}`} Karma)
             </span>
           </div>
 
           {(!currentUser.redditUsername || !currentUser.redditUsername.trim()) ? (
-            <div className="text-[10px] text-amber-700 font-bold bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg uppercase tracking-wider inline-flex items-center gap-1.5 w-max">
-              <span>⚠️ Please add your Reddit username in profile settings.</span>
+            <div className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg uppercase tracking-wider inline-flex items-center gap-1.5 w-max">
+              <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+              <span>Please add your Reddit username in profile settings.</span>
             </div>
           ) : null}
           
@@ -428,7 +428,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
           <div>
             <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block">Badge level</span>
             <span className="text-xs px-2.5 py-1 bg-purple-50 border border-purple-100 rounded-lg text-purple-700 font-bold font-mono inline-block mt-0.5">
-              {currentTier.emoji} {currentTier.name}
+              {currentTier.name}
             </span>
           </div>
         </div>
@@ -461,7 +461,9 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
                       : 'bg-gray-50 border-gray-100 opacity-40'
                   }`}
                 >
-                  <span className="text-2xl select-all">{a.badge}</span>
+                  <div className={`p-2 rounded-lg border ${a.color}`}>
+                    <a.icon className="w-5 h-5 shrink-0" />
+                  </div>
                   <div>
                     <span className="text-xs font-bold text-gray-900 block leading-tight">{a.title}</span>
                     <span className="text-xs text-gray-500 font-medium">{a.desc}</span>
@@ -567,7 +569,9 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
       {/* Floating Animated Toast Feedback Container */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-white border border-gray-200 text-gray-800 rounded-xl p-4 shadow-xl flex items-center gap-3 animate-slide-up-fade-in font-bold text-xs select-none">
-          <span className="p-2 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg font-bold">✅ Synced</span>
+          <span className="p-2 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg font-bold flex items-center gap-1">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Synced
+          </span>
           <span>{toastMessage}</span>
           <button 
             type="button" 
@@ -581,7 +585,9 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
 
       {syncError && (
         <div className="fixed bottom-6 right-6 z-50 bg-white border border-red-200 text-gray-800 rounded-xl p-4 shadow-xl flex items-center gap-3 animate-slide-up-fade-in font-bold text-xs select-none">
-          <span className="p-2 bg-red-50 text-red-600 border border-red-150 rounded-lg font-bold">❌ Error</span>
+          <span className="p-2 bg-red-50 text-red-600 border border-red-150 rounded-lg font-bold flex items-center gap-1">
+            <XCircle className="w-3.5 h-3.5 text-red-650" /> Error
+          </span>
           <span>{syncError}</span>
           <button 
             type="button" 

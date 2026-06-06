@@ -4,7 +4,7 @@ import { Task, Submission, Withdrawal, User, TaskType, Client, ClientTask, Clien
 import { getKarmaTier } from '../utils/tierHelper';
 import { db } from '../utils/firebase';
 import { renderRedditMarkdown, validateRedditMarkdownLinks } from '../utils/markdownHelper';
-import { collection, doc, deleteDoc, setDoc, getDocs, onSnapshot, query, orderBy, where, updateDoc } from 'firebase/firestore';
+import { collection, doc, deleteDoc, setDoc, getDocs, onSnapshot, query, orderBy, where, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { 
   Users, FileText, CheckCircle, Wallet, Sparkles, 
   Trash2, Edit, CheckCircle2, XCircle, AlertCircle, Send, Plus, 
@@ -173,7 +173,7 @@ export const AdminDashboard: React.FC = () => {
   // Special task specific configurations
   const [isSpecialTask, setIsSpecialTask] = useState(false);
   const [minKarmaRequired, setMinKarmaRequired] = useState<number>(1000);
-  const [specialLabel, setSpecialLabel] = useState('⭐ SPECIAL');
+  const [specialLabel, setSpecialLabel] = useState('SPECIAL');
 
   // Post specific
   const [subreddit, setSubreddit] = useState('');
@@ -182,6 +182,64 @@ export const AdminDashboard: React.FC = () => {
   // Comment specific
   const [commentPostUrl, setCommentPostUrl] = useState('');
   const [commentGuidelines, setCommentGuidelines] = useState('');
+
+  // Task assignment/visibility creator states
+  const [taskVisibility, setTaskVisibility] = useState<'public' | 'assigned'>('public');
+  const [assignedMembers, setAssignedMembers] = useState<string[]>([]);
+  const [isExclusiveTask, setIsExclusiveTask] = useState(false);
+  const [searchMemberQuery, setSearchMemberQuery] = useState('');
+  const [memberDropdownOpen, setMemberDropdownOpen] = useState(false);
+
+  // Edit Campaign Modal state
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [editVisibility, setEditVisibility] = useState<'public' | 'assigned'>('public');
+  const [editAssignedMembers, setEditAssignedMembers] = useState<string[]>([]);
+  const [editIsExclusive, setEditIsExclusive] = useState(false);
+  const [editSearchMemberQuery, setEditSearchMemberQuery] = useState('');
+  const [editMemberDropdownOpen, setEditMemberDropdownOpen] = useState(false);
+
+  const filteredCreatorsToInvite = users.filter(u => {
+    if (assignedMembers.includes(u.id)) return false;
+    const q = searchMemberQuery.toLowerCase();
+    const redditUser = (u.redditUsername || '').toLowerCase();
+    const email = (u.email || '').toLowerCase();
+    const fullName = (u.fullName || '').toLowerCase();
+    return redditUser.includes(q) || email.includes(q) || fullName.includes(q);
+  });
+
+  const filteredCreatorsToEditInvite = users.filter(u => {
+    if (editAssignedMembers.includes(u.id)) return false;
+    const q = editSearchMemberQuery.toLowerCase();
+    const redditUser = (u.redditUsername || '').toLowerCase();
+    const email = (u.email || '').toLowerCase();
+    const fullName = (u.fullName || '').toLowerCase();
+    return redditUser.includes(q) || email.includes(q) || fullName.includes(q);
+  });
+
+  const handleStartEditTask = (task: Task) => {
+    setEditingTask(task);
+    setEditVisibility(task.visibility || 'public');
+    setEditAssignedMembers(task.assignedMembers || []);
+    setEditIsExclusive(task.isExclusive || false);
+    setEditSearchMemberQuery('');
+    setEditMemberDropdownOpen(false);
+  };
+
+  const handleSaveTaskEdits = async () => {
+    if (!editingTask) return;
+    try {
+      await adminEditTask(editingTask.id, {
+        visibility: editVisibility,
+        assignedMembers: editVisibility === 'assigned' ? editAssignedMembers : [],
+        isExclusive: editVisibility === 'assigned' ? editIsExclusive : false
+      });
+      alert('Campaign visibility settings updated successfully!');
+      setEditingTask(null);
+    } catch (e) {
+      console.error(e);
+      alert('Error updating campaign assignments.');
+    }
+  };
 
   // Announcement Form States
   const [annTitle, setAnnTitle] = useState('');
@@ -265,7 +323,128 @@ export const AdminDashboard: React.FC = () => {
   // Deleted History States & Effects
   const [archivedTasks, setArchivedTasks] = useState<ArchivedApprovedTask[]>([]);
   const [archivedWithdrawals, setArchivedWithdrawals] = useState<ArchivedWithdrawal[]>([]);
-  const [activeDeletedHistoryTab, setActiveDeletedHistoryTab] = useState<'approved_tasks' | 'withdrawals'>('approved_tasks');
+  const [activeDeletedHistoryTab, setActiveDeletedHistoryTab] = useState<'approved_tasks' | 'withdrawals' | 'deleted_submissions'>('approved_tasks');
+
+  // Deletion logic hooks
+  const [submissionToDelete, setSubmissionToDelete] = useState<Submission | null>(null);
+  const [isDeletingSubmission, setIsDeletingSubmission] = useState(false);
+
+  const formatDeletedDate = (ts: any) => {
+    if (!ts) return 'N/A';
+    if (typeof ts === 'string') return new Date(ts).toLocaleString();
+    if (ts.seconds) return new Date(ts.seconds * 1000).toLocaleString();
+    if (ts.toDate) return ts.toDate().toLocaleString();
+    return new Date(ts).toLocaleString();
+  };
+
+  const handleDeleteSubmissionConfirm = async () => {
+    if (!submissionToDelete || !currentUser) return;
+    try {
+      setIsDeletingSubmission(true);
+      
+      const subId = submissionToDelete.id;
+      const originalStatus = submissionToDelete.status;
+      const operatorId = currentUser.id;
+      const operatorName = currentUser.fullName;
+      const operatorRole = currentUser.role;
+
+      // 1. Update the submission document
+      await updateDoc(doc(db, 'submissions', subId), {
+        deleted: true,
+        deletedBy: operatorId,
+        deletedAt: serverTimestamp()
+      });
+
+      // 2. Add an Audit Log
+      const logId = `del-sub-log-${subId}-${Date.now()}`;
+      await setDoc(doc(db, 'audit_logs', logId), {
+        id: logId,
+        action: 'Delete Submission',
+        targetUserId: submissionToDelete.userId,
+        targetUserName: submissionToDelete.userFullName,
+        operatorId,
+        operatorName,
+        operatorRole,
+        timestamp: new Date().toISOString(),
+        submissionId: subId,
+        originalStatus,
+        details: `Deleted submission ID: ${subId}, original status: ${originalStatus}`
+      });
+
+      setToastMessage("Submission successfully moved to Deleted History.");
+      setSubmissionToDelete(null);
+    } catch (err: any) {
+      console.error("Error deleting submission:", err);
+      alert("Error deleting submission: " + (err.message || err));
+    } finally {
+      setIsDeletingSubmission(false);
+    }
+  };
+
+  const handleRestoreDeletedSubmission = async (sub: Submission) => {
+    try {
+      await updateDoc(doc(db, 'submissions', sub.id), {
+        deleted: false,
+        deletedBy: null,
+        deletedAt: null
+      });
+
+      // Log restoration in audit logs
+      const logId = `restore-sub-log-${sub.id}-${Date.now()}`;
+      await setDoc(doc(db, 'audit_logs', logId), {
+        id: logId,
+        action: 'Restore Submission',
+        targetUserId: sub.userId,
+        targetUserName: sub.userFullName,
+        operatorId: currentUser?.id,
+        operatorName: currentUser?.fullName,
+        operatorRole: currentUser?.role,
+        timestamp: new Date().toISOString(),
+        submissionId: sub.id,
+        details: `Restored submission ID: ${sub.id}`
+      });
+
+      setToastMessage("Submission restored to active list successfully!");
+    } catch (err: any) {
+      console.error("Error restoring submission:", err);
+      alert("Error restoring submission: " + (err.message || err));
+    }
+  };
+
+  const handlePermanentDeleteDeletedSubmission = async (sub: Submission) => {
+    const isOwner = currentUser?.role === 'admin' || currentUser?.email?.toLowerCase() === 'kalloldeyprivate20@gmail.com';
+    if (!isOwner) {
+      alert("Super Admin authorization required for permanent deletion.");
+      return;
+    }
+
+    const confirm = window.confirm("This action cannot be undone.\nFinancial records, payouts, and audit logs will remain preserved.\n\nAre you sure you want to PERMANENTLY delete this submission?");
+    if (!confirm) return;
+
+    try {
+      await deleteDoc(doc(db, 'submissions', sub.id));
+
+      // Log permanent deletion in audit logs
+      const logId = `perm-del-sub-log-${sub.id}-${Date.now()}`;
+      await setDoc(doc(db, 'audit_logs', logId), {
+        id: logId,
+        action: 'Permanent Delete Submission',
+        targetUserId: sub.userId,
+        targetUserName: sub.userFullName,
+        operatorId: currentUser?.id,
+        operatorName: currentUser?.fullName,
+        operatorRole: currentUser?.role,
+        timestamp: new Date().toISOString(),
+        submissionId: sub.id,
+        details: `Permanently deleted submission ID: ${sub.id}`
+      });
+
+      setToastMessage("Submission permanently deleted.");
+    } catch (err: any) {
+      console.error("Error permanently deleting submission:", err);
+      alert("Error permanently deleting submission: " + (err.message || err));
+    }
+  };
 
   useEffect(() => {
     const q = query(collection(db, 'deleted_history', 'approved_tasks', 'records'));
@@ -505,7 +684,7 @@ export const AdminDashboard: React.FC = () => {
 
   // Overview metrics
   const pendingVerificationsCount = users.filter(u => u.status === 'Pending').length;
-  const pendingSubmissionsCount = submissions.filter(s => s.status === 'Pending' || s.status === 'Under Admin Review').length;
+  const pendingSubmissionsCount = submissions.filter(s => (s.status === 'Pending' || s.status === 'Under Admin Review') && !s.deleted).length;
   const pendingWithdrawalsCount = withdrawals.filter(w => w.status === 'Pending').length;
   const totalPayoutAmt = withdrawals.filter(w => w.status === 'Approved').reduce((acc, curr) => acc + curr.amount, 0);
 
@@ -631,7 +810,7 @@ export const AdminDashboard: React.FC = () => {
   }).length;
 
   const submissionsBadgeCount = submissions.filter(s => 
-    !s.archived && (
+    !s.deleted && !s.archived && (
       s.status === 'Pending' || 
       s.status === 'Under Admin Review' ||
       (s.submittedAt && new Date(s.submittedAt).getTime() > (lastViewedTime['submissions'] || 0))
@@ -695,7 +874,10 @@ export const AdminDashboard: React.FC = () => {
       proofRequired: taskType === 'post' ? 'Screenshot of the live post showing u/username clearly.' : 'Screenshot of comment + Permalink URL',
       isSpecial: isSpecialTask,
       minKarmaRequired: isSpecialTask ? Number(minKarmaRequired) : 0,
-      specialLabel: isSpecialTask ? specialLabel : ''
+      specialLabel: isSpecialTask ? specialLabel : '',
+      visibility: taskVisibility,
+      assignedMembers: taskVisibility === 'assigned' ? assignedMembers : [],
+      isExclusive: taskVisibility === 'assigned' ? isExclusiveTask : false
     };
 
     let extendedTask = {};
@@ -745,7 +927,11 @@ export const AdminDashboard: React.FC = () => {
     setCommentGuidelines('');
     setIsSpecialTask(false);
     setMinKarmaRequired(1000);
-    setSpecialLabel('⭐ SPECIAL');
+    setSpecialLabel('SPECIAL');
+    setTaskVisibility('public');
+    setAssignedMembers([]);
+    setIsExclusiveTask(false);
+    setSearchMemberQuery('');
   };
 
   // 2. Submit announcement
@@ -788,33 +974,36 @@ export const AdminDashboard: React.FC = () => {
         {/* Tab Selection */}
         <div className="flex flex-wrap gap-1 bg-slate-100 p-1.5 rounded-2xl border border-slate-200 w-full xl:w-auto">
           {[
-            { id: 'users', label: '👤 Users Map', count: usersBadgeCount },
-            { id: 'live-wallet', label: '💳 Wallet Balances', count: null },
-            { id: 'clients', label: '🏢 Clients Registry', count: clientsBadgeCount },
-            { id: 'client-tasks', label: '✅ Client Approvals', count: clientTasksBadgeCount },
-            { id: 'client-payments', label: '💰 Agency Payments', count: paymentsBadgeCount },
-            { id: 'client-chats', label: '💬 Client Support', count: clientSupportBadgeCount },
-            { id: 'tasks', label: '📝 Tasks Desk', count: tasksBadgeCount },
-            { id: 'submissions', label: '📥 Task Submits', count: submissionsBadgeCount },
-            { id: 'withdrawals', label: '💵 Withdraw Desk', count: withdrawalsBadgeCount },
-            { id: 'track-data', label: '📊 Track Data', count: trackDataBadgeCount },
-            { id: 'security', label: '🛡️ Security Center', count: securityBadgeCount },
-            { id: 'announcements', label: '📢 Publish Feed', count: announcementsBadgeCount },
-            { id: 'audit-log', label: '📜 Audit Logs', count: auditLogsBadgeCount },
-            { id: 'deleted-tasks', label: '🗑️ Deleted Tasks', count: 0 },
-            { id: 'deleted-history', label: '🗄️ Deleted History', count: archivedTasks.length + archivedWithdrawals.length }
-          ].map(tab => (
-            <button
-               key={tab.id}
-               onClick={() => setActiveTab(tab.id as any)}
-               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer relative"
-               style={{
-                 color: activeTab === tab.id ? '#ffffff' : '#64748b',
-                 backgroundColor: activeTab === tab.id ? '#6366f1' : 'transparent',
-                 boxShadow: activeTab === tab.id ? '0 2px 4px rgba(99, 102, 241, 0.2)' : 'none'
-               }}
-            >
-               <span>{tab.label}</span>
+            { id: 'users', label: 'Users Map', icon: Users, count: usersBadgeCount },
+            { id: 'live-wallet', label: 'Wallet Balances', icon: Wallet, count: null },
+            { id: 'clients', label: 'Clients Registry', icon: Building, count: clientsBadgeCount },
+            { id: 'client-tasks', label: 'Client Approvals', icon: CheckSquare, count: clientTasksBadgeCount },
+            { id: 'client-payments', label: 'Agency Payments', icon: CreditCard, count: paymentsBadgeCount },
+            { id: 'client-chats', label: 'Client Support', icon: MessageSquare, count: clientSupportBadgeCount },
+            { id: 'tasks', label: 'Tasks Desk', icon: FileText, count: tasksBadgeCount },
+            { id: 'submissions', label: 'Task Submits', icon: CheckCircle2, count: submissionsBadgeCount },
+            { id: 'withdrawals', label: 'Withdraw Desk', icon: Coins, count: withdrawalsBadgeCount },
+            { id: 'track-data', label: 'Track Data', icon: BarChart2, count: trackDataBadgeCount },
+            { id: 'security', label: 'Security Center', icon: Shield, count: securityBadgeCount },
+            { id: 'announcements', label: 'Publish Feed', icon: SendHorizontal, count: announcementsBadgeCount },
+            { id: 'audit-log', label: 'Audit Logs', icon: Archive, count: auditLogsBadgeCount },
+            { id: 'deleted-tasks', label: 'Deleted Tasks', icon: Trash2, count: 0 },
+            { id: 'deleted-history', label: 'Deleted History', icon: Archive, count: archivedTasks.length + archivedWithdrawals.length + submissions.filter(s => s.deleted).length }
+          ].map(tab => {
+            const TabIcon = tab.icon;
+            return (
+              <button
+                 key={tab.id}
+                 onClick={() => setActiveTab(tab.id as any)}
+                 className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer relative"
+                 style={{
+                   color: activeTab === tab.id ? '#ffffff' : '#64748b',
+                   backgroundColor: activeTab === tab.id ? '#6366f1' : 'transparent',
+                   boxShadow: activeTab === tab.id ? '0 2px 4px rgba(99, 102, 241, 0.2)' : 'none'
+                 }}
+              >
+                 <TabIcon className="w-3.5 h-3.5" />
+                 <span>{tab.label}</span>
                {tab.count !== null && tab.count > 0 && (
                  <span 
                    className="px-1.5 py-0.5 bg-rose-600 text-[9px] font-bold rounded-full text-white shadow-sm"
@@ -823,7 +1012,8 @@ export const AdminDashboard: React.FC = () => {
                  </span>
                )}
             </button>
-          ))}
+          );
+        })}
         </div>
       </div>
 
@@ -903,11 +1093,11 @@ export const AdminDashboard: React.FC = () => {
                 <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Status Registry View</label>
                 <div className="flex flex-wrap gap-1">
                   {[
-                    { id: 'active_pending', label: '👥 Active & Pending' },
-                    { id: 'approved', label: '✅ Approved' },
-                    { id: 'pending', label: '⏳ Pending Approval' },
-                    { id: 'rejected', label: '❌ Rejected Brands' },
-                    { id: 'all', label: '🌐 All Brands' }
+                    { id: 'active_pending', label: 'Active & Pending' },
+                    { id: 'approved', label: 'Approved' },
+                    { id: 'pending', label: 'Pending Approval' },
+                    { id: 'rejected', label: 'Rejected Brands' },
+                    { id: 'all', label: 'All Brands' }
                   ].map(tab => (
                     <button
                       key={tab.id}
@@ -975,19 +1165,20 @@ export const AdminDashboard: React.FC = () => {
                             </div>
                             {/* Explicit Email/Phone verification flags requested */}
                             <div className="space-y-1 mt-1 font-sans text-[11px] font-bold">
-                              <div className="flex items-center gap-1">
-                                <span>📧 Email:</span>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-slate-500 uppercase tracking-wider text-[9px]">Email:</span>
                                 {c.gmailVerified ? (
-                                  <span className="text-emerald-700 text-xs">✅ Verified</span>
+                                  <span className="text-emerald-700 bg-emerald-50 border border-emerald-100 rounded px-1.5 py-0.5 text-[9px] uppercase tracking-wider font-extrabold select-none">Verified</span>
                                 ) : (
-                                  <span className="text-rose-700 text-xs">❌ Not Verified</span>
+                                  <span className="text-rose-700 bg-rose-50 border border-rose-100 rounded px-1.5 py-0.5 text-[9px] uppercase tracking-wider font-extrabold select-none">Not Verified</span>
                                 )}
                               </div>
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-slate-500 uppercase tracking-wider text-[9px]">Phone:</span>
                                 {c.phoneVerified ? (
-                                  <span className="text-emerald-700 text-xs text-wrap">📱 Phone: ✅ {c.phoneNumber || 'N/A'}</span>
+                                  <span className="text-emerald-700 bg-emerald-50 border border-emerald-100 rounded px-1.5 py-0.5 text-[9px] uppercase tracking-wider font-extrabold select-none">Verified: {c.phoneNumber || 'N/A'}</span>
                                 ) : (
-                                  <span className="text-rose-705 text-xs">📱 Phone: ❌ Not verified</span>
+                                  <span className="text-rose-705 bg-rose-50 border border-rose-100 rounded px-1.5 py-0.5 text-[9px] uppercase tracking-wider font-extrabold select-none">Not verified</span>
                                 )}
                               </div>
                             </div>
@@ -1210,6 +1401,7 @@ export const AdminDashboard: React.FC = () => {
                     )}
                     <th className="py-4 px-4">Campaign & Client</th>
                     <th className="py-4 px-4">Type</th>
+                    <th className="py-4 px-4">Visibility / Assigned</th>
                     <th className="py-4 px-4 text-right">Proposed Agency Pay</th>
                     <th className="py-4 px-4 text-center">Creator Pay Set</th>
                     <th className="py-4 px-4 text-center">Status</th>
@@ -1228,7 +1420,7 @@ export const AdminDashboard: React.FC = () => {
                     return s !== 'removed' && s !== 'deleted';
                   }).length === 0 ? (
                     <tr>
-                      <td colSpan={adminTaskFilter === 'Removed' ? 8 : 7} className="py-12 text-center text-slate-500 italic font-semibold">
+                      <td colSpan={adminTaskFilter === 'Removed' ? 9 : 8} className="py-12 text-center text-slate-500 italic font-semibold">
                         No campaign tasks match the "{adminTaskFilter}" filter criteria.
                       </td>
                     </tr>
@@ -1284,6 +1476,29 @@ export const AdminDashboard: React.FC = () => {
                               <span className="px-2 py-0.5 bg-slate-100 border border-slate-200 text-[10px] rounded text-slate-700 font-bold uppercase tracking-wider font-mono">
                                 {t.type}
                               </span>
+                            </td>
+                            <td className="py-4 px-4 max-w-xs">
+                              {t.visibility === 'assigned' ? (
+                                <div className="space-y-1">
+                                  <span className="inline-block bg-rose-50 border border-rose-200 text-rose-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                    Private
+                                  </span>
+                                  {t.isExclusive && (
+                                    <span className="inline-block bg-indigo-50 border border-indigo-150 text-indigo-700 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ml-1">
+                                      Exclusive
+                                    </span>
+                                  )}
+                                  <div className="text-[10px] text-slate-500 font-mono mt-1" title={t.assignedMembers ? t.assignedMembers.map(uid => users.find(u => u.id === uid)?.redditUsername).join(', ') : ''}>
+                                      Members: {t.assignedMembers && t.assignedMembers.length > 0 
+                                        ? `${t.assignedMembers.length} assigned`
+                                        : 'None assigned'}
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="inline-block bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                  Public
+                                </span>
+                              )}
                             </td>
                             <td className="py-4 px-4 text-right font-mono font-bold text-slate-800 text-sm">
                               ${t.agencyPay.toFixed(2)}
@@ -1351,6 +1566,15 @@ export const AdminDashboard: React.FC = () => {
                                   className="px-2 py-1 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-850 text-[10px] font-bold rounded cursor-pointer border border-slate-200 transition"
                                 >
                                   {expandedTaskId === t.id ? 'Hide Specs' : 'View Specs'}
+                                </button>
+
+                                {/* Edit Visibility & Assignments */}
+                                <button
+                                  onClick={() => handleStartEditTask(t)}
+                                  className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 border border-indigo-205 text-indigo-700 font-bold text-[10px] rounded cursor-pointer transition uppercase flex items-center gap-1.5"
+                                  title="Edit Campaign visibility / invite members"
+                                >
+                                  <Edit className="w-3 h-3 text-indigo-650" /> Edit Assigned
                                 </button>
 
                                 {/* Action: Publish/Approve Pending */}
@@ -1435,7 +1659,7 @@ export const AdminDashboard: React.FC = () => {
                           {/* Expanded detail specifications */}
                           {expandedTaskId === t.id && (
                             <tr className="bg-slate-50/70">
-                              <td colSpan={adminTaskFilter === 'Removed' ? 8 : 7} className="p-4 px-6 border-l-4 border-l-indigo-650 text-xs text-slate-655 leading-relaxed font-normal">
+                              <td colSpan={adminTaskFilter === 'Removed' ? 9 : 8} className="p-4 px-6 border-l-4 border-l-indigo-650 text-xs text-slate-655 leading-relaxed font-normal">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 select-text py-1">
                                   <div className="space-y-2">
                                     <h4 className="font-bold text-indigo-600 uppercase tracking-wider text-[10px]">Campaign Guidelines & Description</h4>
@@ -1897,7 +2121,14 @@ export const AdminDashboard: React.FC = () => {
                           <p className={`text-[11px] font-normal mt-1 leading-snug line-clamp-1 ${isOpened ? 'text-slate-700' : 'text-slate-500'}`}>{snippet}</p>
                           
                           <div className="flex justify-between items-center text-[9px] text-slate-405 font-mono mt-2 pt-1 border-t border-slate-200/50">
-                            <span>Status: {chat.resolvedStatus === 'resolved' ? '✅ Resolved' : '🛠️ Open'}</span>
+                            <span className="flex items-center gap-1 select-none">
+                              Status: 
+                              {chat.resolvedStatus === 'resolved' ? (
+                                <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-150 rounded text-[8px] font-bold uppercase font-sans">Resolved</span>
+                              ) : (
+                                <span className="px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-150 rounded text-[8px] font-bold uppercase font-sans">Open</span>
+                              )}
+                            </span>
                             <span>{new Date(chat.lastMessageTimestamp).toLocaleDateString()}</span>
                           </div>
                         </div>
@@ -2045,10 +2276,10 @@ export const AdminDashboard: React.FC = () => {
                       onChange={(e) => setSelectedAdminRoleFilter(e.target.value)}
                       className="bg-slate-50 border border-slate-200 text-slate-800 rounded-lg focus:outline-none focus:ring-0 cursor-pointer text-xs font-black p-1 px-2"
                     >
-                      <option value="all">🛡️ All Roles</option>
-                      <option value="members">👤 Members</option>
-                      <option value="moderators">🔰 Moderators</option>
-                      <option value="admins">👑 Admins</option>
+                      <option value="all">All Roles</option>
+                      <option value="members">Members</option>
+                      <option value="moderators">Moderators</option>
+                      <option value="admins">Admins</option>
                     </select>
                   </div>
 
@@ -2060,14 +2291,14 @@ export const AdminDashboard: React.FC = () => {
                       onChange={(e) => setSelectedAdminTierFilter(e.target.value)}
                       className="bg-slate-50 border border-slate-200 text-slate-800 rounded-lg focus:outline-none focus:ring-0 cursor-pointer text-xs font-black p-1 px-2"
                     >
-                      <option value="all">👑 All Tiers</option>
-                      <option value="bronze">🥉 Bronze</option>
-                      <option value="silver">🥈 Silver</option>
-                      <option value="gold">⭐ Gold</option>
-                      <option value="diamond">💎 Diamond</option>
-                      <option value="platinum">🔥 Platinum</option>
-                      <option value="elite">👑 Elite</option>
-                      <option value="legend">🚀 Legend</option>
+                      <option value="all">All Tiers</option>
+                      <option value="bronze">Bronze</option>
+                      <option value="silver">Silver</option>
+                      <option value="gold">Gold</option>
+                      <option value="diamond">Diamond</option>
+                      <option value="platinum">Platinum</option>
+                      <option value="elite">Elite</option>
+                      <option value="legend">Legend</option>
                     </select>
                   </div>
                 </div>
@@ -2102,13 +2333,13 @@ export const AdminDashboard: React.FC = () => {
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-3 bg-slate-50 border border-slate-200 rounded-2xl select-none">
                 <div className="flex flex-wrap gap-1">
                   {[
-                    { id: 'active_pending', label: '👥 Active & Pending', count: users.filter(u => (u.status || '').toLowerCase() !== 'rejected').length },
-                    { id: 'all', label: '🌐 All Users', count: users.length },
-                    { id: 'Pending', label: '⏳ Pending Approval', count: users.filter(u => u.status === 'Pending' || u.status === 'pending').length },
-                    { id: 'Approved', label: '✅ Approved Only', count: users.filter(u => u.status === 'Approved' || u.status === 'approved').length },
-                    { id: 'Rejected', label: '❌ Rejected Only', count: users.filter(u => u.status === 'Rejected' || u.status === 'rejected').length },
-                    { id: 'banned', label: '🚫 Banned', count: users.filter(u => u.status === 'banned' || u.status === 'Banned' || u.isBanned).length },
-                    { id: 'suspended', label: '⚠️ Suspended', count: users.filter(u => u.status === 'suspended' || u.status === 'Suspended' || u.isSuspended).length },
+                    { id: 'active_pending', label: 'Active & Pending', count: users.filter(u => (u.status || '').toLowerCase() !== 'rejected').length },
+                    { id: 'all', label: 'All Users', count: users.length },
+                    { id: 'Pending', label: 'Pending Approval', count: users.filter(u => u.status === 'Pending' || u.status === 'pending').length },
+                    { id: 'Approved', label: 'Approved Only', count: users.filter(u => u.status === 'Approved' || u.status === 'approved').length },
+                    { id: 'Rejected', label: 'Rejected Only', count: users.filter(u => u.status === 'Rejected' || u.status === 'rejected').length },
+                    { id: 'banned', label: 'Banned', count: users.filter(u => u.status === 'banned' || u.status === 'Banned' || u.isBanned).length },
+                    { id: 'suspended', label: 'Suspended', count: users.filter(u => u.status === 'suspended' || u.status === 'Suspended' || u.isSuspended).length },
                   ].map((sTab) => (
                     <button
                       key={sTab.id}
@@ -2167,28 +2398,28 @@ export const AdminDashboard: React.FC = () => {
                             <div className="flex items-center gap-2 flex-wrap">
                               <p className="font-extrabold text-slate-900 text-sm">{u.fullName}</p>
                               <span className="px-1.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded font-extrabold text-[9px] uppercase tracking-wider select-none">
-                                {ut.emoji} {ut.name}
+                                {ut.name}
                               </span>
                               {(u.role === 'admin') ? (
                                 <span className="px-1.5 py-0.5 bg-red-50 text-red-700 border border-red-200 rounded font-extrabold text-[9px] uppercase tracking-wider select-none">
-                                  👑 Admin
+                                  Admin
                                 </span>
                               ) : (u.role === 'moderator' || (u.role as string) === 'Moderator') ? (
-                                <span className="px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-250 rounded font-extrabold text-[9px] uppercase tracking-wider select-none">
-                                  🔰 Moderator
+                                <span className="px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-255 rounded font-extrabold text-[9px] uppercase tracking-wider select-none">
+                                  Moderator
                                 </span>
                               ) : (
                                 <span className="px-1.5 py-0.5 bg-slate-100 text-slate-600 border border-slate-200/80 rounded font-extrabold text-[9px] uppercase tracking-wider select-none">
-                                  👤 Member
+                                  Member
                                 </span>
                               )}
                             </div>
                             <p className="text-slate-500 font-mono font-bold text-[10px]">{u.email}</p>
-                            <div className="flex items-center gap-1 text-[10px] font-bold mt-1">
+                             <div className="flex items-center gap-1.5 text-[10px] font-bold mt-1">
                               {(u.emailVerified || u.gmailVerified || u.email?.toLowerCase() === 'kalloldeyprivate20@gmail.com') ? (
-                                <span className="text-emerald-600">📧 Email: ✅ Verified</span>
+                                <span className="text-emerald-650 bg-emerald-50 border border-emerald-100 rounded px-1.5 py-0.5 text-[9px] uppercase tracking-wider select-none font-extrabold flex items-center gap-1">Email Verified</span>
                               ) : (
-                                <span className="text-rose-600">📧 Email: ❌ Not Verified</span>
+                                <span className="text-rose-650 bg-rose-50 border border-rose-100 rounded px-1.5 py-0.5 text-[9px] uppercase tracking-wider select-none font-extrabold flex items-center gap-1">Email Unverified</span>
                               )}
                             </div>
                             {/* Display private gender field strictly to admin */}
@@ -2231,10 +2462,10 @@ export const AdminDashboard: React.FC = () => {
                                   }}
                                   className="bg-white text-[10px] text-slate-850 p-1.5 rounded border border-slate-200 w-full focus:outline-none cursor-pointer font-sans"
                                 >
-                                  <option value="Bronze">🥉 Bronze</option>
-                                  <option value="Silver">🥈 Silver</option>
-                                  <option value="Gold">⭐ Gold</option>
-                                  <option value="Platinum">💎 Platinum</option>
+                                  <option value="Bronze">Bronze</option>
+                                  <option value="Silver">Silver</option>
+                                  <option value="Gold">Gold</option>
+                                  <option value="Platinum">Platinum</option>
                                 </select>
                               </div>
                               <div className="flex gap-1 pt-1">
@@ -2333,7 +2564,7 @@ export const AdminDashboard: React.FC = () => {
                           </span>
                           {isCooldownActive && (
                             <span className="block mt-1 bg-amber-50 border border-amber-250 px-1.5 py-0.5 rounded text-[9px] font-black text-amber-700 font-mono w-max animate-pulse">
-                              ⏳ ON COOLDOWN
+                              ON COOLDOWN
                             </span>
                           )}
                         </td>
@@ -2345,7 +2576,7 @@ export const AdminDashboard: React.FC = () => {
                                 onClick={() => resetCooldown(u.id)}
                                 className="w-full py-1.5 bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 font-bold text-[10px] rounded-lg transition-all cursor-pointer"
                               >
-                                Reset Claim Cooldown ⏳
+                                Reset Claim Cooldown
                               </button>
                             </div>
                           )}
@@ -2451,7 +2682,7 @@ export const AdminDashboard: React.FC = () => {
                               }}
                               className="px-2.5 py-1.5 bg-white hover:bg-slate-50 border border-slate-205 text-slate-700 hover:text-slate-900 text-[10px] font-extrabold rounded-lg cursor-pointer transition-all uppercase tracking-wider inline-flex items-center gap-1 shadow-xs"
                             >
-                              📋 History ({u.deductionHistory?.length || 0})
+                              <FileText className="w-3 h-3 text-slate-550" /> History ({u.deductionHistory?.length || 0})
                             </button>
                             <button
                               type="button"
@@ -2467,7 +2698,7 @@ export const AdminDashboard: React.FC = () => {
                               }}
                               className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 font-extrabold text-[10px] rounded-lg cursor-pointer transition-all uppercase tracking-wider inline-flex items-center gap-1"
                             >
-                              💸 Deduct Balance
+                              <Coins className="w-3 h-3 text-red-500" /> Deduct Balance
                             </button>
                           </div>
                         )}
@@ -2538,7 +2769,7 @@ export const AdminDashboard: React.FC = () => {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-slate-200">
               <div>
                 <h2 className="text-base font-black flex items-center gap-2 text-indigo-600">
-                  💳 Live Wallet Balances
+                  <CreditCard className="w-5 h-5 text-indigo-600" /> Live Wallet Balances
                 </h2>
                 <p className="text-xs text-slate-500">
                   Real-time auditing of current available user balances. No transactions or lifetime records are exposed here.
@@ -2813,7 +3044,7 @@ export const AdminDashboard: React.FC = () => {
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-[11px] font-black text-slate-800 block">⭐ Special Task Campaign</span>
+                      <span className="text-[11px] font-black text-slate-800 block">Special Task Campaign</span>
                       <span className="text-[9px] text-slate-500 block">Restricted to high karma creators</span>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
@@ -2846,9 +3077,136 @@ export const AdminDashboard: React.FC = () => {
                           value={specialLabel}
                           onChange={(e) => setSpecialLabel(e.target.value)}
                           className="w-full text-xs text-slate-800 bg-white border border-slate-200 px-2.5 py-1.5 rounded-lg focus:border-indigo-500 font-bold"
-                          placeholder="e.g. ⭐ SPECIAL"
+                          placeholder="e.g. SPECIAL"
                         />
                       </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Task Visibility and Assignment Selection */}
+                <div className="bg-indigo-50/40 p-4 rounded-xl border border-indigo-150 space-y-4">
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 block mb-1.5">Task Visibility & Access</label>
+                    <div className="flex bg-white p-1 rounded-lg border border-slate-205 text-xs gap-1 select-none">
+                      <button
+                        type="button"
+                        onClick={() => setTaskVisibility('public')}
+                        className={`flex-1 px-3 py-1.5 rounded transition font-bold ${
+                          taskVisibility === 'public' ? 'bg-indigo-650 text-white font-black shadow-xs' : 'text-slate-600 hover:bg-slate-100'
+                        }`}
+                      >
+                        Public Task
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTaskVisibility('assigned')}
+                        className={`flex-1 px-3 py-1.5 rounded transition font-bold ${
+                          taskVisibility === 'assigned' ? 'bg-indigo-650 text-white font-black shadow-xs' : 'text-slate-600 hover:bg-slate-100'
+                        }`}
+                      >
+                        Private / Assigned
+                      </button>
+                    </div>
+                  </div>
+
+                  {taskVisibility === 'assigned' && (
+                    <div className="space-y-3 pt-0.5 animate-fade-in text-xs">
+                      {/* Exclusive Campaign Toggle */}
+                      <div className="flex items-center justify-between bg-white px-3 py-2.5 rounded-xl border border-slate-200">
+                        <div className="space-y-0.5 max-w-[85%]">
+                          <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-700 block">Exclusive Assigned Task</label>
+                          <p className="text-[9px] text-slate-450 font-medium leading-tight">If enabled, the first assigned member to CLAIM the task gains exclusive rights and blocks other invitees.</p>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={isExclusiveTask}
+                          onChange={(e) => setIsExclusiveTask(e.target.checked)}
+                          className="w-4 h-4 text-indigo-600 border-slate-300 grid place-content-center bg-white rounded focus:ring-indigo-500 cursor-pointer accent-indigo-600"
+                        />
+                      </div>
+
+                      {/* Select/Search Assigned Members */}
+                      <div className="relative">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Select Members (Fuzzy Search)</label>
+                        <div className="relative">
+                          <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400" />
+                          <input
+                            type="text"
+                            placeholder="Type username, email, or Reddit username..."
+                            value={searchMemberQuery}
+                            onChange={(e) => setSearchMemberQuery(e.target.value)}
+                            onFocus={() => setMemberDropdownOpen(true)}
+                            className="w-full text-xs text-slate-800 bg-white border border-slate-200 pl-8 pr-3 py-2 rounded-xl focus:border-indigo-550 focus:outline-none"
+                          />
+                        </div>
+
+                        {/* Dropdown with filtered matches */}
+                        {memberDropdownOpen && (
+                          <div className="absolute z-30 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg max-h-48 overflow-y-auto divide-y divide-slate-100">
+                            <div className="flex justify-between items-center bg-slate-50 p-1.5 px-3 text-[9px] text-slate-400 font-bold select-none">
+                              <span>MATCHING USER BASE</span>
+                              <button
+                                type="button"
+                                onClick={() => setMemberDropdownOpen(false)}
+                                className="text-rose-500 hover:text-rose-700 font-extrabold cursor-pointer hover:underline border-none bg-transparent"
+                              >
+                                CLOSE ✕
+                              </button>
+                            </div>
+                            {filteredCreatorsToInvite.length === 0 ? (
+                              <div className="p-3 text-center text-slate-400 italic text-[11px] select-none">
+                                {searchMemberQuery ? 'No matching users found' : 'Type to search members...'}
+                              </div>
+                            ) : (
+                              filteredCreatorsToInvite.slice(0, 15).map(m => (
+                                <button
+                                  key={m.id}
+                                  type="button"
+                                  onClick={() => {
+                                    if (!assignedMembers.includes(m.id)) {
+                                      setAssignedMembers(prev => [...prev, m.id]);
+                                    }
+                                    setSearchMemberQuery('');
+                                    setMemberDropdownOpen(false);
+                                  }}
+                                  className="w-full text-left px-3 py-2 hover:bg-slate-50 flex items-center justify-between text-xs transition border-0 outline-none cursor-pointer leading-tight bg-transparent"
+                                >
+                                  <div className="text-left">
+                                    <span className="font-extrabold text-slate-800 block text-left leading-tight">{m.fullName || m.name || 'Anonymous User'}</span>
+                                    <span className="text-[9px] text-indigo-650 font-mono block text-left">u/{m.redditUsername || 'None'} • {m.email}</span>
+                                  </div>
+                                  <span className="text-[10px] bg-indigo-50 border border-indigo-150 px-2 py-0.5 rounded text-indigo-700 font-black font-mono">➕ ADD</span>
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Removable Tag Pills */}
+                      {assignedMembers.length > 0 && (
+                        <div className="space-y-1 pt-1 animate-fade-in">
+                          <label className="text-[9px] font-black uppercase text-slate-405 tracking-wider">Assigned Members ({assignedMembers.length})</label>
+                          <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto p-1.5 bg-white border border-slate-205 rounded-xl">
+                            {assignedMembers.map(uid => {
+                              const m = users.find(u => u.id === uid);
+                              return (
+                                <span key={uid} className="inline-flex items-center gap-1 bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px] font-bold px-2 py-0.5 rounded-lg font-mono">
+                                  <span>u/{m?.redditUsername || m?.email || uid}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setAssignedMembers(prev => prev.filter(id => id !== uid))}
+                                    className="text-indigo-400 hover:text-indigo-800 cursor-pointer font-black border-0 bg-transparent text-[11px] ml-0.5 p-0"
+                                  >
+                                    ✕
+                                  </button>
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -3051,6 +3409,7 @@ export const AdminDashboard: React.FC = () => {
                     <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-slate-50">
                       <th className="py-3 px-3">Campaign Info</th>
                       <th className="py-3 px-1">Type</th>
+                      <th className="py-3 px-1">Visibility</th>
                       <th className="py-3 px-1">Karma Required</th>
                       <th className="py-3 px-1">Claimed By</th>
                       <th className="py-3 px-1">Claim Time</th>
@@ -3062,7 +3421,7 @@ export const AdminDashboard: React.FC = () => {
                   <tbody className="divide-y divide-slate-150 text-[11px]">
                     {tasks.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="py-8 text-center text-slate-400 font-semibold select-text">
+                        <td colSpan={9} className="py-8 text-center text-slate-400 font-semibold select-text">
                           No active campaigns created yet. Deploy the first one!
                         </td>
                       </tr>
@@ -3086,10 +3445,28 @@ export const AdminDashboard: React.FC = () => {
                                 {t.type}
                               </span>
                             </td>
+                            <td className="py-3.5 px-1">
+                              {t.visibility === 'assigned' ? (
+                                <div className="space-y-0.5">
+                                  <span className="inline-block bg-rose-50 border border-rose-150 text-rose-700 text-[9px] font-black px-1 rounded uppercase tracking-wider">
+                                    Private ({t.assignedMembers?.length || 0})
+                                  </span>
+                                  {t.isExclusive && (
+                                    <span className="block text-[8px] text-indigo-700 font-extrabold font-sans uppercase">
+                                      Exclusive
+                                    </span>
+                                  )}
+                                  </div>
+                              ) : (
+                                <span className="inline-block bg-emerald-50 border border-emerald-150 text-emerald-700 text-[9px] font-bold px-1 rounded uppercase tracking-wider">
+                                  Public
+                                </span>
+                              )}
+                            </td>
                             <td className="py-3.5 px-1 select-text">
                               {isSpecial ? (
                                 <span className="text-amber-600 font-extrabold flex items-center gap-0.5 font-mono">
-                                  ⭐ {t.minKarmaRequired?.toLocaleString()}
+                                  <Sparkles className="w-3 h-3 text-amber-550 fill-amber-300" /> {t.minKarmaRequired?.toLocaleString()}
                                 </span>
                               ) : (
                                 <span className="text-slate-400 font-semibold">None (Regular)</span>
@@ -3200,7 +3577,14 @@ export const AdminDashboard: React.FC = () => {
                                 </div>
                               )}
                               
-                              <div className="flex justify-end pt-1">
+                              <div className="flex justify-end pt-1 gap-1.5">
+                                <button
+                                  onClick={() => handleStartEditTask(t)}
+                                  className="p-1 px-2 bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-650 hover:text-white rounded cursor-pointer transition shadow-xs flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider"
+                                  title="Edit Campaign visibility / invitees"
+                                >
+                                  <Edit className="w-3 h-3" /> Edit Assigned
+                                </button>
                                 <button 
                                   onClick={() => {
                                     if (confirm('Are you sure you want to permanently delete this campaign?')) {
@@ -3235,12 +3619,12 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             <div className="space-y-6">
-              {submissions.filter(s => !s.archived).length === 0 ? (
+              {submissions.filter(s => !s.archived && !s.deleted).length === 0 ? (
                 <div className="text-center py-10 text-slate-450 text-xs text-balance bg-white rounded-2xl border border-slate-200">
                   Awesome! There are no submissions awaiting administrative checks in your queue.
                 </div>
               ) : (
-                submissions.filter(s => !s.archived).map((sub) => {
+                submissions.filter(s => !s.archived && !s.deleted).map((sub) => {
                   const subUser = users.find(u => u.id === sub.userId);
                   const subUserTier = subUser ? getKarmaTier(subUser.karma) : null;
                   return (
@@ -3405,6 +3789,15 @@ export const AdminDashboard: React.FC = () => {
                               )}
                             </div>
                           )}
+                          <div className="mt-4 pt-3 border-t border-dashed border-slate-200">
+                            <button
+                              type="button"
+                              onClick={() => setSubmissionToDelete(sub)}
+                              className="w-full py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-350 text-rose-700 text-[10px] font-extrabold uppercase rounded-lg transition cursor-pointer flex items-center justify-center gap-1"
+                            >
+                              🗑 Delete Submission
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -3849,7 +4242,7 @@ export const AdminDashboard: React.FC = () => {
                                   }}
                                   className="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-500 text-[10px] rounded text-white cursor-pointer transition-colors"
                                 >
-                                  Merge Profiles 🔗
+                                  Merge Profiles
                                 </button>
                               </div>
                             </div>
@@ -3865,7 +4258,9 @@ export const AdminDashboard: React.FC = () => {
 
               {/* Blacklist Control Pane (Takes 1 segment) */}
               <div className="space-y-6">
-                <h3 className="text-sm font-black text-slate-900 border-b border-slate-200 pb-2">🛡️ IP Blacklist Directory</h3>
+                <h3 className="text-sm font-black text-slate-900 border-b border-slate-200 pb-2 flex items-center gap-1.5">
+                  <Shield className="w-4 h-4 text-slate-700" /> IP Blacklist Directory
+                </h3>
                 
                 <div className="bg-white p-4.5 rounded-2xl border border-slate-200 space-y-4 text-xs font-normal shadow-xs">
                   <div className="space-y-2 select-none">
@@ -4157,6 +4552,17 @@ export const AdminDashboard: React.FC = () => {
                 >
                   Archived Withdrawals ({archivedWithdrawals.length})
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveDeletedHistoryTab('deleted_submissions')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    activeDeletedHistoryTab === 'deleted_submissions'
+                      ? 'bg-purple-600 text-white shadow-xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  Deleted Submissions ({submissions.filter(s => s.deleted).length})
+                </button>
               </div>
             </div>
 
@@ -4327,7 +4733,7 @@ export const AdminDashboard: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => handleRestoreWithdrawal(item)}
-                                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-250 border border-slate-350 text-purple-700 hover:text-purple-900 rounded-lg text-[10px] font-black cursor-pointer transition"
+                                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-255 border border-slate-350 text-purple-700 hover:text-purple-900 rounded-lg text-[10px] font-black cursor-pointer transition"
                               >
                                 Restore Record
                               </button>
@@ -4341,6 +4747,90 @@ export const AdminDashboard: React.FC = () => {
                                 </button>
                               )}
                             </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB CONTENT: Deleted Submissions */}
+            {activeDeletedHistoryTab === 'deleted_submissions' && (
+              <div className="space-y-4">
+                {submissions.filter(s => s.deleted).length === 0 ? (
+                  <div className="text-center py-16 bg-slate-50 border border-dashed border-slate-300 rounded-2xl text-slate-500 text-xs font-normal">
+                    No deleted task submissions found in the cleanup history.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {submissions.filter(s => s.deleted).map((item) => {
+                      const deletedByAdmin = users.find(u => u.id === item.deletedBy);
+                      return (
+                        <div key={item.id} className="p-4 bg-white border border-slate-205 rounded-xl space-y-4 relative hover:shadow-xs transition font-sans">
+                          <div className="flex justify-between items-start font-sans">
+                            <div className="space-y-1 font-sans">
+                              <span className="text-[9px] px-2 py-0.5 bg-red-100 text-red-750 border border-red-200 rounded font-bold uppercase tracking-wider font-mono">
+                                Deleted {item.taskType || 'Task'} Submission
+                              </span>
+                              <h3 className="text-sm font-extrabold text-slate-905 tracking-tight mt-1">{item.taskTitle}</h3>
+                              <p className="text-[10px] text-slate-500 font-mono">ID: {item.id} | Task ID: {item.taskId}</p>
+                            </div>
+                            <span className="text-right text-xs font-extrabold text-rose-600 font-mono">
+                              ${item.reward ? item.reward.toFixed(2) : '0.00'} USDT
+                            </span>
+                          </div>
+
+                          {/* Record info */}
+                          <div className="grid grid-cols-2 gap-y-2.5 gap-x-4 bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-[10px] font-semibold font-sans">
+                            <div>
+                              <span className="text-slate-550 block font-normal text-[9px]">Creator Profile</span>
+                              <span className="font-extrabold text-slate-805 block truncate max-w-[150px]">{item.userFullName || 'Unknown'}</span>
+                              <span className="text-purple-650 block font-mono text-[9px]">u/{item.redditUsername}</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-550 block font-normal text-[9px]">Submission Status</span>
+                              <span className={`inline-block px-1.5 py-0.2 rounded text-[9px] font-sans font-extrabold uppercase mt-0.5 ${
+                                item.status.includes('Approved') ? 'bg-emerald-50 text-emerald-700 border border-emerald-150' :
+                                item.status.includes('Pending') || item.status.includes('review') ? 'bg-amber-50 text-amber-700 border border-amber-150' :
+                                'bg-rose-50 text-rose-700 border border-rose-150'
+                              }`}>
+                                {item.status}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-slate-550 block font-normal text-[9px]">Deleted By</span>
+                              <span className="font-extrabold text-rose-700 block truncate max-w-[150px]">
+                                {deletedByAdmin ? `${deletedByAdmin.fullName}` : 'Administrator'}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-slate-550 block font-normal text-[9px]">Date Deleted</span>
+                              <span className="font-extrabold text-slate-805 font-mono text-[9px] block">
+                                {formatDeletedDate(item.deletedAt)}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="border-t border-slate-150 pt-3 flex items-center justify-end gap-2 text-[10px] select-none font-sans">
+                            <button
+                              type="button"
+                              onClick={() => handleRestoreDeletedSubmission(item)}
+                              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-205 border border-slate-350 text-purple-700 hover:text-purple-900 rounded-lg text-[10px] font-black cursor-pointer transition"
+                            >
+                              Restore Submission
+                            </button>
+                            {(currentUser?.role === 'admin' || currentUser?.email?.toLowerCase() === 'kalloldeyprivate20@gmail.com') && (
+                              <button
+                                type="button"
+                                onClick={() => handlePermanentDeleteDeletedSubmission(item)}
+                                className="px-3 py-1.5 bg-red-50 border border-red-200 hover:bg-red-100 text-red-655 rounded-lg text-[10px] font-black cursor-pointer transition"
+                              >
+                                Permanent Delete
+                              </button>
+                            )}
                           </div>
                         </div>
                       );
@@ -4413,7 +4903,8 @@ export const AdminDashboard: React.FC = () => {
             <div className="p-6 bg-white rounded-2xl border border-slate-200 shadow-xs">
               {deletedTasks.length === 0 ? (
                 <div className="text-center py-12 text-slate-500 space-y-2 bg-slate-50 border border-dashed border-slate-300 rounded-2xl">
-                  <p className="font-bold text-sm text-slate-700">🗑️ No permanently deleted tasks recorded</p>
+                  <Trash2 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                  <p className="font-bold text-sm text-slate-700">No permanently deleted tasks recorded</p>
                   <p className="text-xs text-slate-500">Any campaign that is permanently deleted from the Removed tab will show up in this register.</p>
                 </div>
               ) : (
@@ -4661,7 +5152,7 @@ export const AdminDashboard: React.FC = () => {
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 select-none animate-fade-in">
           <div className="bg-white border border-slate-200 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-xl">
             <div>
-              <h3 className="text-lg font-black text-slate-800">👤 Remove Moderator Privileges?</h3>
+              <h3 className="text-lg font-black text-slate-800">Remove Moderator Privileges?</h3>
               <p className="text-xs text-slate-600 mt-1 leading-relaxed">
                 Are you sure you want to demote <span className="text-amber-605 font-extrabold">{demoteTargetUser.fullName}</span>? They will lose all Moderator Control Panel access and be reverted to a standard member.
               </p>
@@ -4917,7 +5408,7 @@ export const AdminDashboard: React.FC = () => {
             <div className="bg-white border border-slate-200 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-xl">
               <div>
                 <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
-                  💳 Adjust Available Balance
+                  <CreditCard className="w-5 h-5 text-indigo-600" /> Adjust Available Balance
                 </h3>
                 <p className="text-xs text-slate-600 mt-1 leading-relaxed">
                   You are manually setting a brand-new Available Balance for <span className="text-indigo-650 font-extrabold">{adjustTargetUser.fullName}</span>. Their current available balance is <span className="text-emerald-700 font-bold">${(adjustTargetUser.balance || 0).toFixed(2)} USDT</span>.
@@ -5310,6 +5801,216 @@ export const AdminDashboard: React.FC = () => {
                 className="px-5 py-2.5 bg-white hover:bg-slate-50 border border-slate-205 text-slate-700 rounded-xl text-xs font-black cursor-pointer transition active:scale-95 shadow-xs"
               >
                 Acknowledge Restricted State
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🔒 Edit Campaign Visibility & Assignments Modal Overlay */}
+      {editingTask && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 select-none animate-fade-in font-sans">
+          <div className="bg-white border border-slate-205 rounded-2xl p-6 max-w-lg w-full space-y-4 shadow-xl relative text-left text-slate-800">
+            <div className="flex items-center justify-between border-b pb-3 border-slate-100 mb-2">
+              <div className="flex items-center gap-2.5 text-indigo-650">
+                <Edit className="w-5 h-5" />
+                <h3 className="text-base font-black tracking-tight text-slate-900 m-0">Edit Campaign Visibility & Access</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingTask(null)}
+                className="text-slate-400 hover:text-slate-705 bg-transparent border-0 font-extrabold cursor-pointer text-sm"
+              >
+                ✕ CLOSE
+              </button>
+            </div>
+
+            <div className="space-y-1">
+              <span className="text-[10px] font-black tracking-wider uppercase text-slate-450 block">CAMPAIGN TITLE:</span>
+              <p className="text-xs font-extrabold text-slate-800 bg-slate-50 border p-3 rounded-xl m-0 leading-tight">{editingTask.title}</p>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 block mb-1.5">Task Visibility & Access</label>
+              <div className="flex bg-slate-50 p-1 rounded-lg border border-slate-200 text-xs gap-1 select-none">
+                <button
+                  type="button"
+                  onClick={() => setEditVisibility('public')}
+                  className={`flex-1 px-3 py-1.5 rounded transition font-bold ${
+                    editVisibility === 'public' ? 'bg-indigo-650 text-white font-black shadow-xs' : 'text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Public Task
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditVisibility('assigned')}
+                  className={`flex-1 px-3 py-1.5 rounded transition font-bold ${
+                    editVisibility === 'assigned' ? 'bg-indigo-650 text-white font-black shadow-xs' : 'text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Private / Assigned Only
+                </button>
+              </div>
+            </div>
+
+            {editVisibility === 'assigned' && (
+              <div className="space-y-3 animate-fade-in text-xs">
+                {/* Exclusive Option */}
+                <div className="flex items-center justify-between bg-slate-50 px-3 py-2 border border-slate-150 rounded-xl">
+                  <div className="space-y-0.5 max-w-[85%] text-slate-700">
+                    <label className="text-[10px] font-extrabold uppercase tracking-wider block">Exclusive Task Claiming</label>
+                    <p className="text-[9px] text-slate-500 leading-tight">First list invitee to claim gets full, exclusive rights to the campaign slots.</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={editIsExclusive}
+                    onChange={(e) => setEditIsExclusive(e.target.checked)}
+                    className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 cursor-pointer accent-indigo-600 bg-white"
+                  />
+                </div>
+
+                {/* Search Assigned Members */}
+                <div className="relative">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Select Members (Fuzzy Search)</label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Type username, email, or Reddit username..."
+                      value={editSearchMemberQuery}
+                      onChange={(e) => setEditSearchMemberQuery(e.target.value)}
+                      onFocus={() => setEditMemberDropdownOpen(true)}
+                      className="w-full text-xs text-slate-850 bg-white border border-slate-200 pl-8 pr-3 py-2 rounded-xl focus:border-indigo-550 focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Dropdown with filtered matches */}
+                  {editMemberDropdownOpen && (
+                    <div className="absolute z-35 mt-1 w-full bg-white border border-slate-205 rounded-xl shadow-lg max-h-40 overflow-y-auto divide-y divide-slate-100">
+                      <div className="flex justify-between items-center bg-slate-50 p-1.5 px-3 text-[9px] text-slate-400 font-bold select-none">
+                        <span>MATCHING USER BASE</span>
+                        <button
+                          type="button"
+                          onClick={() => setEditMemberDropdownOpen(false)}
+                          className="text-rose-500 hover:text-rose-700 font-extrabold cursor-pointer border-none bg-transparent"
+                        >
+                          CLOSE ✕
+                        </button>
+                      </div>
+                      {filteredCreatorsToEditInvite.length === 0 ? (
+                        <div className="p-3 text-center text-slate-400 italic text-[11px] select-none">
+                          {editSearchMemberQuery ? 'No matching users found' : 'Type to search members...'}
+                        </div>
+                      ) : (
+                        filteredCreatorsToEditInvite.slice(0, 10).map(m => (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => {
+                              if (!editAssignedMembers.includes(m.id)) {
+                                setEditAssignedMembers(prev => [...prev, m.id]);
+                              }
+                              setEditSearchMemberQuery('');
+                              setEditMemberDropdownOpen(false);
+                            }}
+                            className="w-full text-left px-3 py-1.5 hover:bg-slate-50 flex items-center justify-between text-xs transition border-0 outline-none cursor-pointer bg-transparent"
+                          >
+                            <div className="text-left">
+                              <span className="font-extrabold text-slate-800 block leading-tight text-left">{m.fullName || m.name || 'Anonymous User'}</span>
+                              <span className="text-[9px] text-indigo-650 font-mono block text-left">u/{m.redditUsername || 'None'} • {m.email}</span>
+                            </div>
+                            <span className="text-[10px] bg-indigo-50 border border-indigo-150 px-2 py-0.5 rounded text-indigo-700 font-black font-mono">➕ ADD</span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Removable Tag Pills */}
+                {editAssignedMembers.length > 0 && (
+                  <div className="space-y-1 pt-1 animate-fade-in">
+                    <label className="text-[9px] font-black uppercase text-slate-405 tracking-wider">Assigned Members ({editAssignedMembers.length})</label>
+                    <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-1.5 bg-slate-50 border border-slate-200 rounded-xl">
+                      {editAssignedMembers.map(uid => {
+                        const m = users.find(u => u.id === uid);
+                        return (
+                          <span key={uid} className="inline-flex items-center gap-1 bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px] font-bold px-2 py-0.5 rounded-lg font-mono">
+                            <span>u/{m?.redditUsername || m?.email || uid}</span>
+                            <button
+                              type="button"
+                              onClick={() => setEditAssignedMembers(prev => prev.filter(id => id !== uid))}
+                              className="text-indigo-400 hover:text-indigo-800 cursor-pointer font-black border-0 bg-transparent text-[11px] ml-0.5 p-0"
+                            >
+                              ✕
+                            </button>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setEditingTask(null)}
+                className="px-4 py-2 bg-white hover:bg-slate-100 border border-slate-250 text-slate-705 rounded-xl text-xs font-bold cursor-pointer transition select-none uppercase tracking-wider"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveTaskEdits}
+                className="px-5 py-2 bg-indigo-650 hover:bg-indigo-600 text-white rounded-xl text-xs font-black cursor-pointer transition uppercase"
+              >
+                Save & Broadcast Updates
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🗑 Delete Submission Confirmation Modal */}
+      {submissionToDelete && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 select-none animate-fade-in font-sans">
+          <div className="bg-white border border-red-200 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-xl relative text-left text-slate-800">
+            <div className="flex items-center gap-2.5 text-rose-600">
+              <Trash2 className="w-5 h-5 animate-pulse" />
+              <h3 className="text-base font-black tracking-tight text-slate-900 m-0">Confirm Delete Submission</h3>
+            </div>
+            
+            <p className="text-xs text-slate-650 leading-relaxed font-semibold">
+              Delete this submission from the review desk?
+              <br className="mb-2" />
+              <span className="text-rose-600 font-extrabold">This action will not affect payments, wallet balances, audit logs, or completed transactions.</span>
+            </p>
+
+            <div className="bg-slate-50 border p-3.5 rounded-xl space-y-1.5 text-xs font-semibold">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-450 block font-mono">Submission Details:</span>
+              <p className="m-0 text-[11px] text-slate-800 font-extrabold">Task: {submissionToDelete.taskTitle}</p>
+              <p className="m-0 text-[11px] text-slate-650 font-medium">Creator: {submissionToDelete.userFullName} (u/{submissionToDelete.redditUsername})</p>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setSubmissionToDelete(null)}
+                className="px-4 py-2 bg-white hover:bg-slate-100 border border-slate-250 text-slate-705 rounded-xl text-xs font-bold cursor-pointer transition select-none uppercase tracking-wider"
+                disabled={isDeletingSubmission}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteSubmissionConfirm}
+                className="px-5 py-2 bg-rose-650 hover:bg-rose-600 text-white rounded-xl text-xs font-black cursor-pointer transition uppercase flex items-center gap-1.5"
+                disabled={isDeletingSubmission}
+              >
+                {isDeletingSubmission ? 'Deleting...' : 'Delete Submission'}
               </button>
             </div>
           </div>

@@ -94,6 +94,12 @@ export interface Task {
   minKarmaRequired?: number;
   specialLabel?: string; // e.g. "⭐ Special Task"
 
+  // Assigned (Private) Task Fields
+  visibility?: 'public' | 'assigned';
+  assignedMembers?: string[]; // Array of user IDs
+  isExclusive?: boolean; // When enabled, first assigned member who claims gets it, and it becomes unavailable to other assigned members
+  exclusivelyClaimedBy?: string | null;
+
   // Claiming mechanism
   claimed_by?: string | null; // userId or null
   claimed_at?: string | null; // ISO timestamp or null
@@ -212,7 +218,7 @@ export interface SupportTicket {
 export interface AppNotification {
   id: string;
   userId: string; // clientId, memberId or 'all'
-  type: 'task_approved' | 'task_rejected' | 'withdrawal_update' | 'verification' | 'new_task' | 'announcement' | 'referral_bonus' | 'client_update' | 'dispute' | 'message' | 'account_banned' | 'account_suspended' | 'account_reinstated';
+  type: 'task_approved' | 'task_rejected' | 'withdrawal_update' | 'verification' | 'new_task' | 'announcement' | 'referral_bonus' | 'client_update' | 'dispute' | 'message' | 'account_banned' | 'account_suspended' | 'account_reinstated' | 'private_assignment';
   title: string;
   message: string;
   read: boolean;

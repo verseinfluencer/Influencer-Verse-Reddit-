@@ -490,7 +490,7 @@ export const SupportTickets: React.FC<SupportTicketsProps> = ({ onNavigate }) =>
                            >
                             <div className="flex justify-between items-center gap-10 text-[9px] font-bold uppercase tracking-wider mb-2 select-none font-sans">
                               <span className={msg.sender === 'admin' ? 'text-indigo-600 font-bold' : 'text-slate-400 font-bold'}>
-                                {msg.sender === 'admin' ? '📢 STAFF REPRESENTATIVE' : 'CREATOR AUTHOR'}
+                                {msg.sender === 'admin' ? 'STAFF REPRESENTATIVE' : 'CREATOR AUTHOR'}
                               </span>
                               <span className="text-slate-400 text-[8px] font-medium font-sans block">
                                 {new Date(msg.timestamp).toLocaleDateString()} {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}

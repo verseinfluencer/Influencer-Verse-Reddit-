@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { renderRedditMarkdown } from '../utils/markdownHelper';
 import { Task, Submission } from '../types';
-import { Search, Filter, ShieldAlert, CheckCircle, Clock, ExternalLink, Calendar, PlusCircle, Sparkles, BookOpen, UserMinus, X, Copy } from 'lucide-react';
+import { Search, Filter, ShieldAlert, CheckCircle, Clock, ExternalLink, Calendar, PlusCircle, Sparkles, BookOpen, UserMinus, X, Copy, Lock, Award, Trophy } from 'lucide-react';
 import { getTierRequirementText, getKarmaTier } from '../utils/tierHelper';
 
 export const Marketplace: React.FC = () => {
@@ -13,6 +13,7 @@ export const Marketplace: React.FC = () => {
   const [activeType, setActiveType] = useState<'all' | 'post' | 'comment'>('all');
   const [activeDiff, setActiveDiff] = useState<'all' | 'Easy' | 'Medium' | 'Hard'>('all');
   const [tierFilter, setTierFilter] = useState<string>('all');
+  const [visibilityFilter, setVisibilityFilter] = useState<'all' | 'public' | 'assigned'>('all');
 
   // Submission overlay modal states
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -85,6 +86,40 @@ export const Marketplace: React.FC = () => {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Deep-linking / direct task URL checks
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlTaskId = params.get('taskId') || params.get('task');
+    if (urlTaskId && tasks.length > 0) {
+      const foundTask = tasks.find(t => t.id === urlTaskId);
+      if (foundTask) {
+        const isUserAdmin = currentUser?.role === 'admin' || currentUser?.role === 'moderator' || currentUser?.email?.toLowerCase() === 'kalloldeyprivate20@gmail.com';
+        if (foundTask.visibility === 'assigned') {
+          const isAssigned = foundTask.assignedMembers && currentUser && foundTask.assignedMembers.includes(currentUser.id);
+          if (!isUserAdmin && !isAssigned) {
+            setErrorMessage("You do not currently have permission to access this private task.");
+            return;
+          }
+        }
+        setSelectedTask(foundTask);
+      }
+    }
+  }, [tasks, currentUser]);
+
+  // SelectedTask update security safeguard validation
+  React.useEffect(() => {
+    if (selectedTask) {
+      const isUserAdmin = currentUser?.role === 'admin' || currentUser?.role === 'moderator' || currentUser?.email?.toLowerCase() === 'kalloldeyprivate20@gmail.com';
+      if (selectedTask.visibility === 'assigned') {
+        const isAssigned = selectedTask.assignedMembers && currentUser && selectedTask.assignedMembers.includes(currentUser.id);
+        if (!isUserAdmin && !isAssigned) {
+          setSelectedTask(null);
+          setErrorMessage("You do not currently have permission to access this private task.");
+        }
+      }
+    }
+  }, [selectedTask, currentUser]);
 
   // Check if current user has already submitted a proof for this task (limit 1 submission per task per user in demo)
   const getUserSubmissionForTask = (taskId: string) => {
@@ -172,14 +207,31 @@ export const Marketplace: React.FC = () => {
       return taskTierName === tierFilter;
     })();
 
-    return matchesSearch && matchesType && matchesDiff && matchesTier;
+    const matchesVisibility = (() => {
+      if (visibilityFilter === 'all') return true;
+      if (visibilityFilter === 'assigned') return t.visibility === 'assigned';
+      return t.visibility !== 'assigned'; // public or default
+    })();
+
+    return matchesSearch && matchesType && matchesDiff && matchesTier && matchesVisibility;
   });
 
   // Task filter visibility rules:
-  // 1. If task is available -> visible to all
+  // 1. If task is available -> visible to all (unless it is assigned and currentUser is not assigned)
   // 2. If task is claimed/completed by the current user -> visible so they can submit/track
   // 3. Otherwise -> hidden from other users instantly
   const visibleTasks = filteredTasks.filter(t => {
+    // Admin & Moderator bypass: they can see all tasks
+    const isUserAdmin = currentUser?.role === 'admin' || currentUser?.role === 'moderator' || currentUser?.email?.toLowerCase() === 'kalloldeyprivate20@gmail.com';
+    
+    // Security check: if task is assigned (private), hidden from all non-assigned users
+    if (t.visibility === 'assigned') {
+      const isAssigned = t.assignedMembers && currentUser && t.assignedMembers.includes(currentUser.id);
+      if (!isUserAdmin && !isAssigned) {
+        return false;
+      }
+    }
+
     if (t.status === 'available') return true;
     if (t.claimed_by === currentUser?.id) return true;
     return false;
@@ -426,6 +478,37 @@ export const Marketplace: React.FC = () => {
               ))}
             </div>
 
+            {/* Visibility filter */}
+            <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-200 text-[11px]">
+              <button 
+                type="button"
+                onClick={() => setVisibilityFilter('all')} 
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                  visibilityFilter === 'all' ? 'bg-purple-600 text-white font-bold' : 'text-zinc-500 hover:text-purple-600'
+                }`}
+              >
+                All Tasks
+              </button>
+              <button 
+                type="button"
+                onClick={() => setVisibilityFilter('public')} 
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                  visibilityFilter === 'public' ? 'bg-purple-600 text-white font-bold' : 'text-zinc-505 text-zinc-500 hover:text-purple-606'
+                }`}
+              >
+                Public Tasks
+              </button>
+              <button 
+                type="button"
+                onClick={() => setVisibilityFilter('assigned')} 
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                  visibilityFilter === 'assigned' ? 'bg-purple-600 text-white font-bold' : 'text-zinc-505 text-zinc-500 hover:text-purple-606'
+                }`}
+              >
+                Assigned Tasks
+              </button>
+            </div>
+
             {/* Tier Requirements Dropdown */}
             <div className="flex items-center gap-2 bg-slate-50 p-1 pl-3 rounded-xl border border-slate-200 text-[11px] font-semibold text-zinc-500 select-none">
               <span className="shrink-0 flex items-center gap-1.5 text-zinc-500">
@@ -438,19 +521,19 @@ export const Marketplace: React.FC = () => {
                 onChange={(e) => setTierFilter(e.target.value)}
                 className="bg-transparent border-0 text-zinc-800 focus:outline-none focus:ring-0 cursor-pointer font-extrabold text-xs p-1 px-2 pr-8"
               >
-                <option value="all" className="bg-white text-zinc-805">👑 All Tiers</option>
+                <option value="all" className="bg-white text-zinc-805">All Tiers</option>
                 <option value="eligible" className="bg-white text-purple-700 font-extrabold">
-                  ✅ Eligible For Me {userTier ? `(${userTier.emoji} ${userTier.name})` : ''}
+                  Eligible For Me {userTier ? `(${userTier.name})` : ''}
                 </option>
-                <option value="unlocked" className="bg-white text-zinc-805">🔓 No Tier Required</option>
-                <option value="special_only" className="bg-white text-zinc-850">⭐ Special Only</option>
-                <option value="bronze" className="bg-white text-zinc-805">🥉 Bronze Required</option>
-                <option value="silver" className="bg-white text-zinc-805">🥈 Silver Required</option>
-                <option value="gold" className="bg-white text-zinc-805">⭐ Gold Required</option>
-                <option value="diamond" className="bg-white text-zinc-805">💎 Diamond Required</option>
-                <option value="platinum" className="bg-white text-zinc-805">🔥 Platinum Required</option>
-                <option value="elite" className="bg-white text-zinc-805">👑 Elite Required</option>
-                <option value="legend" className="bg-white text-zinc-805">🚀 Legend Required</option>
+                <option value="unlocked" className="bg-white text-zinc-805">No Tier Required</option>
+                <option value="special_only" className="bg-white text-zinc-850">Special Only</option>
+                <option value="bronze" className="bg-white text-zinc-805">Bronze Required</option>
+                <option value="silver" className="bg-white text-zinc-805">Silver Required</option>
+                <option value="gold" className="bg-white text-zinc-805">Gold Required</option>
+                <option value="diamond" className="bg-white text-zinc-805">Diamond Required</option>
+                <option value="platinum" className="bg-white text-zinc-805">Platinum Required</option>
+                <option value="elite" className="bg-white text-zinc-805">Elite Required</option>
+                <option value="legend" className="bg-white text-zinc-805">Legend Required</option>
               </select>
             </div>
 
@@ -462,7 +545,7 @@ export const Marketplace: React.FC = () => {
         {uniqueSubreddits.length > 0 && (
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 flex flex-wrap items-center gap-2 text-xs shadow-sm">
             <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 select-none mr-2">
-              ⚡ Quick Subreddit Filters:
+              Quick Subreddit Filters:
             </span>
             {uniqueSubreddits.map(sub => {
               const active = isSubredditActive(sub);
@@ -524,7 +607,7 @@ export const Marketplace: React.FC = () => {
             <span>You are currently on high precision Reddit Post claiming cooldown.</span>
           </div>
           <span className="font-mono bg-purple-100 px-3 py-1 rounded-xl text-purple-700 font-black animate-pulse">
-            ⏳ Next Post Claim Available In: <strong className="font-mono font-black ml-1 text-purple-900">{postCooldownString || '00:00:00'}</strong>
+            Next Post Claim Available In: <strong className="font-mono font-black ml-1 text-purple-900">{postCooldownString || '00:00:00'}</strong>
           </span>
         </div>
       )}
@@ -536,7 +619,7 @@ export const Marketplace: React.FC = () => {
             <span>You are currently on high precision Reddit Comment claiming cooldown.</span>
           </div>
           <span className="font-mono bg-purple-100 px-3 py-1 rounded-xl text-purple-700 font-black animate-pulse">
-            ⏳ Next Comment Claim Available In: <strong className="font-mono font-black ml-1 text-purple-900">{commentCooldownString || '00:00:00'}</strong>
+            Next Comment Claim Available In: <strong className="font-mono font-black ml-1 text-purple-900">{commentCooldownString || '00:00:00'}</strong>
           </span>
         </div>
       )}
@@ -594,18 +677,18 @@ export const Marketplace: React.FC = () => {
                     <span className="p-3 bg-red-50 border border-red-200 text-red-500 rounded-full mb-3">
                       <ShieldAlert className="w-5 h-5" />
                     </span>
-                    <h4 className="font-extrabold text-sm text-zinc-900 font-display">🔒 Locked Special Campaign</h4>
+                    <h4 className="font-extrabold text-sm text-zinc-900 font-display">Locked Special Campaign</h4>
                     <p className="text-[10px] text-zinc-500 mt-1 max-w-[200px] leading-normal font-semibold">
                       This premium special task is restricted. Requires <strong className="text-purple-600">{getTierRequirementText(task.minKarmaRequired)}</strong>. Check your dashboard status card!
                     </p>
                     <button className="mt-4 px-4 py-1.5 bg-slate-100 text-zinc-400 text-[10px] font-bold rounded-lg border border-slate-200 cursor-not-allowed uppercase">
-                      Locked 🔒
+                      Locked
                     </button>
                   </div>
                 )}
 
                 <div className="flex justify-between items-center mb-4">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
                       task.type === 'post' 
                         ? 'bg-purple-100/60 border border-purple-200 text-purple-700 font-bold' 
@@ -614,12 +697,22 @@ export const Marketplace: React.FC = () => {
                       Reddit {task.type}
                     </span>
                     {isTaskSpecial && (
-                      <span className="bg-amber-50 border border-amber-250 text-amber-600 text-[9px] font-extrabold px-2 py-0.5 rounded-full select-none flex items-center gap-0.5 tracking-wider">
-                        ⭐ SPECIAL
+                      <span className="bg-amber-50 border border-amber-250 text-amber-600 text-[9px] font-black px-2 py-0.5 rounded-full select-none flex items-center gap-1 tracking-wider uppercase">
+                        <Sparkles className="w-2.5 h-2.5" /> Special
+                      </span>
+                    )}
+                    {task.visibility === 'assigned' && (
+                      <span className="bg-purple-100/60 border border-purple-200 text-purple-700 text-[9px] font-black px-2 py-0.5 rounded-full select-none flex items-center gap-1 tracking-wider uppercase">
+                        <Lock className="w-2.5 h-2.5" /> Private Task
+                      </span>
+                    )}
+                    {task.visibility === 'assigned' && task.isExclusive && (
+                      <span className="bg-indigo-50 border border-indigo-200 text-indigo-700 text-[9px] font-black px-2 py-0.5 rounded-full select-none flex items-center gap-1 tracking-wider font-display uppercase">
+                        <Award className="w-2.5 h-2.5 text-indigo-600" /> Assigned Task
                       </span>
                     )}
                   </div>
-                  <span className="text-xs text-zinc-500 font-bold">🎯 {task.difficulty}</span>
+                  <span className="text-xs text-zinc-500 font-bold uppercase tracking-wider font-mono">{task.difficulty}</span>
                 </div>
 
                 {task.type === 'post' && task.targetSubreddit && (
@@ -805,14 +898,14 @@ export const Marketplace: React.FC = () => {
                     </div>
 
                     {isTaskSpecial && !isLocked && (
-                      <div className="mt-2.5 text-[9px] text-emerald-600 font-bold tracking-wide flex items-center gap-1 bg-emerald-50 p-1.5 rounded-lg border border-emerald-205 select-none font-sans">
-                        <CheckCircle className="w-3.5 h-3.5" /> ⭐ You're eligible for this special task
+                      <div className="mt-2.5 text-[9px] text-emerald-600 font-bold tracking-wide flex items-center gap-1.5 bg-emerald-50 p-1.5 rounded-lg border border-emerald-205 select-none font-sans">
+                        <CheckCircle className="w-3.5 h-3.5" /> You're eligible for this special premium campaign
                       </div>
                     )}
 
                     {isClaimedByMe && (
                       <div className="mt-3 bg-purple-50 border border-purple-200 text-purple-700 text-[10px] py-2 px-3 rounded-xl flex items-center justify-between font-mono animate-pulse">
-                        <span>⏰ Time Remaining to Submit:</span>
+                        <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-purple-600" /> Time Remaining:</span>
                         <span className="font-extrabold text-white font-mono bg-purple-600 px-2 py-0.5 rounded">
                           {formatMinsSecs(secondsRemaining)} mins
                         </span>
@@ -827,7 +920,7 @@ export const Marketplace: React.FC = () => {
                       ${(task.reward * settings.globalMultiplier).toFixed(2)} USDT
                     </span>
                     {task.isSpecial && (
-                      <span className="text-[8px] text-amber-600 block tracking-wider uppercase font-bold text-amber-500">🔒 Requires {getTierRequirementText(task.minKarmaRequired)}</span>
+                      <span className="text-[8px] text-amber-600 block tracking-wider uppercase font-bold text-amber-500">Requires {getTierRequirementText(task.minKarmaRequired)}</span>
                     )}
                   </div>
 

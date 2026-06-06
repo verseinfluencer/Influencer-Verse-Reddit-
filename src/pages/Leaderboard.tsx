@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Award, ShieldAlert, Sparkles, TrendingUp, Users, HeartCrack, ChevronRight } from 'lucide-react';
+import { Award, ShieldAlert, Sparkles, TrendingUp, Users, HeartCrack, ChevronRight, Trophy } from 'lucide-react';
 
 interface LeaderboardAvatarProps {
   fullName?: string | null;
@@ -84,10 +84,10 @@ export const Leaderboard: React.FC = () => {
 
   // Styling helper for rankings
   const getRankBadge = (rankOrdinal: number) => {
-    if (rankOrdinal === 1) return { text: '🥇 Gold #1', style: 'bg-amber-50 text-amber-800 border border-amber-200' };
-    if (rankOrdinal === 2) return { text: '🥈 Silver #2', style: 'bg-gray-50 text-gray-700 border border-gray-200' };
-    if (rankOrdinal === 3) return { text: '🥉 Bronze #3', style: 'bg-amber-50 text-amber-700 border border-amber-200' };
-    return { text: `# ${rankOrdinal}`, style: 'bg-gray-100 text-gray-500 border border-gray-200' };
+    if (rankOrdinal === 1) return { text: 'Gold #1', style: 'bg-amber-50 text-amber-800 border border-amber-200 font-extrabold uppercase tracking-wide text-[9px]' };
+    if (rankOrdinal === 2) return { text: 'Silver #2', style: 'bg-gray-50 text-gray-700 border border-gray-200 font-bold uppercase tracking-wide text-[9px]' };
+    if (rankOrdinal === 3) return { text: 'Bronze #3', style: 'bg-amber-50 text-amber-700 border border-amber-200 font-bold uppercase tracking-wide text-[9px]' };
+    return { text: `# ${rankOrdinal}`, style: 'bg-gray-100 text-gray-500 border border-gray-200 font-mono' };
   };
 
   const getTasksCompletedCount = (userId: string) => {
@@ -184,7 +184,7 @@ export const Leaderboard: React.FC = () => {
             <div className="absolute -top-4 -right-4 w-20 h-20 bg-amber-500/5 rounded-full blur-2xl"></div>
             
             <div className="relative">
-              <span className="absolute -top-3 right-5 text-2xl animate-bounce">👑</span>
+              <Trophy className="absolute -top-7 right-5 w-6 h-6 text-amber-500 animate-bounce fill-amber-300" />
               <span className="absolute -top-1.5 -right-1 bg-amber-400 text-white font-bold text-xs w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow-sm">1</span>
               <LeaderboardAvatar 
                 fullName={podium[0].fullName} 

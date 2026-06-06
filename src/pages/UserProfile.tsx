@@ -72,7 +72,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onNavigate }) => {
               </p>
 
               <div className="text-[10px] text-amber-900 bg-amber-100/50 border border-amber-200/50 p-2.5 rounded-xl font-semibold mt-3 max-w-md">
-                🛡️ Restricted Section Lock includes: Tasks marketplace submissions, referral payouts, and instant wallet withdrawals.
+                Restricted Section Lock includes: Tasks marketplace submissions, referral payouts, and instant wallet withdrawals.
               </div>
             </div>
           )}

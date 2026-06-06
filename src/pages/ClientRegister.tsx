@@ -289,9 +289,9 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
           <div className="flex justify-between items-center pt-2.5 border-t border-slate-200 mt-2">
             <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Email status:</span>
             {gmailVerifiedStatus ? (
-              <span className="text-xs text-emerald-600 font-extrabold">✅ Verified in system</span>
+              <span className="text-xs text-emerald-600 font-extrabold">Verified in system</span>
             ) : (
-              <span className="text-xs text-rose-500 font-extrabold animate-pulse">❌ Pending link activation</span>
+              <span className="text-xs text-rose-500 font-extrabold animate-pulse">Pending link activation</span>
             )}
           </div>
         </div>
@@ -306,7 +306,7 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
           >
             {resendCooldown > 0 
               ? `Resend in ${resendCooldown}s` 
-              : `📧 Resend Verification Email`
+              : `Resend Verification Email`
             }
           </button>
           
@@ -324,7 +324,7 @@ export const ClientRegister: React.FC<ClientRegisterProps> = ({ onNavigate }) =>
             disabled={isCheckingGmail || gmailVerifiedStatus}
             className="px-6 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl transition font-sans w-full cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 shadow-lg shadow-indigo-600/10"
           >
-            {isCheckingGmail ? 'Syncing status...' : "✅ I've Verified My Email"}
+            {isCheckingGmail ? 'Syncing status...' : "I've Verified My Email"}
           </button>
 
           <button 

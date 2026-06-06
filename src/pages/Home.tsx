@@ -336,7 +336,9 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
               {/* Status Audit Proof Block */}
               <div className="bg-white p-5 rounded-xl border border-slate-100 shadow-sm space-y-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-purple-600 bg-purple-50 p-1 rounded">🛡️</span>
+                  <div className="p-1 bg-purple-50 rounded-lg text-purple-600 border border-purple-100">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                  </div>
                   <span className="text-[10px] font-bold text-zinc-400 uppercase">Screenshot Verification Hash</span>
                 </div>
                 <div className="p-3 bg-slate-50 rounded-lg space-y-1 font-mono text-[9px]">
@@ -619,7 +621,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
                 <div className="divide-y divide-slate-50 text-sm font-semibold text-zinc-805">
                   {leaderboardList.map((item, idx) => {
                     const rank = idx + 1;
-                    const rankMedal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : `#${rank}`;
+                    const rankMedal = `#${rank}`;
                     return (
                       <div key={item.id} className="py-3.5 flex items-center justify-between">
                         {/* Rank indicator */}
