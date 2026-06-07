@@ -100,6 +100,20 @@ async function main() {
     .toFile(path.join(destDir, 'android-chrome-512x512.png'));
     console.log('✔ Generated android-chrome-512x512.png (512x512 with solid black background)');
 
+    // 7. Generate favicon.png with solid black background for a general solid black backup image
+    await sharp({
+      create: {
+        width: 512,
+        height: 512,
+        channels: 4,
+        background: { r: 0, g: 0, b: 0, alpha: 1 }
+      }
+    })
+    .composite([{ input: svg400Buffer, gravity: 'center' }])
+    .png()
+    .toFile(path.join(destDir, 'favicon.png'));
+    console.log('✔ Generated favicon.png (512x512 with solid black background)');
+
     console.log('All branding assets generated completely and successfully!');
   } catch (error) {
     console.error('Failed to generate favicon assets:', error);
