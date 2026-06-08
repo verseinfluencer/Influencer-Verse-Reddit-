@@ -220,6 +220,12 @@ export const AdminDashboard: React.FC = () => {
   // Comment specific
   const [commentPostUrl, setCommentPostUrl] = useState('');
   const [commentGuidelines, setCommentGuidelines] = useState('');
+  // Reddit Request specific
+  const [requiredLinkUrl, setRequiredLinkUrl] = useState('');
+  const [requiredFlair, setRequiredFlair] = useState('');
+  const [minAccountAgeRequired, setMinAccountAgeRequired] = useState<number>(4);
+  const [require2FA, setRequire2FA] = useState<boolean>(true);
+  const [cooldownPeriodDays, setCooldownPeriodDays] = useState<number>(15);
 
   // Task assignment/visibility creator states
   const [taskVisibility, setTaskVisibility] = useState<'public' | 'assigned'>('public');
@@ -909,10 +915,10 @@ export const AdminDashboard: React.FC = () => {
       difficulty: taskDifficulty,
       deadline: taskDeadline + ' 23:59',
       maxSubmissions: Number(taskMaxSubmissions),
-      proofRequired: taskType === 'post' ? 'Screenshot of the live post showing u/username clearly.' : 'Screenshot of comment + Permalink URL',
-      isSpecial: isSpecialTask,
-      minKarmaRequired: isSpecialTask ? Number(minKarmaRequired) : 0,
-      specialLabel: isSpecialTask ? specialLabel : '',
+      proofRequired: taskType === 'post' ? 'Screenshot of the live post showing u/username clearly.' : (taskType === 'comment' ? 'Screenshot of comment + Permalink URL' : 'Link to the submitted r/redditrequest thread (Markdown Link Verification)'),
+      isSpecial: isSpecialTask || taskType === 'request',
+      minKarmaRequired: taskType === 'request' ? (Number(minKarmaRequired) || 300) : (isSpecialTask ? Number(minKarmaRequired) : 0),
+      specialLabel: taskType === 'request' ? 'REQUEST TASK' : (isSpecialTask ? specialLabel : ''),
       visibility: taskVisibility,
       assignedMembers: taskVisibility === 'assigned' ? assignedMembers : [],
       isExclusive: taskVisibility === 'assigned' ? isExclusiveTask : false
@@ -937,7 +943,7 @@ export const AdminDashboard: React.FC = () => {
         requiredPostTitle: requiredTitle,
         postGuidelines: postGuidelines
       };
-    } else {
+    } else if (taskType === 'comment') {
       const commentGuideCheck = validateRedditMarkdownLinks(commentGuidelines);
       if (!commentGuideCheck.isValid) {
         alert(`Comment guidelines links validation failed:\n${commentGuideCheck.error}`);
@@ -948,6 +954,17 @@ export const AdminDashboard: React.FC = () => {
         ...baseTask,
         postUrlToCommentOn: commentPostUrl,
         commentGuidelines: commentGuidelines
+      };
+    } else if (taskType === 'request') {
+      extendedTask = {
+        ...baseTask,
+        targetSubreddit: subreddit || 'r/redditrequest',
+        requiredLinkUrl: requiredLinkUrl,
+        requiredFlair: requiredFlair || '',
+        minKarmaRequired: Number(minKarmaRequired) || 300,
+        minAccountAgeRequired: Number(minAccountAgeRequired) || 4,
+        require2FA: require2FA,
+        cooldownPeriodDays: Number(cooldownPeriodDays) || 15
       };
     }
 
@@ -963,8 +980,13 @@ export const AdminDashboard: React.FC = () => {
     setPostGuidelines('');
     setCommentPostUrl('');
     setCommentGuidelines('');
+    setRequiredLinkUrl('');
+    setRequiredFlair('');
+    setMinAccountAgeRequired(4);
+    setRequire2FA(true);
+    setCooldownPeriodDays(15);
     setIsSpecialTask(false);
-    setMinKarmaRequired(1000);
+    setMinKarmaRequired(300);
     setSpecialLabel('SPECIAL');
     setTaskVisibility('public');
     setAssignedMembers([]);
@@ -3732,24 +3754,33 @@ export const AdminDashboard: React.FC = () => {
               <form onSubmit={handleCreateTask} className="space-y-4">
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Campaign Category Type</label>
-                  <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                  <div className="grid grid-cols-3 gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
                     <button 
                       type="button" 
                       onClick={() => setTaskType('post')}
-                      className={`py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                        taskType === 'post' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-500'
+                      className={`py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                        taskType === 'post' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-700'
                       }`}
                     >
-                      Reddit Post Task
+                      Post Task
                     </button>
                     <button 
                       type="button" 
                       onClick={() => setTaskType('comment')}
-                      className={`py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                        taskType === 'comment' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-500'
+                      className={`py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                        taskType === 'comment' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-700'
                       }`}
                     >
-                      Reddit Comment Task
+                      Comment Task
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => setTaskType('request')}
+                      className={`py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                        taskType === 'request' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-700'
+                      }`}
+                    >
+                      Request Task
                     </button>
                   </div>
                 </div>
@@ -3972,7 +4003,7 @@ export const AdminDashboard: React.FC = () => {
                 </div>
 
                 {/* Post specific fields */}
-                {taskType === 'post' ? (
+                {taskType === 'post' && (
                   <div className="space-y-4 pt-1">
                     <div>
                       <label className="text-[10px] font-bold uppercase tracking-wider text-indigo-650 block mb-1">Target Subreddit</label>
@@ -4004,8 +4035,10 @@ export const AdminDashboard: React.FC = () => {
                       />
                     </div>
                   </div>
-                ) : (
-                  /* Comment specific fields */
+                )}
+
+                {/* Comment specific fields */}
+                {taskType === 'comment' && (
                   <div className="space-y-4 pt-1">
                     <div>
                       <label className="text-[10px] font-bold uppercase tracking-wider text-indigo-650 block mb-1">Target Reddit Post URL to comment on</label>
@@ -4025,6 +4058,91 @@ export const AdminDashboard: React.FC = () => {
                         placeholder="e.g. Must comment about 'high gas fees' or 'zero scalability benefits'. Minimum 2 sentences." 
                         className="w-full text-xs text-slate-800 bg-white border border-slate-200 px-3 py-2 rounded-xl h-20 focus:border-indigo-550 focus:outline-none"
                       />
+                    </div>
+                  </div>
+                )}
+
+                {/* Reddit Request specific fields */}
+                {taskType === 'request' && (
+                  <div className="space-y-4 pt-1">
+                    <div>
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-amber-600 block mb-1">Target Subreddit</label>
+                      <input 
+                        type="text" 
+                        value={subreddit}
+                        onChange={(e) => setSubreddit(e.target.value)}
+                        placeholder="e.g., r/redditrequest" 
+                        className="w-full text-xs text-slate-800 bg-white border border-slate-200 px-3 py-2.5 rounded-xl focus:border-amber-500 focus:outline-none font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-amber-600 block mb-1">Required Link URL</label>
+                      <input 
+                        type="url" 
+                        value={requiredLinkUrl}
+                        onChange={(e) => setRequiredLinkUrl(e.target.value)}
+                        placeholder="e.g., https://www.reddit.com/r/subreddit_to_claim" 
+                        className="w-full text-xs text-slate-800 bg-white border border-slate-200 px-3 py-2.5 rounded-xl focus:border-amber-500 focus:outline-none font-mono"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-amber-600 block mb-1">Required Flair (optional)</label>
+                      <input 
+                        type="text" 
+                        value={requiredFlair}
+                        onChange={(e) => setRequiredFlair(e.target.value)}
+                        placeholder="e.g., Requesting Subreddit" 
+                        className="w-full text-xs text-slate-800 bg-white border border-slate-200 px-3 py-2.5 rounded-xl focus:border-amber-500 focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                      <div>
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Min Karma Required</label>
+                        <input 
+                          type="number" 
+                          value={minKarmaRequired}
+                          onChange={(e) => setMinKarmaRequired(Number(e.target.value) || 0)}
+                          className="w-full text-[11px] text-slate-800 bg-white border border-slate-200 px-2 py-1.5 rounded-lg focus:border-amber-500 focus:outline-none font-mono font-bold"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Min Age (Months)</label>
+                        <input 
+                          type="number" 
+                          value={minAccountAgeRequired}
+                          onChange={(e) => setMinAccountAgeRequired(Number(e.target.value) || 0)}
+                          className="w-full text-[11px] text-slate-800 bg-white border border-slate-200 px-2 py-1.5 rounded-lg focus:border-amber-500 focus:outline-none font-mono font-bold"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                      <div>
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Cooldown (Days)</label>
+                        <input 
+                          type="number" 
+                          value={cooldownPeriodDays}
+                          onChange={(e) => setCooldownPeriodDays(Number(e.target.value) || 0)}
+                          className="w-full text-[11px] text-slate-800 bg-white border border-slate-200 px-2 py-1.5 rounded-lg focus:border-amber-500 focus:outline-none font-mono font-bold"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Security</label>
+                        <div className="flex items-center gap-1.5 h-[34px]">
+                          <input 
+                            type="checkbox" 
+                            id="require-2fa-setting-cb"
+                            checked={require2FA}
+                            onChange={(e) => setRequire2FA(e.target.checked)}
+                            className="w-4 h-4 text-amber-600 border-slate-300 rounded focus:ring-amber-500 cursor-pointer accent-amber-600"
+                          />
+                          <label htmlFor="require-2fa-setting-cb" className="text-[10px] font-bold text-slate-700 cursor-pointer select-none">
+                            Require 2FA
+                          </label>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}

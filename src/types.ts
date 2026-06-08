@@ -41,8 +41,13 @@ export interface User {
   active_task_id?: string | null;
   lastPostClaimedAt?: any; // Firebase Server Timestamp or ISO timestamp
   postCooldownExpiresAt?: any; // Firebase Server Timestamp, Date or ISO timestamp
+  postCooldownEndsAt?: any;
   lastCommentClaimedAt?: any; // Firebase Server Timestamp or ISO timestamp
   commentCooldownExpiresAt?: any; // Firebase Server Timestamp, Date or ISO timestamp
+  commentCooldownEndsAt?: any;
+  lastRequestClaimedAt?: any;
+  requestCooldownExpiresAt?: any;
+  requestCooldownEndsAt?: any;
 
   // New Member Payout & Deduction fields
   deductionHistory?: DeductionRecord[] | null;
@@ -66,9 +71,11 @@ export interface User {
   discordUserId?: string;
   discordUsername?: string;
   discordVerifiedAt?: string | null;
+  redditAccountAge?: number; // months
+  reddit2FAEnabled?: boolean;
 }
 
-export type TaskType = 'post' | 'comment';
+export type TaskType = 'post' | 'comment' | 'request';
 
 export interface Task {
   id: string;
@@ -87,6 +94,12 @@ export interface Task {
   // Specific to Comment tasks:
   postUrlToCommentOn?: string;
   commentGuidelines?: string;
+  // Specific to Request tasks:
+  requiredFlair?: string;
+  requiredLinkUrl?: string;
+  minAccountAgeRequired?: number; // default: 4 months
+  require2FA?: boolean;
+  cooldownPeriodDays?: number; // default: 15 days
   // Proof info required:
   proofRequired: string; // e.g., "screenshot" or "screenshot + comment URL"
 

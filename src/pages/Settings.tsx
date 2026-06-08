@@ -23,6 +23,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate }) => {
   const [redditUsername, setRedditUsername] = useState(currentUser?.redditUsername || '');
   const [redditProfileLink, setRedditProfileLink] = useState(currentUser?.redditProfileLink || '');
   const [gender, setGender] = useState<'Male' | 'Female' | 'Non-binary' | 'Prefer not to say' | ''>(currentUser?.gender || '');
+  const [redditAccountAge, setRedditAccountAge] = useState<number>(currentUser?.redditAccountAge !== undefined ? currentUser.redditAccountAge : 5);
+  const [reddit2FAEnabled, setReddit2FAEnabled] = useState<boolean>(currentUser?.reddit2FAEnabled !== undefined ? currentUser.reddit2FAEnabled : true);
   const [profileSuccess, setProfileSuccess] = useState(false);
 
   // New Reddit account connection state
@@ -48,7 +50,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate }) => {
     e.preventDefault();
     if (!fullName || !redditUsername || !redditProfileLink) return;
     
-    updateProfile(fullName, redditUsername, redditProfileLink, gender ? gender : undefined);
+    updateProfile(fullName, redditUsername, redditProfileLink, gender ? gender : undefined, redditAccountAge, reddit2FAEnabled);
     setProfileSuccess(true);
     setTimeout(() => setProfileSuccess(false), 3000);
   };
@@ -177,6 +179,36 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate }) => {
                   <p className="text-[10px] text-gray-400 font-medium mt-1.5">
                     Format: <span className="text-gray-500">https://www.reddit.com/user/[username]</span>
                   </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500 block mb-1.5">Reddit Account Age (Months)</label>
+                    <input 
+                      type="number" 
+                      min="0"
+                      value={redditAccountAge}
+                      onChange={(e) => setRedditAccountAge(parseInt(e.target.value) || 0)}
+                      className="w-full text-xs text-gray-900 bg-white border border-gray-200 px-3.5 py-2.5 rounded-xl focus:border-purple-500 focus:ring-1 focus:ring-purple-500/20 focus:outline-none transition-all font-medium font-mono"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500 block mb-1.5">Reddit 2FA Status</label>
+                    <div className="flex items-center gap-2 h-[41px]">
+                      <input 
+                        type="checkbox" 
+                        id="reddit-2fa-setting-cb"
+                        checked={reddit2FAEnabled}
+                        onChange={(e) => setReddit2FAEnabled(e.target.checked)}
+                        className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 cursor-pointer"
+                      />
+                      <label htmlFor="reddit-2fa-setting-cb" className="text-xs text-gray-700 cursor-pointer select-none font-medium">
+                        Two-Factor Authentication (2FA) Enabled
+                      </label>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="pt-2">

@@ -77,7 +77,7 @@ interface AppContextType {
     discordVerifiedAt?: string | null;
   }) => Promise<User>;
   logout: () => void;
-  updateProfile: (fullName: string, redditUsername: string, redditProfileLink: string, gender?: 'Male' | 'Female' | 'Non-binary' | 'Prefer not to say') => Promise<void>;
+  updateProfile: (fullName: string, redditUsername: string, redditProfileLink: string, gender?: 'Male' | 'Female' | 'Non-binary' | 'Prefer not to say', redditAccountAge?: number, reddit2FAEnabled?: boolean) => Promise<void>;
   addRedditAccount: (username: string, profileUrl: string) => Promise<void>;
   removeRedditAccount: (id: string) => Promise<void>;
   setPrimaryRedditAccount: (id: string) => Promise<void>;
@@ -896,8 +896,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         cooldown_expires_at: null,
         lastPostClaimedAt: null,
         postCooldownExpiresAt: null,
+        postCooldownEndsAt: null,
         lastCommentClaimedAt: null,
         commentCooldownExpiresAt: null,
+        commentCooldownEndsAt: null,
+        lastRequestClaimedAt: null,
+        requestCooldownExpiresAt: null,
+        requestCooldownEndsAt: null,
+        redditAccountAge: 5,
+        reddit2FAEnabled: true,
         active_task_id: null,
         deductionHistory: null,
         lastPayoutRequestDate: null,
@@ -940,7 +947,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await signOut(auth);
   };
 
-  const updateProfile = async (fullName: string, redditUsername: string, redditProfileLink: string, gender?: 'Male' | 'Female' | 'Non-binary' | 'Prefer not to say') => {
+  const updateProfile = async (
+    fullName: string,
+    redditUsername: string,
+    redditProfileLink: string,
+    gender?: 'Male' | 'Female' | 'Non-binary' | 'Prefer not to say',
+    redditAccountAge?: number,
+    reddit2FAEnabled?: boolean
+  ) => {
     if (!currentUser) return;
     await checkBannedOrSuspended();
     const needsReverification = 
@@ -951,7 +965,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       fullName,
       redditUsername,
       redditProfileLink,
-      gender: gender || null
+      gender: gender || null,
+      redditAccountAge: redditAccountAge !== undefined ? redditAccountAge : (currentUser.redditAccountAge !== undefined ? currentUser.redditAccountAge : 5),
+      reddit2FAEnabled: reddit2FAEnabled !== undefined ? reddit2FAEnabled : (currentUser.reddit2FAEnabled !== undefined ? currentUser.reddit2FAEnabled : true)
     };
 
     if (needsReverification) {
@@ -2565,7 +2581,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
 
       if (t.type === 'post') {
-        const expiresAt = parseDate(currentUser.postCooldownExpiresAt);
+        const expiresAt = parseDate(currentUser.postCooldownExpiresAt || currentUser.postCooldownEndsAt);
         const lastClaimed = parseDate(currentUser.lastPostClaimedAt);
         let expiresTime = 0;
         if (expiresAt) {
@@ -2585,7 +2601,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           throw new Error(msg);
         }
       } else if (t.type === 'comment') {
-        const expiresAt = parseDate(currentUser.commentCooldownExpiresAt);
+        const expiresAt = parseDate(currentUser.commentCooldownExpiresAt || currentUser.commentCooldownEndsAt);
         const lastClaimed = parseDate(currentUser.lastCommentClaimedAt);
         let expiresTime = 0;
         if (expiresAt) {
@@ -2602,6 +2618,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const msg = hours > 0 
             ? `You can claim another comment task in ${hours}h ${displayMins}m.` 
             : `You can claim another comment task in ${displayMins}m.`;
+          throw new Error(msg);
+        }
+      } else if (t.type === 'request') {
+        const expiresAt = parseDate(currentUser.requestCooldownExpiresAt || currentUser.requestCooldownEndsAt);
+        const lastClaimed = parseDate(currentUser.lastRequestClaimedAt);
+        const cooldownDays = t.cooldownPeriodDays !== undefined ? t.cooldownPeriodDays : 15;
+        let expiresTime = 0;
+        if (expiresAt) {
+          expiresTime = expiresAt.getTime();
+        } else if (lastClaimed) {
+          expiresTime = lastClaimed.getTime() + cooldownDays * 24 * 60 * 60 * 1000;
+        }
+
+        const msLeft = expiresTime - Date.now();
+        if (msLeft > 0) {
+          const days = Math.floor(msLeft / (24 * 3600 * 1000));
+          const hours = Math.floor((msLeft % (24 * 3600 * 1000)) / (3600 * 1000));
+          const mins = Math.ceil((msLeft % (3600 * 1000)) / (60 * 1000));
+          let msg = `You can claim another Reddit Request task in `;
+          if (days > 0) {
+            msg += `${days}d ${hours}h.`;
+          } else if (hours > 0) {
+            msg += `${hours}h ${mins}m.`;
+          } else {
+            msg += `${mins}m.`;
+          }
           throw new Error(msg);
         }
       }
@@ -2627,8 +2669,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       throw new Error("Unable to claim task.");
     }
 
+    // Extra validation for Reddit Request tasks
+    if (t.type === 'request') {
+      const minKarma = t.minKarmaRequired !== undefined ? t.minKarmaRequired : 300;
+      const userKarma = currentUser.karma || 0;
+      if (userKarma < minKarma) {
+        throw new Error(`Minimum ${minKarma} Reddit karma required. You have ${userKarma}.`);
+      }
+
+      const minAge = t.minAccountAgeRequired !== undefined ? t.minAccountAgeRequired : 4;
+      const userAge = currentUser.redditAccountAge !== undefined ? currentUser.redditAccountAge : 5;
+      if (userAge < minAge) {
+        throw new Error(`Your Reddit account must be at least ${minAge} months old. Yours is ${userAge} months.`);
+      }
+
+      const require2FA = t.require2FA !== undefined ? t.require2FA : true;
+      const user2FA = currentUser.reddit2FAEnabled !== undefined ? currentUser.reddit2FAEnabled : true;
+      if (require2FA && !user2FA) {
+        throw new Error("You must enable 2FA on your Reddit account to claim this task.");
+      }
+    }
+
     // 4. Check special tier constraints (enough karma / tier)
-    if (t.isSpecial && t.minKarmaRequired) {
+    if (t.isSpecial && t.minKarmaRequired && t.type !== 'request') {
       const userKarma = currentUser.karma || 0;
       if (userKarma < t.minKarmaRequired) {
         throw new Error("You do not currently have permission to claim this task.");
@@ -2664,16 +2727,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const userUpdateData: any = {
         active_task_id: taskId,
         lastClaimedAt: serverTimestamp(),
-        last_claimed_at: serverTimestamp(),
-        cooldown_expires_at: new Date(Date.now() + 3 * 60 * 60 * 1000)
+        last_claimed_at: serverTimestamp()
       };
 
       if (t.type === 'post') {
+        userUpdateData.cooldown_expires_at = new Date(Date.now() + 3 * 60 * 60 * 1000);
         userUpdateData.lastPostClaimedAt = serverTimestamp();
         userUpdateData.postCooldownExpiresAt = new Date(Date.now() + 3 * 60 * 60 * 1000);
-      } else {
+        userUpdateData.postCooldownEndsAt = new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString();
+      } else if (t.type === 'comment') {
+        userUpdateData.cooldown_expires_at = new Date(Date.now() + 3 * 60 * 60 * 1000);
         userUpdateData.lastCommentClaimedAt = serverTimestamp();
         userUpdateData.commentCooldownExpiresAt = new Date(Date.now() + 3 * 60 * 60 * 1000);
+        userUpdateData.commentCooldownEndsAt = new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString();
+      } else if (t.type === 'request') {
+        const cooldownDays = t.cooldownPeriodDays !== undefined ? t.cooldownPeriodDays : 15;
+        const cooldownMs = cooldownDays * 24 * 60 * 60 * 1000;
+        userUpdateData.cooldown_expires_at = new Date(Date.now() + cooldownMs);
+        userUpdateData.lastRequestClaimedAt = serverTimestamp();
+        userUpdateData.requestCooldownExpiresAt = new Date(Date.now() + cooldownMs);
+        userUpdateData.requestCooldownEndsAt = new Date(Date.now() + cooldownMs).toISOString();
       }
 
       await updateDoc(doc(db, 'users', currentUser.id), userUpdateData);
@@ -3394,9 +3467,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       last_claimed_at: null,
       lastClaimedAt: null,
       postCooldownExpiresAt: null,
+      postCooldownEndsAt: null,
       lastPostClaimedAt: null,
       commentCooldownExpiresAt: null,
-      lastCommentClaimedAt: null
+      commentCooldownEndsAt: null,
+      lastCommentClaimedAt: null,
+      requestCooldownExpiresAt: null,
+      requestCooldownEndsAt: null,
+      lastRequestClaimedAt: null
     });
   };
 

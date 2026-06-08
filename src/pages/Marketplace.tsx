@@ -10,7 +10,7 @@ export const Marketplace: React.FC = () => {
   const userTier = currentUser ? getKarmaTier(currentUser.karma) : null;
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeType, setActiveType] = useState<'all' | 'post' | 'comment'>('all');
+  const [activeType, setActiveType] = useState<'all' | 'post' | 'comment' | 'request'>('all');
   const [activeDiff, setActiveDiff] = useState<'all' | 'Easy' | 'Medium' | 'Hard'>('all');
   const [tierFilter, setTierFilter] = useState<string>('all');
   const [visibilityFilter, setVisibilityFilter] = useState<'all' | 'public' | 'assigned'>('all');
@@ -180,7 +180,7 @@ export const Marketplace: React.FC = () => {
       return titleMatch || descMatch || subMatch || reqTitleMatch || postGuideMatch || commentGuideMatch;
     })();
     
-    const normalizedType = t.type ? (t.type.toLowerCase().includes('comment') ? 'comment' : 'post') : 'post';
+    const normalizedType = t.type ? (t.type.toLowerCase().includes('comment') ? 'comment' : t.type.toLowerCase().includes('request') ? 'request' : 'post') : 'post';
     const matchesType = activeType === 'all' ? true : normalizedType === activeType;
     const matchesDiff = activeDiff === 'all' ? true : t.difficulty === activeDiff;
 
@@ -305,6 +305,10 @@ export const Marketplace: React.FC = () => {
   let commentCooldownString = '00:00:00';
   let commentCooldownStringDisplay = '0m';
 
+  let isRequestCooldownActive = false;
+  let requestCooldownString = '';
+  let requestCooldownStringDisplay = '0d 0h';
+
   const parseDate = (val: any): Date | null => {
     if (!val) return null;
     if (typeof val.toDate === 'function') {
@@ -383,7 +387,62 @@ export const Marketplace: React.FC = () => {
         }
       }
     }
+
+    // 3. Reddit Request Cooldown
+    const lastRequestClaimed = parseDate(currentUser.lastRequestClaimedAt || currentUser.lastRequestClaimed);
+    const requestExpiresAt = parseDate(currentUser.requestCooldownExpiresAt || currentUser.requestCooldownEndsAt);
+
+    let requestExpiresTime = 0;
+    if (requestExpiresAt) {
+      requestExpiresTime = requestExpiresAt.getTime();
+    } else if (lastRequestClaimed) {
+      requestExpiresTime = lastRequestClaimed.getTime() + 15 * 24 * 60 * 60 * 1000;
+    }
+
+    if (requestExpiresTime > 0) {
+      const msLeft = requestExpiresTime - Date.now();
+      if (msLeft > 0) {
+        isRequestCooldownActive = true;
+        const totalSecs = Math.floor(msLeft / 1000);
+        const days = Math.floor(totalSecs / 86400);
+        const hours = Math.floor((totalSecs % 86400) / 3650);
+        const mins = Math.floor((totalSecs % 3600) / 60);
+        
+        requestCooldownString = `${days}d ${hours}h left`;
+        requestCooldownStringDisplay = `${days}d ${hours}h`;
+      }
+    }
   }
+
+  const checkRequestEligibility = (task: Task) => {
+    if (task.type !== 'request') return { eligible: true, reason: '' };
+    if (!currentUser) return { eligible: false, reason: 'Log in to claim tasks' };
+    
+    if (isUserAdmin) return { eligible: true, reason: '' };
+
+    const karma = currentUser.karma || 0;
+    const accountAge = currentUser.redditAccountAge !== undefined ? currentUser.redditAccountAge : 5;
+    const has2FA = currentUser.reddit2FAEnabled !== undefined ? currentUser.reddit2FAEnabled : true;
+    
+    const requiredKarma = task.minKarmaRequired || 300;
+    const requiredAge = task.minAccountAgeRequired || 4;
+    const require2FA = task.require2FA !== undefined ? task.require2FA : true;
+
+    if (karma < requiredKarma) {
+      return { eligible: false, reason: `Requires ${requiredKarma} Karma` };
+    }
+    if (accountAge < requiredAge) {
+      return { eligible: false, reason: `Account must be ${requiredAge}+ Months old` };
+    }
+    if (require2FA && !has2FA) {
+      return { eligible: false, reason: `Requires 2FA enabled on Reddit` };
+    }
+    if (isRequestCooldownActive) {
+      return { eligible: false, reason: `Available in ${requestCooldownStringDisplay}` };
+    }
+
+    return { eligible: true, reason: '' };
+  };
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 text-zinc-850 select-none pb-12" id="marketplace-panel">
@@ -426,7 +485,7 @@ export const Marketplace: React.FC = () => {
           {/* Filters */}
           <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
             {/* Type trigger */}
-            <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-200 text-[11px]">
+             <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-200 text-[11px]">
               <button 
                 type="button"
                 onClick={() => setActiveType('all')} 
@@ -434,7 +493,7 @@ export const Marketplace: React.FC = () => {
                   activeType === 'all' ? 'bg-purple-600 text-white font-bold' : 'text-zinc-500 hover:text-purple-600'
                 }`}
               >
-                All Types
+                All Campaigns
               </button>
               <button 
                 type="button"
@@ -443,7 +502,7 @@ export const Marketplace: React.FC = () => {
                   activeType === 'post' ? 'bg-purple-600 text-white font-bold' : 'text-zinc-500 hover:text-purple-600'
                 }`}
               >
-                Posts campaigns
+                Post Tasks
               </button>
               <button 
                 type="button"
@@ -452,7 +511,16 @@ export const Marketplace: React.FC = () => {
                   activeType === 'comment' ? 'bg-purple-600 text-white font-bold' : 'text-zinc-500 hover:text-purple-600'
                 }`}
               >
-                Comments campaigns
+                Comment Tasks
+              </button>
+              <button 
+                type="button"
+                onClick={() => setActiveType('request')} 
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                  activeType === 'request' ? 'bg-amber-600 text-white font-bold shadow-sm' : 'text-zinc-500 hover:text-amber-600'
+                }`}
+              >
+                Request Tasks
               </button>
             </div>
 
@@ -627,6 +695,18 @@ export const Marketplace: React.FC = () => {
         </div>
       )}
 
+      {isRequestCooldownActive && (
+        <div className="p-4 bg-amber-50/60 border border-amber-200 rounded-2xl flex items-center justify-between text-amber-805 text-xs font-semibold shadow-sm">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 animate-spin text-amber-600" />
+            <span>You completed a Reddit Request task, triggering independent request claim timeout (15 days).</span>
+          </div>
+          <span className="font-mono bg-amber-100 px-3 py-1 rounded-xl text-amber-800 font-black animate-pulse border border-amber-200">
+            Next Request Claim Available In: <strong className="font-mono font-black ml-1 text-amber-950">{requestCooldownString || '0d 0h'}</strong>
+          </span>
+        </div>
+      )}
+
       {/* Claim operations general alert */}
       {claimError && (
         <div className="p-4 bg-red-50 border border-red-200 rounded-2xl flex gap-3 text-red-700 text-xs font-bold leading-relaxed shadow-sm">
@@ -659,7 +739,7 @@ export const Marketplace: React.FC = () => {
             let secondsRemaining = 0;
             if (isClaimedByMe && task.claim_expires_at) {
               const expires = new Date(task.claim_expires_at).getTime();
-              const now = Date.now();
+               const now = Date.now();
               secondsRemaining = Math.max(0, Math.floor((expires - now) / 1000));
             }
 
@@ -668,6 +748,8 @@ export const Marketplace: React.FC = () => {
               const s = totalSecs % 60;
               return `${m}:${s < 10 ? '0' : ''}${s}`;
             };
+
+            const reqElig = checkRequestEligibility(task);
 
             return (
               <div 
@@ -693,11 +775,13 @@ export const Marketplace: React.FC = () => {
                 <div className="flex justify-between items-center mb-4">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
-                      task.type === 'post' 
-                        ? 'bg-purple-100/60 border border-purple-200 text-purple-700 font-bold' 
-                        : 'bg-slate-100 border border-slate-200 text-zinc-600 font-semibold'
+                      task.type === 'request'
+                        ? 'bg-amber-100 border border-amber-250 text-amber-800'
+                        : task.type === 'post' 
+                          ? 'bg-purple-100/60 border border-purple-200 text-purple-700 font-bold' 
+                          : 'bg-slate-100 border border-slate-200 text-zinc-600 font-semibold'
                     }`}>
-                      Reddit {task.type}
+                      {task.type === 'request' ? 'REQUEST TASK' : `Reddit ${task.type}`}
                     </span>
                     {isTaskSpecial && (
                       <span className="bg-amber-50 border border-amber-250 text-amber-600 text-[9px] font-black px-2 py-0.5 rounded-full select-none flex items-center gap-1 tracking-wider uppercase">
@@ -894,6 +978,78 @@ export const Marketplace: React.FC = () => {
                     </div>
                   )}
 
+                  {/* Reddit Request task experience inside card */}
+                  {task.type === 'request' && (
+                    <div className="mt-2.5 mb-4 bg-amber-50/25 border border-amber-200/50 rounded-xl p-3 space-y-2.5 text-[11px] select-text">
+                      {task.requiredLinkUrl && (
+                        <div className="space-y-1">
+                          <span className="text-[9px] text-amber-800 uppercase tracking-widest block font-extrabold pb-0.5">Required Subreddit Link URL</span>
+                          <div className="flex items-center justify-between gap-3">
+                            <a
+                              href={task.requiredLinkUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-amber-700 font-mono text-[10px] hover:underline truncate max-w-[150px] block font-bold"
+                            >
+                              {task.requiredLinkUrl}
+                            </a>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopyText(task.requiredLinkUrl || '', 'Required Link URL copied!');
+                              }}
+                              className="text-[9px] text-amber-800 hover:text-amber-955 font-extrabold flex items-center gap-1 bg-white hover:bg-amber-50 px-2 py-0.5 rounded transition-all border border-amber-200 cursor-pointer shrink-0 shadow-xs"
+                            >
+                              <Copy className="w-2.5 h-2.5" /> Copy Link
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {task.requiredFlair && (
+                        <div className="space-y-1 border-t border-amber-200/20 pt-2 flex justify-between items-center">
+                          <span className="text-[9px] text-amber-800 uppercase tracking-widest block font-extrabold">Required Flair</span>
+                          <span className="text-[10px] bg-amber-100/60 border border-amber-200 text-amber-805 px-2 py-0.5 rounded font-mono font-bold">{task.requiredFlair}</span>
+                        </div>
+                      )}
+
+                      <div className="space-y-1.5 border-t border-amber-200/25 pt-2">
+                        <span className="text-[9px] text-amber-900 uppercase tracking-widest block font-extrabold">Eligibility Thresholds</span>
+                        <div className="grid grid-cols-2 gap-2 text-[10px]">
+                          <div className="bg-white/80 p-1.5 rounded border border-amber-100 flex flex-col justify-center">
+                            <span className="text-[8px] text-slate-400 font-bold block uppercase leading-none mb-1">Reddit Karma</span>
+                            <span className="font-extrabold text-amber-850 font-mono">Min {task.minKarmaRequired || 300} Karma</span>
+                          </div>
+                          <div className="bg-white/80 p-1.5 rounded border border-amber-100 flex flex-col justify-center">
+                            <span className="text-[8px] text-slate-400 font-bold block uppercase leading-none mb-1">Account Age</span>
+                            <span className="font-extrabold text-amber-850 font-mono">Min {task.minAccountAgeRequired || 4} Mo</span>
+                          </div>
+                          <div className="bg-white/80 p-1.5 rounded border border-amber-100 flex flex-row justify-between items-center col-span-2 flex">
+                            <span className="text-[8px] text-slate-400 font-bold block uppercase leading-none">Reddit 2FA Security</span>
+                            <span className={`font-black text-[9px] px-1.5 py-0.5 rounded uppercase font-mono ${task.require2FA ? 'bg-emerald-50 border border-emerald-250 text-emerald-700' : 'bg-slate-50 border border-slate-200 text-slate-500'}`}>
+                              {task.require2FA ? 'Mandatory' : 'Optional'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-amber-200/20 flex gap-2">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open('https://www.reddit.com/r/redditrequest', '_blank');
+                          }}
+                          className="w-full py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-black rounded-lg shadow-xs transition-all flex items-center justify-center gap-1 cursor-pointer border-0"
+                        >
+                          <ExternalLink className="w-3 h-3 text-white" /> Open r/redditrequest
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="space-y-1.5 mb-6 text-[11px] font-semibold text-zinc-500 select-text">
                     <div className="flex justify-between border-b border-slate-100 pb-1">
                       <span>Deadline Date:</span>
@@ -961,14 +1117,24 @@ export const Marketplace: React.FC = () => {
                     >
                       Submit Proof
                     </button>
-                  ) : (((task.type === 'post' ? isPostCooldownActive : isCommentCooldownActive) && !isUserAdmin)) ? (
+                  ) : (task.type === 'request' && !reqElig.eligible) ? (
+                    <button 
+                      disabled
+                      className="px-4 py-2 bg-amber-50/50 border border-amber-200 text-amber-800 text-[10px] font-bold rounded-xl cursor-not-allowed leading-tight text-center max-w-[210px] flex items-center justify-center gap-1 shrink-0 select-none shadow-xs"
+                      title={reqElig.reason}
+                    >
+                      <span>{reqElig.reason}</span>
+                    </button>
+                  ) : (((task.type === 'post' ? isPostCooldownActive : task.type === 'comment' ? isCommentCooldownActive : isRequestCooldownActive) && !isUserAdmin)) ? (
                     <button 
                       disabled
                       className="px-4 py-2 bg-slate-100 border border-slate-200 text-zinc-400 text-[10px] font-bold rounded-xl cursor-not-allowed leading-tight max-w-[200px]"
                     >
                       {task.type === 'post' 
                         ? `Next post task available in ${postCooldownStringDisplay}` 
-                        : `Next comment task available in ${commentCooldownStringDisplay}`}
+                        : task.type === 'comment'
+                          ? `Next comment task available in ${commentCooldownStringDisplay}`
+                          : `Next request available in ${requestCooldownStringDisplay}`}
                     </button>
                   ) : (
                     <button 

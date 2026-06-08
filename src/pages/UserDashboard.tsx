@@ -155,6 +155,9 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
   let isCommentCooldownActive = false;
   let commentCooldownString = '00:00:00';
 
+  let isRequestCooldownActive = false;
+  let requestCooldownString = '00:00:00';
+
   const parseDate = (val: any): Date | null => {
     if (!val) return null;
     if (typeof val.toDate === 'function') {
@@ -218,6 +221,30 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
         commentCooldownString = `${pad0(h)}:${pad0(m)}:${pad0(s)}`;
       }
     }
+
+    // 3. Reddit Request Cooldown
+    const lastRequestClaimed = parseDate(currentUser.lastRequestClaimedAt || currentUser.lastRequestClaimed);
+    const requestExpiresAt = parseDate(currentUser.requestCooldownExpiresAt || currentUser.requestCooldownEndsAt);
+
+    let requestExpiresTime = 0;
+    if (requestExpiresAt) {
+      requestExpiresTime = requestExpiresAt.getTime();
+    } else if (lastRequestClaimed) {
+      requestExpiresTime = lastRequestClaimed.getTime() + 15 * 24 * 60 * 60 * 1000;
+    }
+
+    if (requestExpiresTime > 0) {
+      const msLeft = requestExpiresTime - Date.now();
+      if (msLeft > 0) {
+        isRequestCooldownActive = true;
+        const totalSecs = Math.floor(msLeft / 1000);
+        const days = Math.floor(totalSecs / 86400);
+        const hours = Math.floor((totalSecs % 86400) / 3600);
+        const mins = Math.floor((totalSecs % 3600) / 60);
+        
+        requestCooldownString = `${days} Days ${hours} Hours`;
+      }
+    }
   }
 
   return (
@@ -272,6 +299,18 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
           </div>
           <span className="font-mono bg-purple-100 px-3 py-1 rounded-xl text-purple-700 font-black animate-pulse flex items-center gap-1">
             <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Next Comment Claim Available In: <strong className="font-mono font-black ml-1 text-purple-900">{commentCooldownString}</strong>
+          </span>
+        </div>
+      )}
+
+      {isRequestCooldownActive && (
+        <div className="p-4 bg-amber-50/60 border border-amber-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between text-amber-800 text-xs font-semibold gap-3 shadow-sm text-left">
+          <div className="flex items-center gap-2">
+            <span className="p-1 px-1.5 bg-amber-100 rounded-lg text-amber-700 font-bold font-mono text-[10px]">REQUEST COOLDOWN</span>
+            <span>You completed a Reddit Request task, triggering independent request claim timeout (15 days).</span>
+          </div>
+          <span className="font-mono bg-amber-100/60 px-3 py-1 rounded-xl text-amber-800 font-black animate-pulse flex items-center gap-1 border border-amber-200 shrink-0">
+            <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-700" /> Next Reddit Request Task Available In: <strong className="font-mono font-black ml-1 text-amber-955">{requestCooldownString}</strong>
           </span>
         </div>
       )}
