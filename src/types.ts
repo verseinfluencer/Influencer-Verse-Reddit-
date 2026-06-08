@@ -167,6 +167,8 @@ export interface Submission {
   archived?: boolean;
   archivedAt?: string;
   archivedBy?: string;
+  requiredFlair?: string;
+  selectedFlair?: string;
 }
 
 export interface ArchivedApprovedTask {
@@ -416,4 +418,28 @@ export interface RedditAccount {
   verifiedAt?: string | null;
   isPrimary: boolean;
 }
+
+export const getFlairStyle = (flair: string): string => {
+  const normalized = (flair || '').trim();
+  switch (normalized) {
+    case 'SFW - Public':
+      return 'bg-emerald-50 border border-emerald-300 text-emerald-800 font-bold';
+    case 'SFW - Restricted':
+      return 'bg-teal-50 border border-teal-300 text-teal-800 font-bold';
+    case 'SFW - Private':
+      return 'bg-blue-50 border border-blue-250 text-blue-800 font-bold';
+    case 'SFW - Banned':
+      return 'bg-gray-100 border border-gray-300 text-gray-750 font-bold';
+    case 'NSFW - Public':
+      return 'bg-orange-50 border border-orange-300 text-orange-900 font-black';
+    case 'NSFW - Restricted':
+      return 'bg-red-50 border border-red-300 text-red-700 font-black';
+    case 'NSFW - Private':
+      return 'bg-red-900 border border-red-950 text-white font-black';
+    case 'NSFW - Banned':
+      return 'bg-black border border-black text-white font-black';
+    default:
+      return 'bg-amber-50 border border-amber-250 text-amber-800 font-bold';
+  }
+};
 

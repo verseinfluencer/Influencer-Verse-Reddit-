@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { renderRedditMarkdown } from '../utils/markdownHelper';
-import { Task, Submission } from '../types';
+import { Task, Submission, getFlairStyle } from '../types';
 import { Search, Filter, ShieldAlert, CheckCircle, Clock, ExternalLink, Calendar, PlusCircle, Sparkles, BookOpen, UserMinus, X, Copy, Lock, Award, Trophy } from 'lucide-react';
 import { getTierRequirementText, getKarmaTier } from '../utils/tierHelper';
 
@@ -19,6 +19,7 @@ export const Marketplace: React.FC = () => {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [selectedRedditAccountId, setSelectedRedditAccountId] = useState('');
   const [redditProofLink, setRedditProofLink] = useState('');
+  const [selectedFlair, setSelectedFlair] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [successSubmission, setSuccessSubmission] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -263,6 +264,7 @@ export const Marketplace: React.FC = () => {
   const handleOpenSubmission = (task: Task) => {
     setSelectedTask(task);
     setRedditProofLink('');
+    setSelectedFlair('');
     setSuccessSubmission(false);
     setErrorMessage(null);
     const primary = currentUser?.redditAccounts?.find((a: any) => a.isPrimary);
@@ -279,14 +281,20 @@ export const Marketplace: React.FC = () => {
       return;
     }
 
+    if (selectedTask.type === 'request' && !selectedFlair) {
+      setErrorMessage('Please select the required flair that you used on Reddit.');
+      return;
+    }
+
     setSubmitting(true);
     try {
-      await submitTaskProof(selectedTask.id, trimmedLink, trimmedLink, selectedRedditAccountId);
+      await submitTaskProof(selectedTask.id, trimmedLink, trimmedLink, selectedRedditAccountId, selectedFlair);
       setSubmitting(false);
       setSuccessSubmission(true);
       setTimeout(() => {
         setSelectedTask(null);
         setSuccessSubmission(false);
+        setSelectedFlair('');
       }, 2500);
     } catch (err: any) {
       setSubmitting(false);
@@ -980,11 +988,11 @@ export const Marketplace: React.FC = () => {
 
                   {/* Reddit Request task experience inside card */}
                   {task.type === 'request' && (
-                    <div className="mt-2.5 mb-4 bg-amber-50/25 border border-amber-200/50 rounded-xl p-3 space-y-2.5 text-[11px] select-text">
+                    <div className="mt-2.5 mb-4 bg-amber-50/25 border border-amber-200/50 rounded-xl p-3.5 space-y-3 text-[11px] select-text">
                       {task.requiredLinkUrl && (
                         <div className="space-y-1">
                           <span className="text-[9px] text-amber-800 uppercase tracking-widest block font-extrabold pb-0.5">Required Subreddit Link URL</span>
-                          <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center justify-between gap-3 bg-white p-2 border border-amber-100 rounded-lg">
                             <a
                               href={task.requiredLinkUrl}
                               target="_blank"
@@ -1009,42 +1017,57 @@ export const Marketplace: React.FC = () => {
                       )}
 
                       {task.requiredFlair && (
-                        <div className="space-y-1 border-t border-amber-200/20 pt-2 flex justify-between items-center">
-                          <span className="text-[9px] text-amber-800 uppercase tracking-widest block font-extrabold">Required Flair</span>
-                          <span className="text-[10px] bg-amber-100/60 border border-amber-200 text-amber-805 px-2 py-0.5 rounded font-mono font-bold">{task.requiredFlair}</span>
+                        <div className="space-y-1 border-t border-amber-200/20 pt-2 flex justify-between items-center bg-white/40 p-2 border border-slate-100 rounded-xl">
+                          <span className="text-[10px] text-slate-500 font-extrabold font-sans">Required Flair:</span>
+                          <span className={`text-[10px] font-mono px-2.5 py-0.8 rounded-lg ${getFlairStyle(task.requiredFlair)}`}>
+                            {task.requiredFlair}
+                          </span>
                         </div>
                       )}
 
-                      <div className="space-y-1.5 border-t border-amber-200/25 pt-2">
-                        <span className="text-[9px] text-amber-900 uppercase tracking-widest block font-extrabold">Eligibility Thresholds</span>
-                        <div className="grid grid-cols-2 gap-2 text-[10px]">
-                          <div className="bg-white/80 p-1.5 rounded border border-amber-100 flex flex-col justify-center">
-                            <span className="text-[8px] text-slate-400 font-bold block uppercase leading-none mb-1">Reddit Karma</span>
-                            <span className="font-extrabold text-amber-850 font-mono">Min {task.minKarmaRequired || 300} Karma</span>
+                      <div className="space-y-2 border-t border-amber-200/25 pt-2">
+                        <span className="text-[9px] text-amber-900 uppercase tracking-widest block font-black mb-1">Task Specifications</span>
+                        
+                        <div className="space-y-1.5 text-zinc-650 bg-white p-2.5 border border-slate-105 rounded-xl font-bold">
+                          <div className="flex justify-between items-center">
+                            <span className="text-zinc-500">Required Karma:</span>
+                            <span className="text-zinc-800 font-mono font-extrabold">{task.minKarmaRequired || 300}+ Karma</span>
                           </div>
-                          <div className="bg-white/80 p-1.5 rounded border border-amber-100 flex flex-col justify-center">
-                            <span className="text-[8px] text-slate-400 font-bold block uppercase leading-none mb-1">Account Age</span>
-                            <span className="font-extrabold text-amber-850 font-mono">Min {task.minAccountAgeRequired || 4} Mo</span>
+                          
+                          <div className="flex justify-between items-center">
+                            <span className="text-zinc-500">Account Age:</span>
+                            <span className="text-zinc-800 font-mono font-extrabold">{task.minAccountAgeRequired || 4}+ Months</span>
                           </div>
-                          <div className="bg-white/80 p-1.5 rounded border border-amber-100 flex flex-row justify-between items-center col-span-2 flex">
-                            <span className="text-[8px] text-slate-400 font-bold block uppercase leading-none">Reddit 2FA Security</span>
-                            <span className={`font-black text-[9px] px-1.5 py-0.5 rounded uppercase font-mono ${task.require2FA ? 'bg-emerald-50 border border-emerald-250 text-emerald-700' : 'bg-slate-50 border border-slate-200 text-slate-500'}`}>
-                              {task.require2FA ? 'Mandatory' : 'Optional'}
+
+                          <div className="flex justify-between items-center">
+                            <span className="text-zinc-500">Security Check:</span>
+                            <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded font-extrabold ${task.require2FA ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-slate-100 text-slate-500 rounded border border-slate-200'}`}>
+                              {task.require2FA ? '2FA Required' : '2FA Optional'}
                             </span>
+                          </div>
+
+                          <div className="flex justify-between items-center">
+                            <span className="text-zinc-500">Cooldown:</span>
+                            <span className="text-amber-800 font-mono font-black bg-amber-50 border border-amber-100 px-1.5 rounded">{task.cooldownPeriodDays || 15} Days</span>
+                          </div>
+
+                          <div className="flex justify-between items-center border-t border-slate-50 pt-1.5 mt-1.5">
+                            <span className="text-zinc-500">Slots Left:</span>
+                            <span className="text-purple-700 font-mono font-black">{slotsLeft} Remaining</span>
                           </div>
                         </div>
                       </div>
 
-                      <div className="pt-2 border-t border-amber-200/20 flex gap-2">
+                      <div className="pt-1 flex gap-2">
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             window.open('https://www.reddit.com/r/redditrequest', '_blank');
                           }}
-                          className="w-full py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-black rounded-lg shadow-xs transition-all flex items-center justify-center gap-1 cursor-pointer border-0"
+                          className="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-black rounded-lg shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer border-0"
                         >
-                          <ExternalLink className="w-3 h-3 text-white" /> Open r/redditrequest
+                          <ExternalLink className="w-3.5 h-3.5 text-white" /> Open r/redditrequest
                         </button>
                       </div>
                     </div>
@@ -1274,6 +1297,95 @@ export const Marketplace: React.FC = () => {
                         </div>
                       )}
                     </div>
+                  ) : selectedTask.type === 'request' ? (
+                    <div className="space-y-3 font-semibold text-zinc-700">
+                      <div className="bg-amber-50/40 p-3.5 border border-amber-200/50 rounded-2xl space-y-3">
+                        <div className="flex items-center gap-1.5 border-b border-amber-200/40 pb-2">
+                          <BookOpen className="w-4 h-4 text-amber-600" />
+                          <span className="text-xs font-black text-amber-850 uppercase tracking-widest">Reddit Request Instructions</span>
+                        </div>
+                        
+                        <div className="space-y-2 text-[11px] text-zinc-700 select-all leading-relaxed font-sans">
+                          <div className="flex gap-2.5 items-start">
+                            <span className="bg-amber-600 text-white font-mono text-[9px] w-4.5 h-4.5 rounded-full flex items-center justify-center font-bold shrink-0 mt-0.5">1</span>
+                            <div>
+                              <span className="font-extrabold text-zinc-900 block">Open Subreddit</span>
+                              <div className="flex hover:underline items-center gap-1 mt-1 text-amber-700 font-extrabold cursor-pointer" onClick={() => window.open('https://www.reddit.com/r/redditrequest', '_blank')}>
+                                Open r/redditrequest <ExternalLink className="w-3 h-3" />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2.5 items-start border-t border-slate-100 pt-2">
+                            <span className="bg-amber-600 text-white font-mono text-[9px] w-4.5 h-4.5 rounded-full flex items-center justify-center font-bold shrink-0 mt-0.5">2</span>
+                            <div>
+                              <span className="font-extrabold text-zinc-900 block">Create the post</span>
+                              <p className="text-zinc-500 font-medium">Click on "Create Post" and select the <strong>Link</strong> format option.</p>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2.5 items-start border-t border-slate-100 pt-2">
+                            <span className="bg-amber-600 text-white font-mono text-[9px] w-4.5 h-4.5 rounded-full flex items-center justify-center font-bold shrink-0 mt-0.5">3</span>
+                            <div className="flex-1 font-sans">
+                              <span className="font-extrabold text-zinc-900 block">Enter the required title</span>
+                              <div className="flex justify-between items-center bg-white p-2 border border-amber-100 rounded-lg mt-1 gap-2">
+                                <span className="font-mono text-[10px] text-zinc-700 truncate max-w-[200px] block font-semibold">{selectedTask.title}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopyText(selectedTask.title || '', 'Required Post Title copied!')}
+                                  className="px-2 py-0.5 text-[9px] bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 font-bold rounded shrink-0 flex items-center gap-1 transition-all cursor-pointer"
+                                >
+                                  <Copy className="w-2.5 h-2.5" /> Copy
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2.5 items-start border-t border-slate-100 pt-2">
+                            <span className="bg-amber-600 text-white font-mono text-[9px] w-4.5 h-4.5 rounded-full flex items-center justify-center font-bold shrink-0 mt-0.5">4</span>
+                            <div className="flex-1">
+                              <span className="font-extrabold text-zinc-900 block">Select the required flair</span>
+                              <span className={`inline-block mt-1 text-[10px] font-mono px-2.5 py-0.8 rounded ${getFlairStyle(selectedTask.requiredFlair || '')}`}>
+                                {selectedTask.requiredFlair}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2.5 items-start border-t border-slate-100 pt-2">
+                            <span className="bg-amber-600 text-white font-mono text-[9px] w-4.5 h-4.5 rounded-full flex items-center justify-center font-bold shrink-0 mt-0.5">5</span>
+                            <div className="flex-1 font-sans">
+                              <span className="font-extrabold text-zinc-900 block">Paste the required URL</span>
+                              <div className="flex justify-between items-center bg-white p-2 border border-amber-100 rounded-lg mt-1 gap-2 border-0">
+                                <span className="font-mono text-[10px] text-zinc-700 truncate max-w-[200px] block font-semibold">{selectedTask.requiredLinkUrl}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopyText(selectedTask.requiredLinkUrl || '', 'Required Link URL copied!')}
+                                  className="px-2 py-0.5 text-[9px] bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 font-bold rounded shrink-0 flex items-center gap-1 transition-all cursor-pointer"
+                                >
+                                  <Copy className="w-2.5 h-2.5" /> Copy
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2.5 items-start border-t border-slate-100 pt-2">
+                            <span className="bg-amber-600 text-white font-mono text-[9px] w-4.5 h-4.5 rounded-full flex items-center justify-center font-bold shrink-0 mt-0.5">6</span>
+                            <div>
+                              <span className="font-extrabold text-zinc-900 block font-sans">Submit the post</span>
+                              <p className="text-zinc-500 font-medium font-sans">Publish your link request post directly on r/redditrequest.</p>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2.5 items-start border-t border-slate-100 pt-2">
+                            <span className="bg-amber-600 text-white font-mono text-[9px] w-4.5 h-4.5 rounded-full flex items-center justify-center font-bold shrink-0 mt-0.5">7</span>
+                            <div>
+                              <span className="font-extrabold text-zinc-900 block font-sans">Upload proof URL</span>
+                              <p className="text-zinc-500 font-medium font-sans">Copy your submitted post link on Reddit and submit it below.</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   ) : (
                     <div className="space-y-3 font-semibold text-zinc-700">
                       {selectedTask.postUrlToCommentOn && (
@@ -1386,6 +1498,33 @@ export const Marketplace: React.FC = () => {
                     />
                     <p className="text-[10px] text-zinc-400 font-semibold mt-1">Paste the direct link to your Reddit post or comment</p>
                   </div>
+
+                  {selectedTask.type === 'request' && (
+                    <div className="bg-amber-50/20 p-3 rounded-xl border border-amber-200/30 space-y-2">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-amber-850 block font-sans flex items-center justify-between">
+                        <span>Select the flair you used on Reddit</span>
+                        <span className="bg-red-500 text-white font-black px-1.5 py-0.2 rounded text-[7px] tracking-wide animate-pulse font-mono uppercase">Required Option</span>
+                      </label>
+                      <select
+                        value={selectedFlair}
+                        onChange={(e) => setSelectedFlair(e.target.value)}
+                        className="w-full text-xs text-zinc-800 bg-white border border-amber-200 px-3 py-2.5 rounded-xl focus:border-amber-500 focus:outline-none cursor-pointer font-bold font-mono"
+                      >
+                        <option value="">-- Choose Campaign Flair --</option>
+                        <option value="SFW - Public">SFW - Public</option>
+                        <option value="SFW - Restricted">SFW - Restricted</option>
+                        <option value="SFW - Private">SFW - Private</option>
+                        <option value="SFW - Banned">SFW - Banned</option>
+                        <option value="NSFW - Public">NSFW - Public</option>
+                        <option value="NSFW - Restricted">NSFW - Restricted</option>
+                        <option value="NSFW - Private">NSFW - Private</option>
+                        <option value="NSFW - Banned">NSFW - Banned</option>
+                      </select>
+                      <p className="text-[9px] text-zinc-450 font-semibold leading-relaxed">
+                        To earn payout, your selected flair MUST exactly match: <strong className="text-amber-850 font-mono text-[10px]">{selectedTask.requiredFlair}</strong>. Mismatching will trigger an immediate auto-rejection.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <button 

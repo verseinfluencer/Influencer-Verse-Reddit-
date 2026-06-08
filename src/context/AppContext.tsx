@@ -142,7 +142,7 @@ interface AppContextType {
   adminToggleChatResolution: (clientId: string, status: 'resolved' | 'unresolved') => void;
 
   // Task Actions
-  submitTaskProof: (taskId: string, proofUrl: string, submissionLink?: string, selectedRedditAccountId?: string) => Promise<void>;
+  submitTaskProof: (taskId: string, proofUrl: string, submissionLink?: string, selectedRedditAccountId?: string, selectedFlair?: string) => Promise<void>;
   claimTask: (taskId: string) => Promise<void>;
   unclaimTask: (taskId: string, notifyExpired?: boolean) => void;
   
@@ -2448,7 +2448,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  const submitTaskProof = async (taskId: string, proofUrl: string, submissionLink?: string, selectedRedditAccountId?: string): Promise<void> => {
+  const submitTaskProof = async (taskId: string, proofUrl: string, submissionLink?: string, selectedRedditAccountId?: string, selectedFlair?: string): Promise<void> => {
     if (!currentUser) throw new Error('Unauthenticated');
     await checkBannedOrSuspended();
     const taskRef = doc(db, 'tasks', taskId);
@@ -2465,6 +2465,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (isFake) {
       status = 'Client Rejected';
       feedback = 'Auto-rejected: Your submission contains invalid or deleted links.';
+    } else if (task.type === 'request') {
+      const taskRequired = (task.requiredFlair || '').trim();
+      const userSelected = (selectedFlair || '').trim();
+      if (!userSelected || taskRequired !== userSelected) {
+        status = 'Client Rejected';
+        feedback = 'Incorrect flair selected. Please use the required flair.';
+      }
     }
 
     // Determine which Reddit account was used
@@ -2500,7 +2507,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isFlagged: false,
       flagReason: null,
       adminNote: null,
-      rejectionReason: null,
+      rejectionReason: status === 'Client Rejected' ? feedback : null,
       clientNote: null,
       reviewedAt: null,
       reviewedBy: null,
@@ -2510,7 +2517,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       memberName: currentUser.fullName || currentUser.name || null,
       proofLink: proofUrl || submissionLink || null,
       memberPay: task.reward || null,
-      agencyPay: null
+      agencyPay: null,
+      requiredFlair: task.requiredFlair || undefined,
+      selectedFlair: selectedFlair || undefined
     };
 
     await setDoc(doc(db, 'submissions', newSub.id), newSub);

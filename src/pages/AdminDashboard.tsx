@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Task, Submission, Withdrawal, User, TaskType, Client, ClientTask, ClientPayment, ClientPaymentProof, ChatMessage, ClientChat, ArchivedApprovedTask, ArchivedWithdrawal } from '../types';
+import { Task, Submission, Withdrawal, User, TaskType, Client, ClientTask, ClientPayment, ClientPaymentProof, ChatMessage, ClientChat, ArchivedApprovedTask, ArchivedWithdrawal, getFlairStyle } from '../types';
 import { getKarmaTier } from '../utils/tierHelper';
 import { db } from '../utils/firebase';
 import { renderRedditMarkdown, validateRedditMarkdownLinks } from '../utils/markdownHelper';
@@ -956,11 +956,15 @@ export const AdminDashboard: React.FC = () => {
         commentGuidelines: commentGuidelines
       };
     } else if (taskType === 'request') {
+      if (!requiredFlair) {
+        alert('Please select a required flair. Flair selection is mandatory for Reddit Request tasks.');
+        return;
+      }
       extendedTask = {
         ...baseTask,
         targetSubreddit: subreddit || 'r/redditrequest',
         requiredLinkUrl: requiredLinkUrl,
-        requiredFlair: requiredFlair || '',
+        requiredFlair: requiredFlair,
         minKarmaRequired: Number(minKarmaRequired) || 300,
         minAccountAgeRequired: Number(minAccountAgeRequired) || 4,
         require2FA: require2FA,
@@ -4087,14 +4091,23 @@ export const AdminDashboard: React.FC = () => {
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-amber-600 block mb-1">Required Flair (optional)</label>
-                      <input 
-                        type="text" 
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-amber-600 block mb-1">Required Flair</label>
+                      <select 
                         value={requiredFlair}
                         onChange={(e) => setRequiredFlair(e.target.value)}
-                        placeholder="e.g., Requesting Subreddit" 
-                        className="w-full text-xs text-slate-800 bg-white border border-slate-200 px-3 py-2.5 rounded-xl focus:border-amber-500 focus:outline-none"
-                      />
+                        className="w-full text-xs text-slate-800 bg-white border border-slate-200 px-3 py-2.5 rounded-xl focus:border-amber-500 focus:outline-none font-bold"
+                        required
+                      >
+                        <option value="">-- Select Required Flair --</option>
+                        <option value="SFW - Public">SFW - Public (Green)</option>
+                        <option value="SFW - Restricted">SFW - Restricted (Teal)</option>
+                        <option value="SFW - Private">SFW - Private (Blue)</option>
+                        <option value="SFW - Banned">SFW - Banned (Gray)</option>
+                        <option value="NSFW - Public">NSFW - Public (Orange)</option>
+                        <option value="NSFW - Restricted">NSFW - Restricted (Red)</option>
+                        <option value="NSFW - Private">NSFW - Private (Dark Red)</option>
+                        <option value="NSFW - Banned">NSFW - Banned (Black)</option>
+                      </select>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
@@ -4506,7 +4519,36 @@ export const AdminDashboard: React.FC = () => {
                         </div>
 
                         {/* Proof display (handles link / screenshots gracefully) */}
-                        <div className="pt-1">
+                        <div className="pt-1 space-y-2.5">
+                          {sub.taskType === 'request' && (sub.requiredFlair || sub.selectedFlair) && (
+                            <div className="p-3 bg-amber-50/40 border border-amber-200/40 rounded-xl space-y-2 select-text">
+                              <span className="text-[10px] text-amber-850 font-black block uppercase tracking-wider font-sans">Reddit Request Flair Verification</span>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                                <div className="bg-white p-2 border border-slate-100 rounded-lg">
+                                  <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wide block leading-none mb-1 font-sans">Required Flair</span>
+                                  <span className={`inline-block text-[10px] font-mono px-2 py-0.5 rounded ${getFlairStyle(sub.requiredFlair || '')}`}>
+                                    {sub.requiredFlair || 'None'}
+                                  </span>
+                                </div>
+                                <div className="bg-white p-2 border border-slate-100 rounded-lg">
+                                  <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wide block leading-none mb-1 font-sans">Submitted User Flair</span>
+                                  <span className={`inline-block text-[10px] font-mono px-2 py-0.5 rounded ${getFlairStyle(sub.selectedFlair || '')}`}>
+                                    {sub.selectedFlair || 'None Selected'}
+                                  </span>
+                                </div>
+                              </div>
+                              {(sub.requiredFlair && sub.selectedFlair && (sub.requiredFlair.trim() !== sub.selectedFlair.trim())) ? (
+                                <div className="mt-1 bg-red-50 border border-red-200 text-red-650 px-2 py-1 rounded text-[10px] font-bold font-sans">
+                                  ⚠ Mismatch detected: Auto-rejection was triggered. Required: "{sub.requiredFlair}", Submitted: "{sub.selectedFlair}"
+                                </div>
+                              ) : (
+                                <div className="mt-1 bg-emerald-50 border border-emerald-250 text-emerald-800 px-2 py-1 rounded text-[10px] font-bold font-sans">
+                                  ✓ Flair Check Passed: User selected flair matches the required task flair.
+                                </div>
+                              )}
+                            </div>
+                          )}
+
                           {((sub.proofUrl || '').toLowerCase().includes('reddit.com') || (sub.submissionLink || '').toLowerCase().includes('reddit.com')) ? (
                             <div className="p-3 bg-white border border-slate-200 rounded-xl">
                               <span className="text-[10px] text-slate-450 font-bold block uppercase tracking-wider mb-1">Submitted Reddit Proof Link</span>
