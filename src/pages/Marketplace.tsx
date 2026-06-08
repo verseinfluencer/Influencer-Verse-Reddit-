@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { renderRedditMarkdown } from '../utils/markdownHelper';
 import { Task, Submission, getFlairStyle } from '../types';
-import { Search, Filter, ShieldAlert, CheckCircle, Clock, ExternalLink, Calendar, PlusCircle, Sparkles, BookOpen, UserMinus, X, Copy, Lock, Award, Trophy } from 'lucide-react';
+import { Search, Filter, ShieldAlert, CheckCircle, Clock, ExternalLink, Calendar, PlusCircle, Sparkles, BookOpen, UserMinus, X, Copy, Lock, Award, Trophy, Star, AlertTriangle } from 'lucide-react';
 import { getTierRequirementText, getKarmaTier } from '../utils/tierHelper';
+import { getCreatorReputation } from '../utils/reputationHelper';
 
 export const Marketplace: React.FC = () => {
-  const { tasks, submissions, submitTaskProof, currentUser, settings, claimTask, unclaimTask } = useApp();
+  const { tasks, submissions, submitTaskProof, currentUser, settings, claimTask, unclaimTask, reportTaskIssue, creatorReviews } = useApp();
   const userTier = currentUser ? getKarmaTier(currentUser.karma) : null;
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -17,6 +18,42 @@ export const Marketplace: React.FC = () => {
 
   // Submission overlay modal states
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+
+  // Task issue reporting state
+  const [reportTask, setReportTask] = useState<Task | null>(null);
+  const [issueType, setIssueType] = useState('Bot/Bouncer present');
+  const [issueMessage, setIssueMessage] = useState('');
+  const [issueProofUrl, setIssueProofUrl] = useState('');
+  const [issueSubmitting, setIssueSubmitting] = useState(false);
+  const [issueError, setIssueError] = useState<string | null>(null);
+
+  const handleReportIssueSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reportTask) return;
+    if (!issueType) {
+      setIssueError("Please select an issue type.");
+      return;
+    }
+    if (!issueMessage) {
+      setIssueError("Please explain the problem briefly.");
+      return;
+    }
+
+    setIssueSubmitting(true);
+    setIssueError(null);
+    try {
+      await reportTaskIssue(reportTask.id, issueType, issueMessage, issueProofUrl);
+      triggerToast("Issue reported successfully. Our team will review it.");
+      setReportTask(null);
+      setIssueType('Bot/Bouncer present');
+      setIssueMessage('');
+      setIssueProofUrl('');
+    } catch (err: any) {
+      setIssueError(err.message || "An error occurred while submitting report.");
+    } finally {
+      setIssueSubmitting(false);
+    }
+  };
   const [selectedRedditAccountId, setSelectedRedditAccountId] = useState('');
   const [redditProofLink, setRedditProofLink] = useState('');
   const [selectedFlair, setSelectedFlair] = useState('');
@@ -191,7 +228,12 @@ export const Marketplace: React.FC = () => {
       const isTaskSpecial = t.isSpecial;
       const minKarma = t.minKarmaRequired || 0;
       const isUserAdmin = currentUser?.role === 'admin';
-      const isLocked = isTaskSpecial && !!minKarma && currentUser && currentUser.karma < minKarma && !isUserAdmin;
+
+      const userRepInfo = currentUser ? getCreatorReputation(currentUser, submissions, creatorReviews) : null;
+      const userRepScore = userRepInfo ? userRepInfo.score : 0;
+
+      const repLocked = t.minReputationRequired ? (userRepScore < t.minReputationRequired && !isUserAdmin) : false;
+      const isLocked = (isTaskSpecial && !!minKarma && currentUser && currentUser.karma < minKarma && !isUserAdmin) || repLocked;
 
       if (tierFilter === 'eligible') {
         return !isLocked;
@@ -740,7 +782,13 @@ export const Marketplace: React.FC = () => {
             // Special lock and claim variables
             const isTaskSpecial = task.isSpecial;
             const isUserAdmin = currentUser?.role === 'admin';
-            const isLocked = isTaskSpecial && task.minKarmaRequired && currentUser && currentUser.karma < task.minKarmaRequired && !isUserAdmin;
+
+            const userRepInfo = currentUser ? getCreatorReputation(currentUser, submissions, creatorReviews) : null;
+            const userRepScore = userRepInfo ? userRepInfo.score : 0;
+
+            const repLocked = task.minReputationRequired ? (userRepScore < task.minReputationRequired && !isUserAdmin) : false;
+            const isLockedByKarma = isTaskSpecial && task.minKarmaRequired && currentUser && currentUser.karma < task.minKarmaRequired && !isUserAdmin;
+            const isLocked = isLockedByKarma || repLocked;
             const isClaimedByMe = task.status === 'claimed' && task.claimed_by === currentUser?.id;
 
             // Compute countdown remaining seconds
@@ -764,17 +812,21 @@ export const Marketplace: React.FC = () => {
                 key={task.id} 
                 className="bg-white border border-slate-200 rounded-2xl p-6 flex flex-col justify-between hover:border-purple-550/45 hover:shadow-lg transition-all duration-300 group shadow-sm relative overflow-hidden"
               >
-                {/* Visual lock overlay for low karma influencers */}
+                {/* Visual lock overlay for low karma/repetition influencers */}
                 {isLocked && (
                   <div className="absolute inset-0 bg-white/95 backdrop-blur-[3px] rounded-2xl flex flex-col items-center justify-center p-6 text-center z-10 pointer-events-auto">
                     <span className="p-3 bg-red-50 border border-red-200 text-red-500 rounded-full mb-3">
-                      <ShieldAlert className="w-5 h-5" />
+                      <Lock className="w-5 h-5" />
                     </span>
-                    <h4 className="font-extrabold text-sm text-zinc-900 font-display">Locked Special Campaign</h4>
+                    <h4 className="font-extrabold text-sm text-zinc-900 font-display">Locked Campaign</h4>
                     <p className="text-[10px] text-zinc-500 mt-1 max-w-[200px] leading-normal font-semibold">
-                      This premium special task is restricted. Requires <strong className="text-purple-600">{getTierRequirementText(task.minKarmaRequired)}</strong>. Check your dashboard status card!
+                      {repLocked ? (
+                        <>This campaign is restricted. Requires a minimum reputation score of <strong className="text-indigo-650 font-extrabold font-mono">{task.minReputationRequired}</strong> (Your Score: {userRepScore})</>
+                      ) : (
+                        <>This premium special task is restricted. Requires <strong className="text-purple-600">{getTierRequirementText(task.minKarmaRequired)}</strong>. Check your dashboard status card!</>
+                      )}
                     </p>
-                    <button className="mt-4 px-4 py-1.5 bg-slate-100 text-zinc-400 text-[10px] font-bold rounded-lg border border-slate-200 cursor-not-allowed uppercase">
+                    <button className="mt-4 px-4 py-1.5 bg-slate-105 text-zinc-400 text-[10px] font-bold rounded-lg border border-slate-200 cursor-not-allowed uppercase">
                       Locked
                     </button>
                   </div>
@@ -821,9 +873,11 @@ export const Marketplace: React.FC = () => {
                   {renderRedditMarkdown(task.title, true)}
                 </h3>
                 
-                <div className="text-zinc-650 text-xs leading-relaxed line-clamp-3 mb-4 select-text">
-                  {renderRedditMarkdown(task.description, true)}
-                </div>
+                {task.type !== 'request' && (
+                  <div className="text-zinc-650 text-xs leading-relaxed line-clamp-3 mb-4 select-text">
+                    {renderRedditMarkdown(task.description, true)}
+                  </div>
+                )}
                 
                 {/* Premium Reddit post actions details inside the card */}
                 {task.type === 'post' && (
@@ -988,45 +1042,83 @@ export const Marketplace: React.FC = () => {
 
                   {/* Reddit Request task experience inside card */}
                   {task.type === 'request' && (
-                    <div className="mt-2.5 mb-4 bg-amber-50/25 border border-amber-200/50 rounded-xl p-3.5 space-y-3 text-[11px] select-text">
+                    <div className="mt-2.5 mb-4 bg-amber-50/25 border border-amber-200/50 rounded-xl p-3.5 space-y-3.5 text-[11px] select-text">
+                      {/* Copy Title Option */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[9px] text-zinc-450 uppercase tracking-widest font-extrabold">Required Title</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCopyText(task.title || '', 'Required Post Title copied!');
+                            }}
+                            className="text-[9px] text-purple-650 hover:text-purple-705 font-extrabold flex items-center gap-1 bg-white hover:bg-purple-50 px-2 py-0.5 rounded transition-all border border-slate-250 cursor-pointer shadow-xs shrink-0"
+                          >
+                            <Copy className="w-2.5 h-2.5" /> Copy Title
+                          </button>
+                        </div>
+                        <div className="bg-white p-2 border border-slate-200 rounded-lg text-zinc-800 font-mono font-bold text-xs break-all leading-normal">
+                          "{task.title}"
+                        </div>
+                      </div>
+
+                      {/* Required Flair Box with Copy */}
+                      {task.requiredFlair && (
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[9px] text-zinc-450 uppercase tracking-widest font-extrabold">Required Flair</span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopyText(task.requiredFlair || '', 'Required Flair copied!');
+                              }}
+                              className="text-[9px] text-purple-650 hover:text-purple-705 font-extrabold flex items-center gap-1 bg-white hover:bg-purple-50 px-2 py-0.5 rounded transition-all border border-slate-250 cursor-pointer shadow-xs shrink-0"
+                            >
+                              <Copy className="w-2.5 h-2.5" /> Copy Flair
+                            </button>
+                          </div>
+                          <div className="flex bg-white p-2 border border-slate-200 rounded-lg">
+                            <span className={`text-[10px] font-mono px-2.5 py-0.8 rounded-md font-bold ${getFlairStyle(task.requiredFlair)}`}>
+                              {task.requiredFlair}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Required Link URL with Copy */}
                       {task.requiredLinkUrl && (
                         <div className="space-y-1">
-                          <span className="text-[9px] text-amber-800 uppercase tracking-widest block font-extrabold pb-0.5">Required Subreddit Link URL</span>
-                          <div className="flex items-center justify-between gap-3 bg-white p-2 border border-amber-100 rounded-lg">
-                            <a
-                              href={task.requiredLinkUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="text-amber-700 font-mono text-[10px] hover:underline truncate max-w-[150px] block font-bold"
-                            >
-                              {task.requiredLinkUrl}
-                            </a>
+                          <div className="flex justify-between items-center font-semibold">
+                            <span className="text-[9px] text-zinc-450 uppercase tracking-widest font-extrabold">Required Link URL</span>
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleCopyText(task.requiredLinkUrl || '', 'Required Link URL copied!');
                               }}
-                              className="text-[9px] text-amber-800 hover:text-amber-955 font-extrabold flex items-center gap-1 bg-white hover:bg-amber-50 px-2 py-0.5 rounded transition-all border border-amber-200 cursor-pointer shrink-0 shadow-xs"
+                              className="text-[9px] text-purple-650 hover:text-purple-705 font-extrabold flex items-center gap-1 bg-white hover:bg-purple-50 px-2 py-0.5 rounded transition-all border border-slate-250 cursor-pointer shadow-xs shrink-0"
                             >
-                              <Copy className="w-2.5 h-2.5" /> Copy Link
+                              <Copy className="w-2.5 h-2.5" /> Copy Link URL
                             </button>
+                          </div>
+                          <div className="flex items-center justify-between gap-3 bg-white p-2 border border-slate-200 rounded-lg">
+                            <a
+                              href={task.requiredLinkUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-purple-600 font-mono text-[10px] hover:underline truncate max-w-[200px] block font-bold"
+                            >
+                              {task.requiredLinkUrl}
+                            </a>
                           </div>
                         </div>
                       )}
 
-                      {task.requiredFlair && (
-                        <div className="space-y-1 border-t border-amber-200/20 pt-2 flex justify-between items-center bg-white/40 p-2 border border-slate-100 rounded-xl">
-                          <span className="text-[10px] text-slate-500 font-extrabold font-sans">Required Flair:</span>
-                          <span className={`text-[10px] font-mono px-2.5 py-0.8 rounded-lg ${getFlairStyle(task.requiredFlair)}`}>
-                            {task.requiredFlair}
-                          </span>
-                        </div>
-                      )}
-
                       <div className="space-y-2 border-t border-amber-200/25 pt-2">
-                        <span className="text-[9px] text-amber-900 uppercase tracking-widest block font-black mb-1">Task Specifications</span>
+                        <span className="text-[9px] text-amber-905 uppercase tracking-widest block font-black mb-1">Task Specifications</span>
                         
                         <div className="space-y-1.5 text-zinc-650 bg-white p-2.5 border border-slate-105 rounded-xl font-bold">
                           <div className="flex justify-between items-center">
@@ -1065,9 +1157,9 @@ export const Marketplace: React.FC = () => {
                             e.stopPropagation();
                             window.open('https://www.reddit.com/r/redditrequest', '_blank');
                           }}
-                          className="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-black rounded-lg shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer border-0"
+                          className="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-black rounded-lg shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer border-0 uppercase tracking-wider"
                         >
-                          <ExternalLink className="w-3.5 h-3.5 text-white" /> Open r/redditrequest
+                          <ExternalLink className="w-3.5 h-3.5 text-white" /> Open Reddit Request
                         </button>
                       </div>
                     </div>
@@ -1102,7 +1194,10 @@ export const Marketplace: React.FC = () => {
                       ${(task.reward * settings.globalMultiplier).toFixed(2)} USDT
                     </span>
                     {task.isSpecial && (
-                      <span className="text-[8px] text-amber-600 block tracking-wider uppercase font-bold text-amber-500">Requires {getTierRequirementText(task.minKarmaRequired)}</span>
+                      <span className="text-[8px] text-amber-600 block tracking-wider uppercase font-bold text-amber-550">Requires {getTierRequirementText(task.minKarmaRequired)}</span>
+                    )}
+                    {task.minReputationRequired && (
+                      <span className="text-[8px] text-indigo-600 block tracking-wider uppercase font-bold mt-0.5">Min Reputation: {task.minReputationRequired}</span>
                     )}
                   </div>
 
@@ -1129,17 +1224,29 @@ export const Marketplace: React.FC = () => {
                       Slots limit Taken
                     </div>
                   ) : isClaimedByMe ? (
-                    <button 
-                      disabled={isPending}
-                      onClick={() => handleOpenSubmission(task)}
-                      className={`px-4 py-2 border text-xs font-bold rounded-xl scroll-smooth transition-all cursor-pointer ${
-                        isPending 
-                          ? 'border-slate-205 bg-slate-100 text-zinc-400 cursor-not-allowed' 
-                          : 'border-amber-500 bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white font-extrabold'
-                      }`}
-                    >
-                      Submit Proof
-                    </button>
+                    <div className="flex gap-2">
+                      <button 
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setReportTask(task);
+                        }}
+                        className="px-2.5 py-2 border border-red-205 bg-red-50 text-red-650 hover:bg-red-500 hover:text-white hover:border-red-500 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1 shrink-0"
+                      >
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> Report Issue
+                      </button>
+                      <button 
+                        disabled={isPending}
+                        onClick={() => handleOpenSubmission(task)}
+                        className={`px-4 py-2 border text-xs font-bold rounded-xl transition-all cursor-pointer shrink-0 ${
+                          isPending 
+                            ? 'border-slate-205 bg-slate-100 text-zinc-400 cursor-not-allowed' 
+                            : 'border-amber-500 bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white font-extrabold'
+                        }`}
+                      >
+                        Submit Proof
+                      </button>
+                    </div>
                   ) : (task.type === 'request' && !reqElig.eligible) ? (
                     <button 
                       disabled
@@ -1536,6 +1643,97 @@ export const Marketplace: React.FC = () => {
                 </button>
               </form>
             )}
+            
+          </div>
+        </div>
+      )}
+
+      {/* Report Issue Modal */}
+      {reportTask && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg bg-white border border-slate-200 p-6 rounded-3xl space-y-6 relative max-h-[90vh] overflow-y-auto shadow-2xl">
+            
+            {/* Closes */}
+            <button 
+              onClick={() => setReportTask(null)}
+              className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-800 cursor-pointer px-2.5 py-1 bg-slate-100 hover:bg-slate-200/90 rounded-lg text-xs font-bold transition-all"
+            >
+              Cancel
+            </button>
+
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest block font-sans">Report Task Issue</span>
+              <h2 className="text-lg font-extrabold text-zinc-900 leading-tight font-display">{reportTask.title}</h2>
+              <span className="text-xs text-zinc-500 font-semibold block font-sans">
+                Our support team will inspect the campaign platform error. This does not release or cancel your claim slot.
+              </span>
+            </div>
+
+            <form onSubmit={handleReportIssueSubmit} className="space-y-4 text-xs font-semibold text-zinc-700">
+              {issueError && (
+                <div className="p-3 bg-red-50 border border-red-200 text-red-650 text-xs rounded-xl flex items-center gap-2 mb-2 font-bold animate-pulse">
+                  <ShieldAlert className="w-4 h-4 shrink-0" />
+                  <span>{issueError}</span>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block font-sans">
+                  Issue Type
+                </label>
+                <select
+                  value={issueType}
+                  onChange={(e) => setIssueType(e.target.value)}
+                  className="w-full text-xs text-zinc-800 bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl focus:border-red-500 focus:outline-none cursor-pointer font-bold font-sans"
+                >
+                  <option value="Bot/Bouncer present">Bot/Bouncer present</option>
+                  <option value="Post stuck in moderator approval">Post stuck in moderator approval</option>
+                  <option value="Comment removed">Comment removed</option>
+                  <option value="Post removed">Post removed</option>
+                  <option value="Subreddit locked/restricted">Subreddit locked/restricted</option>
+                  <option value="Link not working">Link not working</option>
+                  <option value="Wrong task instructions">Wrong task instructions</option>
+                  <option value="Flair unavailable">Flair unavailable</option>
+                  <option value="Duplicate task">Duplicate task</option>
+                  <option value="Other issue">Other issue</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block font-sans">
+                  Explain the problem briefly
+                </label>
+                <textarea
+                  value={issueMessage}
+                  onChange={(e) => setIssueMessage(e.target.value)}
+                  rows={4}
+                  placeholder="Provide precise descriptions about the subreddit rule blocks, deleted status, or other technical problems."
+                  className="w-full text-xs text-zinc-800 bg-slate-55 border border-slate-200 px-3 py-2.5 rounded-xl focus:border-red-500 focus:outline-none font-medium leading-relaxed placeholder-zinc-400"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block font-sans">
+                  Proof URL (Screenshot, Image) (Optional)
+                </label>
+                <input 
+                  type="text" 
+                  value={issueProofUrl}
+                  onChange={(e) => setIssueProofUrl(e.target.value)}
+                  placeholder="https://imgur.com/... or screenshot link" 
+                  className="w-full text-xs text-zinc-800 bg-slate-55 border border-slate-205 px-3 py-2.5 rounded-xl focus:border-red-500 focus:outline-none placeholder-zinc-400 font-semibold"
+                />
+                <p className="text-[9px] text-zinc-400 font-bold">You can upload a screenshot to Imgur or any host and paste the link here.</p>
+              </div>
+
+              <button 
+                type="submit"
+                disabled={issueSubmitting}
+                className="w-full py-3 bg-red-500 hover:bg-red-600 text-xs font-black text-white rounded-xl shadow-md hover:shadow-lg hover:opacity-95 cursor-pointer disabled:opacity-50 transition-all uppercase tracking-wider font-sans"
+              >
+                {issueSubmitting ? 'Submitting issue report...' : 'Submit Issue Report'}
+              </button>
+            </form>
             
           </div>
         </div>

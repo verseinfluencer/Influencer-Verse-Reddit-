@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Award, ShieldAlert, Sparkles, TrendingUp, Users, HeartCrack, ChevronRight, Trophy } from 'lucide-react';
+import { getCreatorReputation } from '../utils/reputationHelper';
+import { CreatorProfileModal } from '../components/CreatorProfileModal';
+import { Award, Sparkles, Trophy, Star, Eye } from 'lucide-react';
 
 interface LeaderboardAvatarProps {
   fullName?: string | null;
@@ -45,9 +47,10 @@ const LeaderboardAvatar: React.FC<LeaderboardAvatarProps> = ({
 };
 
 export const Leaderboard: React.FC = () => {
-  const { users, currentUser, submissions } = useApp();
-  const [selectedTierFilter, setSelectedTierFilter] = useState<string>('all');
+  const { users, currentUser, submissions, creatorReviews } = useApp();
   const [leaderboardType, setLeaderboardType] = useState<'earners' | 'karma'>('earners');
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
 
   // Filter out admins/banned accounts and clients from leaderboard
   const legitimateUsers = users.filter(u => {
@@ -58,17 +61,12 @@ export const Leaderboard: React.FC = () => {
       (u as any).accountType === 'client' || 
       (u as any).userType === 'client' || 
       (u as any).isClient === true;
-    return u.role !== 'admin' && u.status !== 'Banned' && !isClient;
+    return u.role !== 'admin' && u.status !== 'Banned' && u.status !== 'banned' && !isClient;
   });
 
-  const isAdmin = currentUser?.role === 'admin';
-
-  // Apply Filter first
-  const filteredUsers = legitimateUsers;
-
-  // Get dynamic sorting data
+  // Sort based on totalEarned or karma
   const getSortedData = () => {
-    const list = [...filteredUsers];
+    const list = [...legitimateUsers];
     if (leaderboardType === 'earners') {
       return list.sort((a, b) => b.totalEarned - a.totalEarned);
     } else {
@@ -78,59 +76,59 @@ export const Leaderboard: React.FC = () => {
 
   const sortedLeaderboard = getSortedData();
 
-  // Extract Top 3 for special visual podium representation
+  // Extract Top 3 for podium
   const podium = sortedLeaderboard.slice(0, 3);
   const remaining = sortedLeaderboard.slice(3, 10);
 
   // Styling helper for rankings
   const getRankBadge = (rankOrdinal: number) => {
-    if (rankOrdinal === 1) return { text: 'Gold #1', style: 'bg-amber-50 text-amber-800 border border-amber-200 font-extrabold uppercase tracking-wide text-[9px]' };
-    if (rankOrdinal === 2) return { text: 'Silver #2', style: 'bg-gray-50 text-gray-700 border border-gray-200 font-bold uppercase tracking-wide text-[9px]' };
-    if (rankOrdinal === 3) return { text: 'Bronze #3', style: 'bg-amber-50 text-amber-700 border border-amber-200 font-bold uppercase tracking-wide text-[9px]' };
+    if (rankOrdinal === 1) return { text: 'Gold #1', style: 'bg-amber-50 text-amber-850 border border-amber-250 font-extrabold uppercase tracking-wide text-[9px]' };
+    if (rankOrdinal === 2) return { text: 'Silver #2', style: 'bg-slate-100 text-slate-750 border border-slate-200 font-bold uppercase tracking-wide text-[9px]' };
+    if (rankOrdinal === 3) return { text: 'Bronze #3', style: 'bg-orange-50 text-orange-850 border border-orange-200 font-bold uppercase tracking-wide text-[9px]' };
     return { text: `# ${rankOrdinal}`, style: 'bg-gray-100 text-gray-500 border border-gray-200 font-mono' };
   };
 
   const getTasksCompletedCount = (userId: string) => {
     return submissions.filter(
       s => s.userId === userId && 
-      (s.status === 'Approved' || s.status === 'Client Approved (Payment Released)' || s.status === 'Approved')
+      (s.status === 'Client Approved (Payment Released)' || s.status === 'Approved' || s.status.includes('Approved'))
     ).length;
   };
 
+  const handleOpenProfile = (uid: string) => {
+    setSelectedUserId(uid);
+    setIsProfileOpen(true);
+  };
+
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 text-gray-700 select-none" id="leaderboard-panel">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 text-slate-750 select-none animate-in fade-in duration-200" id="leaderboard-panel">
       
       {/* Title Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-4 border-b border-gray-200">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-4 border-b border-slate-200">
         <div>
-          <span className="text-xs text-purple-600 font-bold uppercase tracking-widest block mb-1">Creators Honor Roll</span>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">Platform Leaderboard</h1>
-          <p className="text-sm text-gray-500">Track and compete against elite micro-influencers ranking up daily</p>
+          <span className="text-xs text-indigo-600 font-bold uppercase tracking-widest block mb-1">Creators Honor Roll</span>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Platform Leaderboard</h1>
+          <p className="text-sm text-slate-500 font-medium">Track and compete against elite micro-influencers ranking up daily</p>
         </div>
 
-        {/* Controls: sorting tabs */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto font-semibold">
-          
-          {/* Sorting tabs */}
-          <div className="flex bg-gray-100 border border-gray-200 p-1 rounded-xl w-full sm:w-auto">
-            <button 
-              onClick={() => setLeaderboardType('earners')}
-              className={`flex-1 sm:flex-none px-4 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                leaderboardType === 'earners' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              Top Earners
-            </button>
-            <button 
-              onClick={() => setLeaderboardType('karma')}
-              className={`flex-1 sm:flex-none px-4 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                leaderboardType === 'karma' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              Alternative Rankings
-            </button>
-          </div>
-
+        {/* Sorting tabs */}
+        <div className="flex bg-slate-100 border border-slate-200 p-1 rounded-xl">
+          <button 
+            onClick={() => setLeaderboardType('earners')}
+            className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+              leaderboardType === 'earners' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Top Earners
+          </button>
+          <button 
+            onClick={() => setLeaderboardType('karma')}
+            className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+              leaderboardType === 'karma' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Highest Karma
+          </button>
         </div>
       </div>
 
@@ -138,161 +136,202 @@ export const Leaderboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end pt-4">
         
         {/* 2nd Place */}
-        {podium[1] && (
-          <div className="bg-white border border-gray-200 rounded-2xl p-6 relative overflow-hidden order-2 md:order-1 flex flex-col items-center text-center space-y-4 shadow-sm hover:shadow-md transition-all duration-300">
-            <div className="absolute top-0 left-0 w-full h-1.5 bg-gray-300"></div>
-            <div className="relative">
-              <span className="absolute -top-1 -right-1 bg-gray-100 text-gray-700 font-bold text-xs w-5 h-5 rounded-full flex items-center justify-center border border-gray-300 shadow-sm">2</span>
-              <LeaderboardAvatar 
-                fullName={podium[1].fullName} 
-                avatarUrl={podium[1].avatarUrl} 
-                sizeClass="w-14 h-14" 
-                fontSizeClass="text-base"
-                borderClass="border-2 border-slate-300" 
-              />
-            </div>
-            <div>
-              <h3 className="font-bold text-gray-950 mb-0.5 text-center">
-                {podium[1].fullName}
-              </h3>
-            </div>
-            <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 select-text w-full space-y-2">
-              <div>
-                <span className="text-[10px] text-gray-500 font-bold block uppercase tracking-wider font-display">
-                  Total Earnings
-                </span>
-                <span className="text-base font-bold text-gray-900 font-mono leading-none block mt-0.5">
-                  ${podium[1].totalEarned.toFixed(2)} USDT
+        {podium[1] && (() => {
+          const rep = getCreatorReputation(podium[1], submissions, creatorReviews);
+          return (
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 relative overflow-hidden order-2 md:order-1 flex flex-col items-center text-center space-y-4 shadow-xs hover:shadow-sm hover:-translate-y-1 transition-all duration-300">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-slate-300"></div>
+              <div className="relative">
+                <span className="absolute -top-1 -right-1 bg-slate-100 text-slate-700 font-bold text-xs w-5 h-5 rounded-full flex items-center justify-center border border-slate-300 shadow-xs">2</span>
+                <LeaderboardAvatar 
+                  fullName={podium[1].fullName} 
+                  avatarUrl={podium[1].avatarUrl} 
+                  sizeClass="w-14 h-14" 
+                  fontSizeClass="text-base"
+                  borderClass="border-2 border-slate-300" 
+                />
+              </div>
+              <div className="space-y-1">
+                <h3 
+                  onClick={() => handleOpenProfile(podium[1].id)}
+                  className="font-bold text-slate-900 text-center hover:text-indigo-650 hover:underline cursor-pointer"
+                >
+                  {podium[1].fullName || podium[1].name}
+                </h3>
+                <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] border font-medium ${rep.badgeColor}`}>
+                  {rep.level}
                 </span>
               </div>
-              <div className="pt-1.5 border-t border-gray-200">
-                <span className="text-[10px] text-gray-500 font-bold block uppercase tracking-wider font-display">
-                  Tasks Completed
-                </span>
-                <span className="text-xs font-bold text-gray-700 font-mono">
-                  {getTasksCompletedCount(podium[1].id)} Tasks
-                </span>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-150 select-text w-full space-y-2 text-xs">
+                <div className="flex justify-between items-center pb-1.5 border-b border-slate-200">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Reputation</span>
+                  <span className="font-extrabold text-indigo-600 font-mono">{rep.score}/100</span>
+                </div>
+                <div className="flex justify-between items-center pb-1.5 border-b border-slate-200">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Avg Rating</span>
+                  <span className="font-bold text-amber-500 flex items-center gap-0.5 font-mono">
+                    {rep.averageRating} <Star className="h-3 w-3 fill-amber-400 text-amber-400 inline" />
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pb-1.5 border-b border-slate-200">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Earnings</span>
+                  <span className="font-bold text-slate-900 font-mono">${podium[1].totalEarned.toFixed(2)}</span>
+                </div>
+                <button 
+                  onClick={() => handleOpenProfile(podium[1].id)}
+                  className="w-full mt-1.5 py-1.5 px-3 rounded-lg border border-slate-200 text-[11px] font-bold text-indigo-600 hover:bg-slate-100 flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                >
+                  <Eye className="h-3.5 w-3.5" /> View Profile
+                </button>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* 1st Place Champion */}
-        {podium[0] && (
-          <div className="bg-white border-2 border-amber-300 rounded-[24px] p-8 relative overflow-hidden order-1 md:order-2 flex flex-col items-center text-center space-y-5 md:scale-105 shadow-md hover:shadow-lg transition-all duration-300">
-            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-amber-400 to-yellow-500"></div>
-            <div className="absolute -top-4 -right-4 w-20 h-20 bg-amber-500/5 rounded-full blur-2xl"></div>
-            
-            <div className="relative">
-              <Trophy className="absolute -top-7 right-5 w-6 h-6 text-amber-500 animate-bounce fill-amber-300" />
-              <span className="absolute -top-1.5 -right-1 bg-amber-400 text-white font-bold text-xs w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow-sm">1</span>
-              <LeaderboardAvatar 
-                fullName={podium[0].fullName} 
-                avatarUrl={podium[0].avatarUrl} 
-                sizeClass="w-18 h-18" 
-                fontSizeClass="text-lg"
-                borderClass="border-2 border-amber-400" 
-              />
-            </div>
-            <div>
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 border border-amber-200 bg-amber-50 rounded-full text-[10px] font-bold text-amber-800 uppercase tracking-widest block mb-1.5 select-none mx-auto">
-                <Sparkles className="w-3 h-3 text-amber-550 fill-amber-500" /> Season Champion
+        {podium[0] && (() => {
+          const rep = getCreatorReputation(podium[0], submissions, creatorReviews);
+          return (
+            <div className="bg-white border-2 border-indigo-250 rounded-[24px] p-8 relative overflow-hidden order-1 md:order-2 flex flex-col items-center text-center space-y-5 md:scale-105 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300">
+              <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 to-indigo-605"></div>
+              
+              <div className="relative">
+                <Trophy className="absolute -top-7 right-5 w-6 h-6 text-indigo-550 animate-bounce fill-indigo-250" />
+                <span className="absolute -top-1.5 -right-1 bg-indigo-500 text-white font-bold text-xs w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow-xs">1</span>
+                <LeaderboardAvatar 
+                  fullName={podium[0].fullName} 
+                  avatarUrl={podium[0].avatarUrl} 
+                  sizeClass="w-18 h-18" 
+                  fontSizeClass="text-lg"
+                  borderClass="border-2 border-indigo-400" 
+                />
               </div>
-              <h3 className="font-bold text-gray-950 text-wrap text-center">
-                {podium[0].fullName}
-              </h3>
-            </div>
-            
-            <div className="p-3.5 bg-amber-50/40 rounded-2xl border border-amber-200 select-text w-full space-y-2">
-              <div>
-                <span className="text-[10px] text-amber-800 font-bold block uppercase tracking-wider font-display">
-                  Total Earnings
-                </span>
-                <span className="text-lg font-bold text-amber-600 font-mono leading-none block my-1">
-                  ${podium[0].totalEarned.toFixed(2)} USDT
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-1 px-2.5 py-0.5 border border-indigo-150 bg-indigo-50 rounded-full text-[9px] font-bold text-indigo-750 uppercase tracking-widest block select-none">
+                  <Sparkles className="w-3 h-3 text-indigo-500 fill-indigo-500" /> Season Champion
+                </div>
+                <h3 
+                  onClick={() => handleOpenProfile(podium[0].id)}
+                  className="font-bold text-slate-900 text-center hover:text-indigo-650 hover:underline cursor-pointer block text-lg"
+                >
+                  {podium[0].fullName || podium[0].name}
+                </h3>
+                <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] border font-semibold ${rep.badgeColor}`}>
+                  {rep.level}
                 </span>
               </div>
-              <div className="pt-2 border-t border-amber-200/50">
-                <span className="text-[10px] text-amber-700 font-bold block uppercase tracking-wider font-display">
-                  Tasks Completed
-                </span>
-                <span className="text-sm font-bold text-gray-800 font-mono">
-                  {getTasksCompletedCount(podium[0].id)} Tasks
-                </span>
+              
+              <div className="p-3.5 bg-indigo-50/20 rounded-2xl border border-indigo-150 select-text w-full space-y-2 text-xs">
+                <div className="flex justify-between items-center pb-1.5 border-b border-indigo-100">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Reputation</span>
+                  <span className="font-extrabold text-indigo-600 font-mono">{rep.score}/100</span>
+                </div>
+                <div className="flex justify-between items-center pb-1.5 border-b border-indigo-100">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Avg Rating</span>
+                  <span className="font-bold text-amber-500 flex items-center gap-0.5 font-mono">
+                    {rep.averageRating} <Star className="h-3 w-3 fill-amber-400 text-amber-400 inline" />
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pb-1.5 border-b border-indigo-100">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Earnings</span>
+                  <span className="font-bold text-emerald-600 font-mono">${podium[0].totalEarned.toFixed(2)}</span>
+                </div>
+                <button 
+                  onClick={() => handleOpenProfile(podium[0].id)}
+                  className="w-full mt-1.5 py-2 px-3 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 flex items-center justify-center gap-1.5 transition-colors cursor-pointer border shadow-sm border-indigo-600"
+                >
+                  <Eye className="h-4 w-4" /> View Full Profile
+                </button>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* 3rd place */}
-        {podium[2] && (
-          <div className="bg-white border border-gray-200 rounded-2xl p-6 relative overflow-hidden order-3 flex flex-col items-center text-center space-y-4 shadow-sm hover:shadow-md transition-all duration-300">
-            <div className="absolute top-0 left-0 w-full h-1.5 bg-amber-600/30"></div>
-            <div className="relative">
-              <span className="absolute -top-1 -right-1 bg-amber-50 text-amber-800 font-bold text-xs w-5 h-5 rounded-full flex items-center justify-center border border-amber-300 shadow-sm">3</span>
-              <LeaderboardAvatar 
-                fullName={podium[2].fullName} 
-                avatarUrl={podium[2].avatarUrl} 
-                sizeClass="w-14 h-14" 
-                fontSizeClass="text-base"
-                borderClass="border-2 border-amber-600/50" 
-              />
-            </div>
-            <div>
-              <h3 className="font-bold text-gray-950 mb-0.5 text-center">
-                {podium[2].fullName}
-              </h3>
-            </div>
-            <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 select-text w-full space-y-2">
-              <div>
-                <span className="text-[10px] text-gray-500 font-bold block uppercase tracking-wider font-display">
-                  Total Earnings
-                </span>
-                <span className="text-base font-bold text-gray-900 font-mono leading-none block mt-0.5">
-                  ${podium[2].totalEarned.toFixed(2)} USDT
+        {podium[2] && (() => {
+          const rep = getCreatorReputation(podium[2], submissions, creatorReviews);
+          return (
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 relative overflow-hidden order-3 flex flex-col items-center text-center space-y-4 shadow-xs hover:shadow-sm hover:-translate-y-1 transition-all duration-300">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-indigo-200"></div>
+              <div className="relative">
+                <span className="absolute -top-1 -right-1 bg-indigo-50 text-indigo-850 font-bold text-xs w-5 h-5 rounded-full flex items-center justify-center border border-indigo-200 shadow-xs">3</span>
+                <LeaderboardAvatar 
+                  fullName={podium[2].fullName} 
+                  avatarUrl={podium[2].avatarUrl} 
+                  sizeClass="w-14 h-14" 
+                  fontSizeClass="text-base"
+                  borderClass="border-2 border-indigo-150" 
+                />
+              </div>
+              <div className="space-y-1">
+                <h3 
+                  onClick={() => handleOpenProfile(podium[2].id)}
+                  className="font-bold text-slate-900 text-center hover:text-indigo-650 hover:underline cursor-pointer"
+                >
+                  {podium[2].fullName || podium[2].name}
+                </h3>
+                <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] border font-medium ${rep.badgeColor}`}>
+                  {rep.level}
                 </span>
               </div>
-              <div className="pt-1.5 border-t border-gray-200">
-                <span className="text-[10px] text-gray-500 font-bold block uppercase tracking-wider font-display">
-                  Tasks Completed
-                </span>
-                <span className="text-xs font-bold text-gray-700 font-mono">
-                  {getTasksCompletedCount(podium[2].id)} Tasks
-                </span>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-150 select-text w-full space-y-2 text-xs">
+                <div className="flex justify-between items-center pb-1.5 border-b border-slate-200">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Reputation</span>
+                  <span className="font-extrabold text-indigo-600 font-mono">{rep.score}/100</span>
+                </div>
+                <div className="flex justify-between items-center pb-1.5 border-b border-slate-200">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Avg Rating</span>
+                  <span className="font-bold text-amber-500 flex items-center gap-0.5 font-mono">
+                    {rep.averageRating} <Star className="h-3 w-3 fill-amber-400 text-amber-400 inline" />
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pb-1.5 border-b border-slate-200">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Earnings</span>
+                  <span className="font-bold text-slate-900 font-mono">${podium[2].totalEarned.toFixed(2)}</span>
+                </div>
+                <button 
+                  onClick={() => handleOpenProfile(podium[2].id)}
+                  className="w-full mt-1.5 py-1.5 px-3 rounded-lg border border-slate-200 text-[11px] font-bold text-indigo-600 hover:bg-slate-100 flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                >
+                  <Eye className="h-3.5 w-3.5" /> View Profile
+                </button>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
       </div>
 
       {/* Leaderboard Table List (Ranks 4-10) */}
-      <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500 mb-4 flex items-center gap-2">
-          <Award className="w-4 h-4 text-purple-600" /> Competitors Standings
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
+        <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-4 flex items-center gap-2">
+          <Award className="w-4 h-4 text-indigo-600" /> Leaderboard Standings
         </h2>
 
         <div className="overflow-x-auto">
           {remaining.length === 0 ? (
-            <div className="text-center py-6 text-gray-400 text-xs">
+            <div className="text-center py-6 text-slate-400 text-xs font-medium">
               No other active verified micro-influencers match criteria.
             </div>
           ) : (
             <table className="w-full text-left border-collapse font-semibold">
-              <thead className="text-[10px] font-bold text-gray-500 uppercase tracking-widest border-b border-gray-100 bg-gray-50">
+              <thead className="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100 bg-slate-50">
                 <tr>
                   <th className="py-3 px-3">Rank</th>
-                  <th className="py-3 px-3">Display Name</th>
+                  <th className="py-3 px-4">Creator</th>
+                  <th className="py-3 px-3 text-center">Reputation Score</th>
+                  <th className="py-3 px-3 text-center">Avg Rating</th>
                   <th className="py-3 px-3 text-right">Tasks Completed</th>
                   <th className="py-3 px-3 text-right">Earnings</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 text-xs text-gray-600 select-text">
+              <tbody className="divide-y divide-slate-100 text-xs text-slate-600 select-text">
                 {remaining.map((item, idx) => {
                   const badgeInfo = getRankBadge(idx + 4);
                   const tasksCount = getTasksCompletedCount(item.id);
+                  const rep = getCreatorReputation(item, submissions, creatorReviews);
                   return (
-                    <tr key={item.id} className="hover:bg-gray-50/50 transition-colors duration-200">
+                    <tr key={item.id} className="hover:bg-slate-50/50 transition-colors duration-200">
                       {/* Rank Column */}
                       <td className="py-4 px-3">
                         <span className={`px-2.5 py-0.5 border rounded-full text-[10px] font-bold ${badgeInfo.style}`}>
@@ -300,18 +339,47 @@ export const Leaderboard: React.FC = () => {
                         </span>
                       </td>
                       {/* Combined Display Name & Avatar Column */}
-                      <td className="py-4 px-3 flex items-center gap-3">
-                        <LeaderboardAvatar 
-                          fullName={item.fullName} 
-                          avatarUrl={item.avatarUrl} 
-                          sizeClass="w-8 h-8" 
-                          fontSizeClass="text-[10px]"
-                          borderClass="border border-gray-200" 
-                        />
-                        <span className="text-gray-900 font-bold block leading-none">{item.fullName}</span>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-3">
+                          <LeaderboardAvatar 
+                            fullName={item.fullName} 
+                            avatarUrl={item.avatarUrl} 
+                            sizeClass="w-8 h-8" 
+                            fontSizeClass="text-[10px]"
+                            borderClass="border border-slate-200" 
+                          />
+                          <div className="flex flex-col">
+                            <span 
+                              onClick={() => handleOpenProfile(item.id)}
+                              className="text-slate-900 font-bold hover:text-indigo-650 hover:underline cursor-pointer"
+                            >
+                              {item.fullName || item.name || item.email}
+                            </span>
+                            <span className="text-[9px] text-slate-400 mt-0.5 font-medium">
+                              Level: {rep.level}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      {/* Reputation Score & Badge Column */}
+                      <td className="py-4 px-3 text-center">
+                        <span className="px-2 py-0.5 bg-slate-100 font-black text-indigo-600 rounded-md font-mono">
+                          {rep.score}
+                        </span>
+                      </td>
+                      {/* Rating Column */}
+                      <td className="py-4 px-3 text-center">
+                        {rep.averageRating === 'N/A' ? (
+                          <span className="text-slate-405 italic text-[11px]">N/A</span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 font-bold text-amber-500 font-mono">
+                            {rep.averageRating}
+                            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                          </span>
+                        )}
                       </td>
                       {/* Tasks Completed Column */}
-                      <td className="py-4 px-3 text-right font-mono font-bold text-gray-600">
+                      <td className="py-4 px-3 text-right font-mono font-bold text-slate-600">
                         {tasksCount}
                       </td>
                       {/* Earnings Column */}
@@ -328,6 +396,13 @@ export const Leaderboard: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Creator Profile public popup modal */}
+      <CreatorProfileModal 
+        isOpen={isProfileOpen} 
+        onClose={() => setIsProfileOpen(false)} 
+        userId={selectedUserId} 
+      />
 
     </div>
   );

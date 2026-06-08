@@ -4,7 +4,7 @@ import {
   SupportTicket, AppNotification, SystemSettings, TaskType,
   Client, ClientTask, ClientPayment, ClientPaymentProof, ChatMessage, ClientChat,
   DeductionRecord, PayoutRequest, DuplicateGroup, FraudAlert, TicketMessage, AuditLog,
-  RedditAccount
+  RedditAccount, TaskIssueReport, CreatorReview, CreatorWarning
 } from '../types';
 import { 
   INITIAL_USERS, INITIAL_TASKS, INITIAL_SUBMISSIONS, 
@@ -61,6 +61,7 @@ interface AppContextType {
   clientPayments: ClientPayment[];
   clientPaymentProofs: ClientPaymentProof[];
   clientChats: ClientChat[];
+  taskIssueReports: TaskIssueReport[];
   
   // Auth
   login: (email: string, password: string) => Promise<User>;
@@ -189,6 +190,8 @@ interface AppContextType {
   adminUpdateUserKarma: (userId: string, targetKarma: number) => void;
   adminAdjustUserBalance: (userId: string, newBalance: number) => Promise<void>;
   syncRedditKarma: () => Promise<void>;
+  reportTaskIssue: (taskId: string, issueType: string, message: string, proofUrl?: string) => Promise<void>;
+  adminUpdateIssueReportStatus: (reportId: string, status: TaskIssueReport['status'], resolutionNote?: string) => Promise<void>;
 
   // Anti-Cheat tracking states and actions
   blacklistedIPs: string[];
@@ -210,6 +213,13 @@ interface AppContextType {
   auditLogs: AuditLog[];
   adminPromoteToModerator: (targetUserId: string, operatorUser: User) => Promise<void>;
   adminRemoveModerator: (targetUserId: string, operatorUser: User) => Promise<void>;
+
+  // Creator reputation and reviews
+  creatorReviews: CreatorReview[];
+  submitClientReview: (reviewData: Omit<CreatorReview, 'id' | 'createdAt'>) => Promise<void>;
+  adminAdjustUserReputation: (userId: string, change: number, notes: string) => Promise<void>;
+  adminIssueWarning: (userId: string, reason: string) => Promise<void>;
+  adminRemoveReview: (reviewId: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -235,6 +245,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [clientPaymentProofs, setClientPaymentProofs] = useState<ClientPaymentProof[]>([]);
   const [clientChats, setClientChats] = useState<ClientChat[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [taskIssueReports, setTaskIssueReports] = useState<TaskIssueReport[]>([]);
+  const [creatorReviews, setCreatorReviews] = useState<CreatorReview[]>([]);
 
   // Anti-cheat mock storage values fallback
   const [blacklistedIPs, setBlacklistedIPs] = useState<string[]>(['198.51.100.42']);
@@ -542,6 +554,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           console.error("Error fetching fraud alerts", error);
         });
 
+        const unsubTaskIssueReports = onSnapshot(collection(db, 'task_issue_reports'), (snap) => {
+          setTaskIssueReports(snap.docs.map(d => d.data() as TaskIssueReport));
+        }, (error) => {
+          console.error("Error fetching task issue reports", error);
+        });
+
+        const unsubCreatorReviews = onSnapshot(collection(db, 'creator_reviews'), (snap) => {
+          setCreatorReviews(snap.docs.map(d => d.data() as CreatorReview));
+        }, (error) => {
+          console.error("Error fetching creator reviews", error);
+        });
+
         return () => {
           unsubUser();
           unsubClientProfile();
@@ -559,6 +583,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           unsubAuditLogs();
           unsubDuplicateGroups();
           unsubFraudAlerts();
+          unsubTaskIssueReports();
+          unsubCreatorReviews();
         };
       } else {
         setCurrentUser(null);
@@ -1725,6 +1751,251 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const memberRaiseDispute = async (taskId: string, reason: string) => {
     // dispute details
+  };
+
+  const reportTaskIssue = async (taskId: string, issueType: string, message: string, proofUrl?: string) => {
+    if (!currentUser) throw new Error("Not authenticated");
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) throw new Error("Task not found");
+
+    const reportId = 'report_' + Date.now().toString() + '_' + Math.random().toString(36).substr(2, 9);
+    const newReport: TaskIssueReport = {
+      id: reportId,
+      taskId,
+      taskTitle: task.title,
+      userId: currentUser.id,
+      userFullName: currentUser.fullName,
+      taskType: task.type || 'post',
+      issueType,
+      message,
+      proofUrl: proofUrl || '',
+      status: 'Open',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    try {
+      await setDoc(doc(db, 'task_issue_reports', reportId), newReport);
+      
+      const adminNotifId = `notif-${Date.now()}-issue-reported-${Math.random().toString(36).substr(2, 5)}`;
+      const adminNotif: AppNotification = {
+        id: adminNotifId,
+        userId: 'all',
+        type: 'dispute',
+        title: 'New Task Issue Reported',
+        message: `${currentUser.fullName} reported issue ("${issueType}") on task: "${task.title}"`,
+        read: false,
+        timestamp: new Date().toISOString()
+      };
+      await setDoc(doc(db, 'notifications', adminNotifId), adminNotif);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, 'task_issue_reports');
+    }
+  };
+
+  const adminUpdateIssueReportStatus = async (reportId: string, status: TaskIssueReport['status'], resolutionNote?: string) => {
+    if (!currentUser) throw new Error("Not authenticated");
+    if (currentUser.role !== 'admin' && currentUser.role !== 'moderator') {
+      throw new Error("Unauthorized: Only admins or moderators can resolve issue reports.");
+    }
+
+    try {
+      const reportRef = doc(db, 'task_issue_reports', reportId);
+      const reportSnap = await getDoc(reportRef);
+      if (!reportSnap.exists()) throw new Error("Issue report not found");
+      const reportData = reportSnap.data() as TaskIssueReport;
+
+      const updates: Partial<TaskIssueReport> = {
+        status,
+        updatedAt: new Date().toISOString(),
+        resolvedBy: currentUser.fullName
+      };
+      if (resolutionNote !== undefined) {
+        updates.resolutionNote = resolutionNote;
+      }
+
+      await updateDoc(reportRef, updates);
+
+      const userNotifId = `notif-${Date.now()}-issue-updated-${Math.random().toString(36).substr(2, 5)}`;
+      const userNotif: AppNotification = {
+        id: userNotifId,
+        userId: reportData.userId,
+        type: 'task_approved',
+        title: `Task Issue Report Update`,
+        message: `Your issue report on "${reportData.taskTitle}" was updated to: ${status}. Note: ${resolutionNote || 'None'}`,
+        read: false,
+        timestamp: new Date().toISOString()
+      };
+      await setDoc(doc(db, 'notifications', userNotifId), userNotif);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, 'task_issue_reports');
+    }
+  };
+
+  const submitClientReview = async (reviewData: Omit<CreatorReview, 'id' | 'createdAt'>) => {
+    const id = 'review_' + Date.now().toString() + '_' + Math.random().toString(36).substr(2, 9);
+    const newReview: CreatorReview = {
+      ...reviewData,
+      id,
+      createdAt: new Date().toISOString()
+    };
+    try {
+      await setDoc(doc(db, 'creator_reviews', id), newReview);
+
+      // Log audit trail
+      const auditId = 'audit-' + Date.now();
+      const clientOperator = currentClient?.name || currentClient?.company || 'Client';
+      const audit: AuditLog = {
+        id: auditId,
+        action: `Submitted review for creator ${reviewData.creatorName} with rating ${reviewData.rating}`,
+        targetUserId: reviewData.creatorId,
+        targetUserName: reviewData.creatorName,
+        operatorId: reviewData.clientId,
+        operatorName: clientOperator,
+        operatorRole: 'client',
+        timestamp: new Date().toISOString()
+      };
+      await setDoc(doc(db, 'audit_logs', auditId), audit);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, 'creator_reviews');
+    }
+  };
+
+  const adminAdjustUserReputation = async (userId: string, change: number, notes: string) => {
+    if (!currentUser) throw new Error("Not authenticated");
+    if (currentUser.role !== 'admin' && currentUser.role !== 'moderator') {
+      throw new Error("Unauthorized");
+    }
+
+    try {
+      const uRef = doc(db, 'users', userId);
+      const userSnap = await getDoc(uRef);
+      if (!userSnap.exists()) throw new Error("User not found");
+      const user = userSnap.data() as User;
+
+      const currentAdjustment = user.reputationAdjustment || 0;
+      const newAdjustment = currentAdjustment + change;
+
+      await updateDoc(uRef, {
+        reputationAdjustment: newAdjustment
+      });
+
+      // Log to audit logs
+      const auditId = 'audit-' + Date.now();
+      const audit: AuditLog = {
+        id: auditId,
+        action: `Adjusted user reputation by ${change >= 0 ? '+' : ''}${change}. Reason: ${notes}`,
+        targetUserId: userId,
+        targetUserName: user.fullName || user.email,
+        operatorId: currentUser.id,
+        operatorName: currentUser.fullName,
+        operatorRole: currentUser.role,
+        timestamp: new Date().toISOString()
+      };
+      await setDoc(doc(db, 'audit_logs', auditId), audit);
+
+      // Notify the user
+      const userNotifId = `notif-${Date.now()}-rep-adjusted`;
+      const userNotif: AppNotification = {
+        id: userNotifId,
+        userId: userId,
+        type: 'verification',
+        title: `Reputation Adjusted`,
+        message: `An admin adjusted your reputation by ${change >= 0 ? '+' : ''}${change} points. Reason: ${notes}`,
+        read: false,
+        timestamp: new Date().toISOString()
+      };
+      await setDoc(doc(db, 'notifications', userNotifId), userNotif);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, 'users');
+    }
+  };
+
+  const adminIssueWarning = async (userId: string, reason: string) => {
+    if (!currentUser) throw new Error("Not authenticated");
+    if (currentUser.role !== 'admin' && currentUser.role !== 'moderator') {
+      throw new Error("Unauthorized");
+    }
+
+    try {
+      const uRef = doc(db, 'users', userId);
+      const userSnap = await getDoc(uRef);
+      if (!userSnap.exists()) throw new Error("User not found");
+      const user = userSnap.data() as User;
+
+      const warnings = user.warnings || [];
+      const newWarning: CreatorWarning = {
+        id: 'warn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+        reason,
+        date: new Date().toISOString(),
+        issuedBy: currentUser.fullName || currentUser.email
+      };
+
+      await updateDoc(uRef, {
+        warnings: [...warnings, newWarning]
+      });
+
+      // Log warning to audit_logs
+      const auditId = 'audit-' + Date.now();
+      const audit: AuditLog = {
+        id: auditId,
+        action: `Issued warning: "${reason}"`,
+        targetUserId: userId,
+        targetUserName: user.fullName,
+        operatorId: currentUser.id,
+        operatorName: currentUser.fullName,
+        operatorRole: currentUser.role,
+        timestamp: new Date().toISOString()
+      };
+      await setDoc(doc(db, 'audit_logs', auditId), audit);
+
+      // Notify user
+      const userNotifId = `notif-${Date.now()}-warning-issued`;
+      const userNotif: AppNotification = {
+        id: userNotifId,
+        userId: userId,
+        type: 'dispute',
+        title: `Policy Warning Issued`,
+        message: `You have received an official warning: "${reason}". This penalty negatively impacts your Reputation Score.`,
+        read: false,
+        timestamp: new Date().toISOString()
+      };
+      await setDoc(doc(db, 'notifications', userNotifId), userNotif);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, 'users');
+    }
+  };
+
+  const adminRemoveReview = async (reviewId: string) => {
+    if (!currentUser) throw new Error("Not authenticated");
+    if (currentUser.role !== 'admin' && currentUser.role !== 'moderator') {
+      throw new Error("Unauthorized");
+    }
+
+    try {
+      const reviewRef = doc(db, 'creator_reviews', reviewId);
+      const reviewSnap = await getDoc(reviewRef);
+      if (!reviewSnap.exists()) throw new Error("Review not found");
+      const review = reviewSnap.data() as CreatorReview;
+
+      await deleteDoc(reviewRef);
+
+      // Log to audit logs
+      const auditId = 'audit-' + Date.now();
+      const audit: AuditLog = {
+        id: auditId,
+        action: `Removed review by client ${review.clientName} for creator ${review.creatorName}`,
+        targetUserId: review.creatorId,
+        targetUserName: review.creatorName,
+        operatorId: currentUser.id,
+        operatorName: currentUser.fullName,
+        operatorRole: currentUser.role,
+        timestamp: new Date().toISOString()
+      };
+      await setDoc(doc(db, 'audit_logs', auditId), audit);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, 'creator_reviews');
+    }
   };
 
   const memberRequestPayout = async (amount: number, address: string, method: 'USDT_BEP20' | 'BINANCE_ID') => {
@@ -3967,6 +4238,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       adminUpdateUserKarma,
       adminAdjustUserBalance,
       syncRedditKarma,
+      reportTaskIssue,
+      adminUpdateIssueReportStatus,
+      taskIssueReports,
+      creatorReviews,
+      submitClientReview,
+      adminAdjustUserReputation,
+      adminIssueWarning,
+      adminRemoveReview,
       
       blacklistedIPs,
       duplicateGroups,

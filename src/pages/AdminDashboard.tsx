@@ -41,7 +41,9 @@ export const AdminDashboard: React.FC = () => {
     adminUpdateUserRedditAccountStatus,
     adminRemoveUserRedditAccount,
     notifications,
-    tickets
+    tickets,
+    taskIssueReports,
+    adminUpdateIssueReportStatus
   } = useApp();
 
   const users = (rawUsers || []).filter(u => {
@@ -65,10 +67,14 @@ export const AdminDashboard: React.FC = () => {
     return (roleIsClient || hasClientType || !isMemberOrAdmin);
   });
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'clients' | 'client-tasks' | 'client-payments' | 'client-chats' | 'tasks' | 'submissions' | 'withdrawals' | 'announcements' | 'settings' | 'security' | 'track-data' | 'audit-log' | 'deleted-tasks' | 'live-wallet' | 'deleted-history'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'clients' | 'client-tasks' | 'client-payments' | 'client-chats' | 'tasks' | 'submissions' | 'withdrawals' | 'announcements' | 'settings' | 'security' | 'track-data' | 'audit-log' | 'deleted-tasks' | 'live-wallet' | 'deleted-history' | 'task-issue-reports'>('dashboard');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
   const [showPermissionRestrictedModal, setShowPermissionRestrictedModal] = useState<string | null>(null);
+
+  // Task issue reporting support admin state
+  const [issueFilterStatus, setIssueFilterStatus] = useState<string>('All');
+  const [adminResolutionNotes, setAdminResolutionNotes] = useState<Record<string, string>>({});
 
   // Deleted tasks list & filter states
   const [deletedTasks, setDeletedTasks] = useState<any[]>([]);
@@ -211,6 +217,7 @@ export const AdminDashboard: React.FC = () => {
   // Special task specific configurations
   const [isSpecialTask, setIsSpecialTask] = useState(false);
   const [minKarmaRequired, setMinKarmaRequired] = useState<number>(1000);
+  const [minReputationRequired, setMinReputationRequired] = useState<number>(0);
   const [specialLabel, setSpecialLabel] = useState('SPECIAL');
 
   // Post specific
@@ -226,6 +233,7 @@ export const AdminDashboard: React.FC = () => {
   const [minAccountAgeRequired, setMinAccountAgeRequired] = useState<number>(4);
   const [require2FA, setRequire2FA] = useState<boolean>(true);
   const [cooldownPeriodDays, setCooldownPeriodDays] = useState<number>(15);
+  const [additionalNotes, setAdditionalNotes] = useState('');
 
   // Task assignment/visibility creator states
   const [taskVisibility, setTaskVisibility] = useState<'public' | 'assigned'>('public');
@@ -887,12 +895,23 @@ export const AdminDashboard: React.FC = () => {
     new Date(log.timestamp).getTime() > (lastViewedTime['audit-log'] || 0)
   ).length;
 
+  const taskIssueReportsBadgeCount = (taskIssueReports || []).filter(r => 
+    r.status === 'Open'
+  ).length;
+
   // 1. Submit Create Task
   const handleCreateTask = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!taskTitle || !taskDescription || !taskReward || !taskMaxSubmissions) {
-      alert('Please fill out general task fields.');
-      return;
+    if (taskType === 'request') {
+      if (!taskTitle || !taskReward || !taskMaxSubmissions) {
+        alert('Please fill out general task fields.');
+        return;
+      }
+    } else {
+      if (!taskTitle || !taskDescription || !taskReward || !taskMaxSubmissions) {
+        alert('Please fill out general task fields.');
+        return;
+      }
     }
 
     // Validate Reddit markdown links for security
@@ -901,15 +920,23 @@ export const AdminDashboard: React.FC = () => {
       alert(`Title links validation failed:\n${titleCheck.error}`);
       return;
     }
-    const descCheck = validateRedditMarkdownLinks(taskDescription);
-    if (!descCheck.isValid) {
-      alert(`Description links validation failed:\n${descCheck.error}`);
-      return;
+    if (taskType !== 'request') {
+      const descCheck = validateRedditMarkdownLinks(taskDescription);
+      if (!descCheck.isValid) {
+        alert(`Description links validation failed:\n${descCheck.error}`);
+        return;
+      }
+    } else if (additionalNotes) {
+      const notesCheck = validateRedditMarkdownLinks(additionalNotes);
+      if (!notesCheck.isValid) {
+        alert(`Additional notes links validation failed:\n${notesCheck.error}`);
+        return;
+      }
     }
 
     const baseTask = {
       title: taskTitle,
-      description: taskDescription,
+      description: taskType === 'request' ? '' : taskDescription,
       type: taskType,
       reward: Number(taskReward),
       difficulty: taskDifficulty,
@@ -918,6 +945,7 @@ export const AdminDashboard: React.FC = () => {
       proofRequired: taskType === 'post' ? 'Screenshot of the live post showing u/username clearly.' : (taskType === 'comment' ? 'Screenshot of comment + Permalink URL' : 'Link to the submitted r/redditrequest thread (Markdown Link Verification)'),
       isSpecial: isSpecialTask || taskType === 'request',
       minKarmaRequired: taskType === 'request' ? (Number(minKarmaRequired) || 300) : (isSpecialTask ? Number(minKarmaRequired) : 0),
+      minReputationRequired: Number(minReputationRequired) || 0,
       specialLabel: taskType === 'request' ? 'REQUEST TASK' : (isSpecialTask ? specialLabel : ''),
       visibility: taskVisibility,
       assignedMembers: taskVisibility === 'assigned' ? assignedMembers : [],
@@ -968,7 +996,8 @@ export const AdminDashboard: React.FC = () => {
         minKarmaRequired: Number(minKarmaRequired) || 300,
         minAccountAgeRequired: Number(minAccountAgeRequired) || 4,
         require2FA: require2FA,
-        cooldownPeriodDays: Number(cooldownPeriodDays) || 15
+        cooldownPeriodDays: Number(cooldownPeriodDays) || 15,
+        additionalNotes: additionalNotes
       };
     }
 
@@ -986,6 +1015,7 @@ export const AdminDashboard: React.FC = () => {
     setCommentGuidelines('');
     setRequiredLinkUrl('');
     setRequiredFlair('');
+    setAdditionalNotes('');
     setMinAccountAgeRequired(4);
     setRequire2FA(true);
     setCooldownPeriodDays(15);
@@ -1046,6 +1076,7 @@ export const AdminDashboard: React.FC = () => {
       items: [
         { id: 'tasks', label: 'Tasks Desk', icon: FileText, count: tasksBadgeCount },
         { id: 'submissions', label: 'Task Submits', icon: CheckCircle2, count: submissionsBadgeCount },
+        { id: 'task-issue-reports', label: 'Task Issue Reports', icon: AlertTriangle, count: taskIssueReportsBadgeCount },
         { id: 'deleted-tasks', label: 'Deleted Tasks', icon: Trash2, count: 0 }
       ]
     },
@@ -3833,6 +3864,21 @@ export const AdminDashboard: React.FC = () => {
                   )}
                 </div>
 
+                {/* Minimum Reputation Restrict Card */}
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                  <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 block">Minimum Reputation Score Required (0-100)</label>
+                  <input 
+                    type="number" 
+                    min="0"
+                    max="100"
+                    value={minReputationRequired}
+                    onChange={(e) => setMinReputationRequired(Number(e.target.value) || 0)}
+                    className="w-full text-xs text-slate-800 bg-white border border-slate-200 px-2.5 py-1.5 rounded-lg focus:border-indigo-500 font-mono font-bold"
+                    placeholder="e.g. 75 (0 for none)"
+                  />
+                  <span className="text-[8px] text-slate-400 mt-1 block leading-normal">If set above 0, creators below this reputation score are locked from claiming this task.</span>
+                </div>
+
                 {/* Task Visibility and Assignment Selection */}
                 <div className="bg-indigo-50/40 p-4 rounded-xl border border-indigo-150 space-y-4">
                   <div>
@@ -3971,15 +4017,27 @@ export const AdminDashboard: React.FC = () => {
                   />
                 </div>
 
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Task Description/Markdown Requirements</label>
-                  <textarea 
-                    value={taskDescription}
-                    onChange={(e) => setTaskDescription(e.target.value)}
-                    placeholder="Provide overview of the campaign purpose." 
-                    className="w-full text-xs text-slate-800 bg-white border border-slate-200 px-3 py-2.5 rounded-xl h-20 focus:border-indigo-500 focus:outline-none"
-                  />
-                </div>
+                {taskType !== 'request' ? (
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Task Description/Markdown Requirements</label>
+                    <textarea 
+                      value={taskDescription}
+                      onChange={(e) => setTaskDescription(e.target.value)}
+                      placeholder="Provide overview of the campaign purpose." 
+                      className="w-full text-xs text-slate-800 bg-white border border-slate-200 px-3 py-2.5 rounded-xl h-20 focus:border-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-amber-650 block mb-1">Additional Notes (Optional)</label>
+                    <textarea 
+                      value={additionalNotes}
+                      onChange={(e) => setAdditionalNotes(e.target.value)}
+                      placeholder="e.g., Use desktop Reddit only. Select flair before posting. Wait 5 minutes after posting before submitting proof." 
+                      className="w-full text-xs text-slate-800 bg-white border border-slate-200 px-3 py-2.5 rounded-xl h-16 focus:border-amber-500 focus:outline-none font-sans font-medium"
+                    />
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -4195,10 +4253,16 @@ export const AdminDashboard: React.FC = () => {
                         <div className="text-slate-850 font-extrabold">{renderRedditMarkdown(taskTitle)}</div>
                       </div>
                     )}
-                    {taskDescription && (
+                    {taskType !== 'request' && taskDescription && (
                       <div className="border-t border-slate-150 pt-1.5">
                         <span className="text-[8px] text-slate-455 font-extrabold uppercase block tracking-wider font-mono">Description/Instructions Preview</span>
                         <div className="text-slate-705">{renderRedditMarkdown(taskDescription)}</div>
+                      </div>
+                    )}
+                    {taskType === 'request' && additionalNotes && (
+                      <div className="border-t border-slate-150 pt-1.5">
+                        <span className="text-[8px] text-amber-705 font-extrabold uppercase block tracking-wider font-mono">Additional Notes Preview</span>
+                        <div className="text-slate-705">{renderRedditMarkdown(additionalNotes)}</div>
                       </div>
                     )}
                     {taskType === 'post' ? (
@@ -4216,7 +4280,7 @@ export const AdminDashboard: React.FC = () => {
                           </div>
                         )}
                       </>
-                    ) : (
+                    ) : taskType === 'comment' ? (
                       <>
                         {commentGuidelines && (
                           <div className="border-t border-slate-150 pt-1.5">
@@ -4225,8 +4289,8 @@ export const AdminDashboard: React.FC = () => {
                           </div>
                         )}
                       </>
-                    )}
-                    {!taskTitle && !taskDescription && !requiredTitle && !postGuidelines && !commentGuidelines && (
+                    ) : null}
+                    {!taskTitle && !taskDescription && !additionalNotes && !requiredTitle && !postGuidelines && !commentGuidelines && (
                       <p className="text-slate-400 italic font-medium">No task content provided to render preview. Start typing to see results...</p>
                     )}
                   </div>
@@ -4677,6 +4741,234 @@ export const AdminDashboard: React.FC = () => {
                     </div>
                   );
                 })
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ================= TASK ISSUE REPORTS TAB ================= */}
+        {activeTab === 'task-issue-reports' && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-200">
+              <div>
+                <h2 className="text-lg font-extrabold text-slate-800 font-sans tracking-tight">Task Issue Reports Desk</h2>
+                <p className="text-xs text-slate-500 font-semibold mt-1">Review, investigate, and resolve issues reported on claimed tasks.</p>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-xs text-slate-505 font-bold bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg">
+                  Total: {taskIssueReports ? taskIssueReports.length : 0}
+                </span>
+                <span className="text-xs text-red-600 font-bold bg-red-50 border border-red-200 px-2.5 py-1 rounded-lg">
+                  Open: {taskIssueReports ? taskIssueReports.filter(r => r.status === 'Open').length : 0}
+                </span>
+              </div>
+            </div>
+
+            {/* List filters */}
+            <div className="flex flex-wrap gap-2 pb-2">
+              {['All', 'Open', 'Investigating', 'Resolved', 'Dismissed'].map((status) => {
+                const count = status === 'All' 
+                  ? (taskIssueReports ? taskIssueReports.length : 0) 
+                  : (taskIssueReports ? taskIssueReports.filter(r => r.status === status).length : 0);
+                const isActive = issueFilterStatus === status;
+                return (
+                  <button
+                    key={status}
+                    onClick={() => setIssueFilterStatus(status)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
+                      isActive 
+                        ? 'bg-indigo-650 border-indigo-650 text-white shadow-sm' 
+                        : 'bg-white border-slate-200 text-slate-650 hover:bg-slate-50'
+                    }`}
+                  >
+                    {status} ({count})
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="space-y-6">
+              {!taskIssueReports || taskIssueReports.length === 0 ? (
+                <div className="text-center py-12 text-slate-450 text-xs text-balance bg-white rounded-2xl border border-slate-200 font-sans font-semibold">
+                  No task issue reports have been logged in the system.
+                </div>
+              ) : (
+                (() => {
+                  const filtered = taskIssueReports
+                    .filter(r => issueFilterStatus === 'All' || r.status === issueFilterStatus)
+                    .sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="text-center py-12 text-slate-450 text-xs text-balance bg-white rounded-2xl border border-slate-200 font-semibold font-sans">
+                        No issue reports match your active filter criteria.
+                      </div>
+                    );
+                  }
+
+                  return filtered.map((report) => {
+                    const task = tasks.find(t => t.id === report.taskId);
+                    const reporter = users.find(u => u.id === report.userId);
+
+                    return (
+                      <div 
+                        key={report.id} 
+                        className={`p-6 rounded-2xl border bg-white flex flex-col md:flex-row justify-between gap-6 transition shadow-sm hover:shadow-md ${
+                          report.status === 'Open' ? 'border-red-200 bg-red-50/5' :
+                          report.status === 'Investigating' ? 'border-amber-205 bg-amber-50/5' :
+                          report.status === 'Resolved' ? 'border-emerald-250 bg-emerald-50/5' :
+                          'border-slate-200'
+                        }`}
+                      >
+                        {/* Information column */}
+                        <div className="flex-1 space-y-4">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-mono text-[10px] text-zinc-400 font-bold">#{report.id}</span>
+                            <span className={`text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-md border ${
+                              report.status === 'Open' ? 'bg-red-50 text-red-650 border-red-200' :
+                              report.status === 'Investigating' ? 'bg-amber-50 text-amber-650 border-amber-205' :
+                              report.status === 'Resolved' ? 'bg-emerald-50 text-emerald-650 border-emerald-200' :
+                              'bg-slate-100 text-slate-650 border-slate-200'
+                            }`}>
+                              ● {report.status}
+                            </span>
+                            <span className="text-[10px] font-mono font-bold bg-slate-100 border border-slate-200 px-2 py-0.5 text-zinc-600 rounded uppercase">
+                              {report.taskType}
+                            </span>
+                          </div>
+
+                          <div>
+                            <h3 className="text-sm font-extrabold text-slate-900 leading-tight">
+                              {report.taskTitle}
+                            </h3>
+                            <p className="text-[10px] text-slate-500 font-bold mt-1.5 flex items-center gap-1">
+                              Reporter: 
+                              <span className="text-indigo-650 font-extrabold">
+                                {report.userFullName} ({reporter?.redditUsername || 'No Reddit Username'})
+                              </span>
+                              · ID: {report.userId}
+                            </p>
+                          </div>
+
+                          <div className="p-3.5 bg-slate-50 border border-slate-150 rounded-xl space-y-2">
+                            <div className="flex items-center gap-2 text-rose-800 text-[11px] font-bold">
+                              <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                              <span>Issue Type: <u className="no-underline text-red-650 font-mono font-black">{report.issueType}</u></span>
+                            </div>
+                            <p className="text-xs text-slate-650 font-medium select-text break-words leading-relaxed">
+                              {report.message}
+                            </p>
+                          </div>
+
+                          {report.proofUrl && (
+                            <div className="flex items-center gap-1.5 font-sans">
+                              <span className="text-[9px] text-slate-450 uppercase font-bold">Proof Attachment:</span>
+                              <a 
+                                href={report.proofUrl} 
+                                target="_blank" 
+                                rel="noreferrer" 
+                                className="text-[11px] font-bold text-indigo-650 hover:underline flex items-center gap-1 shrink-0"
+                              >
+                                <ExternalLink className="w-3 h-3" /> View Screenshot / Image
+                              </a>
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-3 text-[10px] text-slate-400 font-semibold font-mono">
+                            <span>Filed: {new Date(report.createdAt).toLocaleString()}</span>
+                            {report.updatedAt && report.updatedAt !== report.createdAt && (
+                              <span>· Updated: {new Date(report.updatedAt).toLocaleString()}</span>
+                            )}
+                            {report.resolvedBy && (
+                              <span className="text-emerald-600 font-semibold">· Managed By: {report.resolvedBy}</span>
+                            )}
+                          </div>
+
+                          {report.resolutionNote && (
+                            <div className="p-3 bg-slate-100 border border-slate-200 rounded-xl text-xs space-y-1">
+                              <span className="text-[9px] text-zinc-500 uppercase font-extrabold block">Admin Resolution Notes:</span>
+                              <p className="text-slate-650 font-semibold whitespace-pre-wrap">{report.resolutionNote}</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Actions column */}
+                        <div className="w-full md:w-64 border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-5 flex flex-col justify-between space-y-4">
+                          <div className="space-y-3">
+                            <span className="text-[10px] text-zinc-450 font-bold uppercase tracking-wider block font-sans">Manage Report Status</span>
+                            
+                            <div className="grid grid-cols-3 gap-1.5">
+                              {['Investigating', 'Resolved', 'Dismissed'].map((st) => {
+                                const activeStyle = st === 'Investigating' ? 'bg-amber-500 border-amber-500 text-white' :
+                                                    st === 'Resolved' ? 'bg-emerald-605 border-emerald-605 text-white' :
+                                                    'bg-slate-600 border-slate-600 text-white';
+                                const inactiveStyle = 'bg-white border-slate-200 text-slate-650 hover:bg-slate-50';
+                                const isCurrent = report.status === st;
+
+                                return (
+                                  <button
+                                    key={st}
+                                    type="button"
+                                    onClick={() => adminUpdateIssueReportStatus(report.id, st as any, adminResolutionNotes[report.id] || '')}
+                                    className={`py-1.5 rounded text-[10px] font-bold border transition-all cursor-pointer ${
+                                      isCurrent ? 'bg-indigo-600 border-indigo-600 text-white font-extrabold' : inactiveStyle
+                                    }`}
+                                  >
+                                    {st === 'Investigating' ? 'Investigate' : st}
+                                  </button>
+                                );
+                              })}
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <label className="text-[9px] font-extrabold uppercase tracking-widest text-slate-450 font-sans">Resolution Note</label>
+                              <textarea
+                                value={adminResolutionNotes[report.id] || ''}
+                                onChange={(e) => setAdminResolutionNotes(prev => ({ ...prev, [report.id]: e.target.value }))}
+                                rows={2}
+                                placeholder="Write explanation or notes..."
+                                className="w-full font-medium text-[11px] text-slate-800 bg-slate-50 border border-slate-200 p-2 rounded-lg focus:border-indigo-500 focus:outline-none"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Quick helper task actions */}
+                          {task && (
+                            <div className="pt-3 border-t border-slate-100 space-y-2 select-none">
+                              <span className="text-[9px] text-rose-850 font-extrabold uppercase tracking-widest block font-mono">Helper Operations</span>
+                              
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (confirm(`Are you sure you want to FORCE-UNCLAIM this task? This releases the slot for other members without penalty.`)) {
+                                      forceUnclaimTask(task.id);
+                                    }
+                                  }}
+                                  className="flex-1 py-1 px-1.5 border border-amber-250 bg-amber-50 text-amber-700 hover:bg-amber-500 hover:text-white hover:border-amber-500 text-[10px] font-bold rounded-lg transition shrink-0"
+                                >
+                                  Release Slot
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (confirm(`Extend the user's deadline on this task by 24h?`)) {
+                                      await extendUserDeadline(task.id, currentUser!);
+                                    }
+                                  }}
+                                  className="flex-1 py-1 px-1.5 border border-indigo-250 bg-indigo-50 text-indigo-700 hover:bg-indigo-500 hover:text-white hover:border-indigo-505 text-[10px] font-bold rounded-lg transition shrink-0"
+                                >
+                                  +24h Deadline
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  });
+                })()
               )}
             </div>
           </div>

@@ -73,6 +73,32 @@ export interface User {
   discordVerifiedAt?: string | null;
   redditAccountAge?: number; // months
   reddit2FAEnabled?: boolean;
+  
+  // Creator Reputation fields
+  reputationScore?: number;        // reputation score from 0 to 100
+  reputationAdjustment?: number;   // admin-driven offset/adjustment
+  warnings?: CreatorWarning[];
+}
+
+export interface CreatorWarning {
+  id: string;
+  reason: string;
+  date: string;
+  issuedBy: string;
+}
+
+export interface CreatorReview {
+  id: string;
+  submissionId: string;
+  taskId: string;
+  taskTitle: string;
+  clientId: string;
+  clientName: string;
+  creatorId: string;
+  creatorName: string;
+  rating: number; // 1 to 5 stars
+  comment?: string;
+  createdAt: string;
 }
 
 export type TaskType = 'post' | 'comment' | 'request';
@@ -100,12 +126,14 @@ export interface Task {
   minAccountAgeRequired?: number; // default: 4 months
   require2FA?: boolean;
   cooldownPeriodDays?: number; // default: 15 days
+  additionalNotes?: string;
   // Proof info required:
   proofRequired: string; // e.g., "screenshot" or "screenshot + comment URL"
 
   // Special tasks parameters
   isSpecial?: boolean;
   minKarmaRequired?: number;
+  minReputationRequired?: number;
   specialLabel?: string; // e.g. "⭐ Special Task"
 
   // Assigned (Private) Task Fields
@@ -442,4 +470,22 @@ export const getFlairStyle = (flair: string): string => {
       return 'bg-amber-50 border border-amber-250 text-amber-800 font-bold';
   }
 };
+
+export interface TaskIssueReport {
+  id: string;
+  taskId: string;
+  taskTitle: string;
+  userId: string;
+  userFullName: string;
+  taskType: string;
+  issueType: string;
+  message: string;
+  proofUrl?: string;
+  status: 'Open' | 'Under Review' | 'Resolved' | 'Rejected';
+  createdAt: string;
+  updatedAt: string;
+  resolvedBy?: string;
+  resolutionNote?: string;
+}
+
 

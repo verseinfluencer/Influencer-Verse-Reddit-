@@ -246,6 +246,47 @@
         "archivedAt": { "type": "string" }
       },
       "required": ["id", "originalData", "archivedBy", "archivedAt"]
+    },
+    "TaskIssueReport": {
+      "title": "Task Issue Report",
+      "description": "A report filed by an influencer regarding a claimed task issue.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "taskId": { "type": "string" },
+        "taskTitle": { "type": "string" },
+        "userId": { "type": "string" },
+        "userFullName": { "type": "string" },
+        "taskType": { "type": "string" },
+        "issueType": { "type": "string" },
+        "message": { "type": "string" },
+        "proofUrl": { "type": "string" },
+        "status": { "type": "string", "enum": ["Open", "Under Review", "Resolved", "Rejected"] },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "resolvedBy": { "type": "string" },
+        "resolutionNote": { "type": "string" }
+      },
+      "required": ["id", "taskId", "userId", "taskType", "issueType", "message", "status", "createdAt", "updatedAt"]
+    },
+    "CreatorReview": {
+      "title": "Creator Review",
+      "description": "Review left by a client for a creator after a submission is approved.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "submissionId": { "type": "string" },
+        "taskId": { "type": "string" },
+        "taskTitle": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "creatorId": { "type": "string" },
+        "creatorName": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "submissionId", "taskId", "clientId", "creatorId", "rating", "createdAt"]
     }
   },
   "firestore": {
@@ -296,6 +337,14 @@
     "deleted_history/withdrawals/records": {
       "schema": "ArchivedWithdrawal",
       "description": "Archived completed withdrawal payments."
+    },
+    "task_issue_reports": {
+      "schema": "TaskIssueReport",
+      "description": "User reported problems/issues with their claimed tasks."
+    },
+    "creator_reviews": {
+      "schema": "CreatorReview",
+      "description": "Permanently stored client reviews for content creators."
     }
   }
 }
